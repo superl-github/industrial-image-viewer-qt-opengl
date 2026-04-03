@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>qml;cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+    </Filter>
+    <Filter Include="Translation Files">
+      <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
+      <Extensions>ts</Extensions>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{430d4f76-ad83-48c2-a299-1c71d3e089eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CyMediaCalc">
+      <UniqueIdentifier>{0339d4ee-772c-4682-b273-4e3b92ccc8b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CyMediaDis">
+      <UniqueIdentifier>{5c59b01e-dd97-4efe-8871-3e154a6d18e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CyMediaDis\drawItem">
+      <UniqueIdentifier>{efbd7a8b-3cd2-493e-8d2d-d3c493cf6e76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CyMediaDis\Histogram">
+      <UniqueIdentifier>{664292e7-dec2-4321-bfcf-76c89543b026}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="MyGraphicsView.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+    <QtUic Include="CyMediaDisTest.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtRcc Include="CyMediaDis\CyMediaDis.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Mono.cpp">
+      <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Bayer.cpp">
+      <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Rgb.cpp">
+      <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp">
+      <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyDMediaDisScen.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\drawItem\CyDisDrawItem.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\drawItem\ItemDrawTool.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\drawItem\ItemFactory.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\drawItem\ItemManager.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\drawItem\BaseItem.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyMediaRecTimeW.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\Histogram\CyQCP.cpp">
+      <Filter>CyMediaDis\Histogram</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\Histogram\qcustomplot.cpp">
+      <Filter>CyMediaDis\Histogram</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyMediaDisGrayStretch.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyMediaDisGrayTest.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyDMediaDisBack.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CyMediaBaseDef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Mono.h">
+      <Filter>CyMediaCalc</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Bayer.h">
+      <Filter>CyMediaCalc</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Rgb.h">
+      <Filter>CyMediaCalc</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaCalc\CyMediaCalc.h">
+      <Filter>CyMediaCalc</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaDis\drawItem\ItemFactory.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaDis\drawItem\CyDisDrawItem.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="CyMediaDis\CyDMediaDisBack.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyDMediaDisScen.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaDisView.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\ItemDrawTool.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\EllipseItem.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\EllipseItem.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\RectItem.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\RectItem.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\LineItem.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\LineItem.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\ItemManager.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaRecTimeW.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\Histogram\CyQCP.h">
+      <Filter>CyMediaDis\Histogram</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\Histogram\qcustomplot.h">
+      <Filter>CyMediaDis\Histogram</Filter>
+    </QtMoc>
+    <QtMoc Include="cycustomwidget.cpp">
+      <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="cycustomwidget.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaDisGrayTest.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\PointItem.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\PointItem.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaDisGrayStretch.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaDisView.cpp">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis.cpp">
+      <Filter>Resource Files</Filter>
+    </QtMoc>
+  </ItemGroup>
+</Project>
