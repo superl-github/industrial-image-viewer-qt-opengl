@@ -12,7 +12,6 @@
 
 #include <queue>
 
-#define debug_msg(fmt, ...) printf("[CyMediaDis(%d)  " fmt, __LINE__, ##__VA_ARGS__)
 #define ImageStackMaxSize 3
 
 class CyMediaDis::privateData : public QObject {
@@ -70,6 +69,9 @@ public:signals:
 public:
     void initGUI();
 
+    void log_printf(const char* fmt, ...);
+    void log_printf_Sub(const std::string& msg, void* pUser);
+
     oneFrameBuffer* getBuffer(bool force = false);
     void upImageToBuffer(oneFrameBuffer* buffer, CyMedia::ImageShowInfo& info, uint8_t* data);
     bool addData(CyMedia::ImageShowInfo info, uint8_t* data, bool isSource = false, bool force = false);
@@ -101,6 +103,8 @@ private:
 public:
     QMutex  m_dataLock;
     bool m_bIsPrintDebug = false;
+    CyMedia::LogCallback m_logCallback = nullptr;
+    void* m_logCallback_user = nullptr;
 
     //=====BaseUI/Item=====
     QColor mThemeColor = QColor(0x2a, 0xa3, 0xc6);
@@ -233,6 +237,15 @@ bool CyMediaDis::supportsOpenGLForCyMedia() {
     }
 
     return !((mainV > 3) || ((mainV == 3) && subV >= 3));
+}
+
+void CyMediaDis::setPrintLog(bool flag) {
+    d->m_bIsPrintDebug = flag;
+}
+
+void CyMediaDis::setLogCallback(CyMedia::LogCallback cb, void* pUser/* = nullptr*/) {
+    d->m_logCallback = std::move(cb);
+    d->m_logCallback_user = pUser;
 }
 
 bool CyMediaDis::upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force /*= false*/) {
@@ -450,15 +463,13 @@ bool CyMediaDis::privateData::addData(CyMedia::ImageShowInfo info, uint8_t* data
     }
     static const size_t MAX_IMAGE_SIZE = 200 * 1024 * 1024; // 200MB
     if (info.length > MAX_IMAGE_SIZE) {
-        if (m_bIsPrintDebug) debug_msg("图像过大，拒绝: %u bytes\n", info.length);
+        log_printf("图像过大，拒绝: %u bytes\n", info.length);
         return false;
     }
 
     //确保NoImage不会被错误覆盖
     if (clearImageTime.isValid() && clearImageTime.elapsed() < 300) {
-        if (m_bIsPrintDebug) {
-            debug_msg("跳过图像(update)\n\r");
-        }
+        log_printf("跳过图像(update)\n\r");
         return false;
     }
 
@@ -478,9 +489,7 @@ bool CyMediaDis::privateData::addData(CyMedia::ImageShowInfo info, uint8_t* data
     if (false == pImageDataThread->isRunning()) {
         bImageDataThread_flag = true;
         pImageDataThread->start();
-        if (m_bIsPrintDebug) {
-            debug_msg("启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
-        }
+        log_printf("启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
     }
 
     return true;
@@ -570,7 +579,7 @@ void CyMediaDis::privateData::Thread_ImageData() {
         //处理
         eTiemr.restart();
         Thread_ImageData_processOne(threadPare_ImageDataArray[targetIdx], opePara);
-        debug_msg("Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
+        log_printf("Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
         //回收，清除状态
         QMutexLocker lock(&m_dataLock);
         threadPare_ImageDataArray[targetIdx].bisUpData = false;
@@ -579,9 +588,7 @@ void CyMediaDis::privateData::Thread_ImageData() {
     ImageDataStack_currentOpe = -1;
     pImageDataThread->quit();
     bImageDataThread_flag = false;
-    if (m_bIsPrintDebug) {
-        debug_msg("图像处理线程退出\n\r");
-    }
+    log_printf("图像处理线程退出\n\r");
 }
 void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, opeFrameThreadPara& opePara) {
     QElapsedTimer eTimer;
@@ -592,7 +599,6 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
         opePara.dataFpsTimer.start();
     if (nDataFpsCount >= opePara.dataFpsFramePoint || opePara.dataFpsTimer.elapsed() >= opePara.dataFpsTimePointMs) {
         DataFps = 1000.0 * nDataFpsCount / opePara.dataFpsTimer.elapsed();
-        //printf("DataFps:%llf  nDataFpsCount:%lld\n", DataFps, nDataFpsCount);
         nDataFpsCount = 0;
         opePara.dataFpsTimer.restart();
     }
@@ -601,7 +607,7 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
         nDataFpsCount++;
         img.bIsAddFps = false;
     }
-    debug_msg("统计帧频 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("统计帧频 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //等待图像更新完毕
@@ -619,7 +625,7 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
     if (false == bImageDataThread_flag) {
         return;
     }
-    debug_msg("等待图像更新完毕 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("等待图像更新完毕 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //拷贝原始数据，用以静态图像分析、保存raw等功能
@@ -636,12 +642,12 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
     if (false == bImageDataThread_flag) {
         return;
     }
-    debug_msg("拷贝原始数据 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("拷贝原始数据 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     // 特殊格式处理
     Thread_ImageData_SpecialOpe(Imageinfo, Imagedata, opePara);
-    debug_msg("特殊格式处理 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("特殊格式处理 耗时：%lldms\n", eTimer.elapsed());
 
     // 检查是否退出
     if (false == bImageDataThread_flag) {
@@ -654,7 +660,7 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
         bHaveData = true;
         view->setImageShow(true);
     }
-    debug_msg("更新状态 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("更新状态 耗时：%lldms\n", eTimer.elapsed());
 
     //图像处理
     eTimer.restart();
@@ -662,12 +668,12 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
         mStretchWidget->upImageData(Imageinfo, Imagedata, imageItem->Demosaic());
         lastUpStretchType = mStretchWidget->stretchtype();
     }
-    debug_msg("更新灰度拉伸 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("更新灰度拉伸 耗时：%lldms\n", eTimer.elapsed());
     eTimer.restart();
     if (mGrayTestWidget->isVisible()) {
         mGrayTestWidget->upImageData(Imageinfo, Imagedata);
     }
-    debug_msg("更新灰度统计 耗时：%lldms\n", eTimer.elapsed());
+    //log_printf("更新灰度统计 耗时：%lldms\n", eTimer.elapsed());
     //缩略图
     if (false == img.bIsSource) {
         //帧率立即更新
@@ -848,6 +854,31 @@ void CyMediaDis::privateData::initGUI() {
     initToolBar();
     initItem();
     initLayout();
+}
+
+void CyMediaDis::privateData::log_printf(const char* fmt, ...) {
+    if (!m_logCallback || !m_bIsPrintDebug) {
+        return;
+    }
+
+    // 标准 C 可变参数格式化
+    char buffer[1024] = { 0 };
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(buffer, sizeof(buffer) - 1, fmt, ap); // 格式化到 buffer
+    va_end(ap);
+
+    // 转给回调（纯 std::string）
+    m_logCallback(QString("CyMediaDis[%1]:%2").arg(__LINE__).arg(QString::fromUtf8(buffer)).toStdString(), m_logCallback_user);
+}
+
+void CyMediaDis::privateData::log_printf_Sub(const std::string& msg, void* pUser) {
+    if (!m_logCallback || !m_bIsPrintDebug) {
+        return;
+    }
+
+    m_logCallback(msg, pUser);
 }
 
 void CyMediaDis::privateData::initScene() {
@@ -1094,9 +1125,7 @@ void CyMediaDis::privateData::ImageDataDoneReceive(bool InfoChange, CyMedia::Ima
     }
     //检查线程是否退出
     if (false == bImageDataThread_flag) {
-        if (m_bIsPrintDebug) {
-            debug_msg("跳过图像(Receive)\n\r");
-        }
+        log_printf("跳过图像(Receive)\n\r");
         return;
     }
 
@@ -1104,9 +1133,7 @@ void CyMediaDis::privateData::ImageDataDoneReceive(bool InfoChange, CyMedia::Ima
     if (false == imageItem->isVisible()) {
         imageItem->setVisible(true);
         scene->setTipTextVisible(true);
-        if (m_bIsPrintDebug) {
-            debug_msg("显示图像层\n\r");
-        }
+        log_printf("显示图像层\n\r");
     }
 
     // 显示滚动条

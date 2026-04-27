@@ -1,7 +1,11 @@
 #pragma once
 #include <stdint.h>
+#include <functional>
+#include <string>
 
 namespace CyMedia {
+    using LogCallback = std::function<void(const std::string&, void*)>;
+
     /**
     * @brief    支持的显示语言
     */

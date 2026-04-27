@@ -36,6 +36,9 @@ public:
 
     virtual int type() const override;
 
+    void setPrintLog(bool flag);
+    void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
+
     // 图像操作
     bool upImageAvailable();
     bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data);

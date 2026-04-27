@@ -16,11 +16,18 @@ GLushort indicesArray[6];
 
 class CyDMediaDisBack::PrivateData {
 public:
+    void log_printf(const char* fmt, ...);
+
     bool loadDataToGLBuffer(uint8_t* data, CyMedia::ImageShowInfo& info, QOpenGLFunctions* f);
 
 public:
     bool mUseOpenGL = true;
     QMutex dataLock;
+
+    bool m_bIsPrintDebug = false;
+    CyMedia::LogCallback m_logCallback = nullptr;
+    void* m_logCallback_user = nullptr;
+
     QGraphicsView* m_view = nullptr;
 
     QMessageBox* vertexErrorMessage = nullptr;
@@ -159,6 +166,22 @@ bool CyDMediaDisBack::PrivateData::loadDataToGLBuffer(uint8_t* data, CyMedia::Im
     return true;
 }
 
+void CyDMediaDisBack::PrivateData::log_printf(const char* fmt, ...) {
+    if (!m_logCallback || !m_bIsPrintDebug) {
+        return;
+    }
+
+    // 标准 C 可变参数格式化
+    char buffer[1024] = { 0 };
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(buffer, sizeof(buffer) - 1, fmt, ap); // 格式化到 buffer
+    va_end(ap);
+
+    // 转给回调（纯 std::string）
+    m_logCallback(QString("CyDMediaDisBack[%1]:%2").arg(__LINE__).arg(QString::fromUtf8(buffer)).toStdString(), m_logCallback_user);
+}
 
 
 CyDMediaDisBack::CyDMediaDisBack(QGraphicsView* view, bool useOpenGL/* = true*/, QGraphicsItem* parent/* = nullptr*/)
@@ -229,6 +252,15 @@ CyDMediaDisBack::~CyDMediaDisBack()
 int CyDMediaDisBack::type() const
 {
     return UserType + 1;
+}
+
+void CyDMediaDisBack::setPrintLog(bool flag) {
+    d->m_bIsPrintDebug = flag;
+}
+
+void CyDMediaDisBack::setLogCallback(CyMedia::LogCallback cb, void* pUser /*= nullptr*/) {
+    d->m_logCallback = std::move(cb);
+    d->m_logCallback_user = pUser;
 }
 
 bool CyDMediaDisBack::upImageAvailable()
@@ -624,7 +656,7 @@ void CyDMediaDisBack::initglsl(QOpenGLFunctions* f)
         f->glUseProgram(d->shaderProgram->programId());
         if (false == d->shaderProgram->addShaderFromSourceCode(QOpenGLShader::Vertex, d->vertexShaderSource)) {
             d->vertexErrorMessage->setText(d->shaderProgram->log());
-            printf("%s\r\n", d->shaderProgram->log().toLatin1().data());
+            d->log_printf("%s\r\n", d->shaderProgram->log().toLatin1().data());
             d->vertexErrorMessage->setVisible(true);
             return;
         }
@@ -759,7 +791,7 @@ void CyDMediaDisBack::upTexture(QOpenGLFunctions* f)
             d->loadDataToGLBuffer(d->imageData.data(), d->imageDataInfo, f);
             d->DisFpsCount++;
         }
-        printf("更新纹理%lld字节用时%lldms\n", d->imageData.size(), elapTimer.elapsed());
+        //d->log_printf("更新纹理%lld字节用时%lldms\n", d->imageData.size(), elapTimer.elapsed());
         d->bImageDataChange = false;
     }
     else {

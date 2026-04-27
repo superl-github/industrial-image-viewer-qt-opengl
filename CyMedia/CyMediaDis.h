@@ -39,6 +39,9 @@ public:
     static bool supportsOpenGL(int& mainV, int& subV);
     static bool supportsOpenGLForCyMedia();
 
+    void setPrintLog(bool flag);
+    void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
+    
     //image Process
     bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
     bool haveDate(void);
