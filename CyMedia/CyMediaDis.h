@@ -17,6 +17,7 @@
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
 #include "CyMediaDis/CyMediaDisGrayTest.h"
+#include "CyMediaDis/drawItem/CyDisDrawItem.h"
 
 class CYMEDIA_LIB CyMediaDis : public QWidget {
     Q_OBJECT
@@ -30,11 +31,14 @@ public:signals:
     void PressOnView();
     void DoubleClickOnView();
 
-    void upPosPix(int32_t x, int32_t y, double r, double g, double b);
+    void upPosPix(int32_t x, int32_t y, double r, double g, double b, bool signlR);
     void zoomValueChange(double value);
     void pressOnView();
 
 public:
+    static bool supportsOpenGL(int& mainV, int& subV);
+    static bool supportsOpenGLForCyMedia();
+
     //image Process
     bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
     bool haveDate(void);
@@ -53,6 +57,8 @@ public:
     bool setColorMap(const QString& mapName);
 
     //Tools/UI
+    void setDrawMode(CyDisDrawItem::ItemType mode);
+
     void setThemeColor(QColor color);
 
     CyDisDrawItem::BaseItem* getItem(QUuid& id);

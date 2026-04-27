@@ -2,6 +2,7 @@
 #include "CyMediaDis.h"
 #include "drawItem/CyDisDrawItem.h"
 
+#include <QThread>
 #include <QToolBar>
 #include <QPushButton>
 #include <QToolTip>
@@ -40,6 +41,24 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
         [this]() {
             emit needImage();
         });
+}
+
+void CyMediaDisGrayTest::ItemRemoved(QUuid id) {
+    if (QThread::currentThread() != this->thread()) {
+        mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
+    }
+    else {
+        QTimer::singleShot(0, this, [this]() {
+                mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
+            });
+    }
+}
+
+CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
+    if (mCurrentItemID.isNull()) {
+        return nullptr;
+    }
+    return ((CyMediaDis*)parent())->getItem(mCurrentItemID);
 }
 
 bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
@@ -768,13 +787,6 @@ QString CyMediaDisGrayTest::getPosToolTip_YStr(hisIndex color) {
     return QString();
 }
 
-CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
-    if (mCurrentItemID.isNull()) {
-        return nullptr;
-    }
-    return ((CyMediaDis*)parent())->getItem(mCurrentItemID);
-}
-
 bool CyMediaDisGrayTest::currentItemIsPos() {
     auto item = getCurrentItem();
     if (!item)
@@ -788,8 +800,9 @@ void CyMediaDisGrayTest::upMask(QSize imgSize) {
         mMaskHaveData = false;
         return;
     }
-    if (item->itemType() == CyDisDrawItem::Point) {
+    if (item->itemType() == CyDisDrawItem::Point || item->itemType() == CyDisDrawItem::Invalid) {
         mMaskHaveData = false;
+        return;
     }
 
     CyDisDrawItem::pathToMask(item->pathInScene(), imgSize, mClacMask);

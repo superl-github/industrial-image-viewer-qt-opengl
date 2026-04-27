@@ -37,6 +37,7 @@ public:
     //testGraphics
     void Itemdraw(CyDisDrawItem::BaseItem* item);
     void ItemRemoved(QUuid id);
+    CyDisDrawItem::BaseItem* getCurrentItem();
 
 
     //histogram
@@ -166,7 +167,6 @@ private:
     QString getPosToolTip_XStr(bool Mono);
     QString getPosToolTip_YStr(CyMediaDisGrayTest::hisIndex color);
 
-    CyDisDrawItem::BaseItem* getCurrentItem();
     bool currentItemIsPos();
 
     void upMask(QSize imgSize);

@@ -2,6 +2,8 @@
 #if defined _MSC_VER
     #include <ppl.h>
     #include <thread>
+#elif defined _OPENMP
+#   include <omp.h>
 #endif
 #include <cstdlib>
 

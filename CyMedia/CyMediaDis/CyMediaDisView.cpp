@@ -437,31 +437,47 @@ void CyMediaDisView::setDrawMode(bool draw) {
 }
 
 void CyMediaDisView::wheelEvent(QWheelEvent* event) {
+    // ========================
+    // Ctrl + 滚轮 → 缩放(中心缩放)
+    // ========================
     if (event->modifiers() & Qt::ControlModifier) {
         // 缩放前鼠标相对于View的位置
-        QPointF cusorpoint = event->pos();
-        QPointF scenePos = this->mapToScene(QPoint(cusorpoint.x(), cusorpoint.y()));
+        QPointF cusorpoint = event->position();
+        QPointF scenePos = mapToScene(QPoint(cusorpoint.x(), cusorpoint.y()));
         // 缩放前View的宽高
-        qreal viewWidth = this->viewport()->width();
-        qreal viewHeight = this->viewport()->height();
+        qreal viewWidth = viewport()->width();
+        qreal viewHeight = viewport()->height();
         // 缩放前鼠标当前位置相当于view大小的横纵比例
         qreal hScale = cusorpoint.x() / viewWidth;
         qreal vScale = cusorpoint.y() / viewHeight;
 
         //缩放
-        if (event->angleDelta().y() > 0)
-            zoomIn();
-        else
-            zoomOut();
+        event->angleDelta().y() > 0 ? zoomIn() : zoomOut();
 
         // 将scene坐标转换为放大缩小后的坐标
-        QPointF viewPoint = this->matrix().map(scenePos);
-        horizontalScrollBar()->setValue(int(viewPoint.x()) - this->viewport()->width() * hScale);
-        verticalScrollBar()->setValue(int(viewPoint.y()) - this->viewport()->height() * vScale);
+        QPointF viewPoint = matrix().map(scenePos);
+        horizontalScrollBar()->setValue(int(viewPoint.x()) - viewWidth * hScale);
+        verticalScrollBar()->setValue(int(viewPoint.y()) - viewHeight * vScale);
+
+        event->accept();
+        return;
     }
-    else {
-        QGraphicsView::wheelEvent(event);
+    // ========================
+    // Shift + 滚轮 → 横向滑动
+    // ========================
+    if (event->modifiers() & Qt::ShiftModifier) {
+        // 滚轮垂直方向 → 转为水平滚动
+        int delta = event->angleDelta().y();
+        if (delta != 0) {
+            // 调整步长
+            int scrollStep = delta / 2;
+            horizontalScrollBar()->setValue(horizontalScrollBar()->value() - scrollStep);
+            event->accept();
+            return;
+        }
     }
+
+    QGraphicsView::wheelEvent(event);
 }
 
 void CyMediaDisView::mousePressEvent(QMouseEvent* event) {

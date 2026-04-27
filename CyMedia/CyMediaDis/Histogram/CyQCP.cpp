@@ -8,156 +8,197 @@
 
 CyHistogram::CyHistogram(QCPAxis* keyAxis, QCPAxis* valueAxis)
     :QCPBars(keyAxis, valueAxis) {
-    m_updateTimer = new QTimer(this);
-    m_updateTimer->setSingleShot(true);
-    connect(m_updateTimer, &QTimer::timeout, this, &CyHistogram::onUpdateTimeout);
     setAntialiased(false);
 }
 
 void CyHistogram::updateHistogramFromThread(const double* values, int size) {
-    if (!values || !m_swapRequested.is_lock_free())
+    if (!values || size <= 0)
         return;
+    // 1. 拷贝数据到后台缓冲区
     {
         QMutexLocker locker(&m_dataMutex);
-        // 按需初始化/调整缓冲区
-        if (static_cast<int>(m_keys.size()) != size) {
+        if (m_keys.size() != size) {
+            // 尺寸变化时重新初始化（不频繁）
             initializeHistogramUnsafe(size);
         }
-        else if (static_cast<int>(m_valuesBack.size()) != size) {
+        // 确保后台缓冲区大小正确
+        if (m_valuesBack.size() != size) {
             m_valuesBack.resize(size);
         }
-
-        // 安全复制数据
-        std::memcpy(m_valuesBack.data(), values, size * sizeof(double));
+        // 快速内存拷贝
+        std::memcpy(m_valuesBack.data(), values, static_cast<size_t>(size) * sizeof(double));
         m_swapRequested.store(true, std::memory_order_release);
     }
 
-    if (QThread::currentThread() != thread()) {
-        auto linkRe = QMetaObject::invokeMethod(this, "processPendingSwap", Qt::QueuedConnection);
-        if (false == linkRe) {
-            printf("invokeMethod error\n");
+    // 2. 如果不在 GUI 线程，投递交换事件（且避免重复投递）
+    if (QThread::currentThread() != this->thread()) {
+        bool expected = false;
+        if (m_updatePending.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+            QMetaObject::invokeMethod(this, &CyHistogram::processPendingSwap, Qt::QueuedConnection);
         }
     }
     else {
-        // 同线程直接调用（如测试场景）
+        // 已经在 GUI 线程，直接调用
         processPendingSwap();
     }
 }
 
-void CyHistogram::processPendingSwap() {
+void CyHistogram::processPendingSwap()
+{
+    m_updatePending.store(false, std::memory_order_release);
+
     QMutexLocker locker(&m_dataMutex);
+    if (!m_swapRequested.load(std::memory_order_acquire))
+        return;
 
-    if (!m_swapRequested.load(std::memory_order_acquire)) return;
-
+    // 交换缓冲区
     m_valuesFront.swap(m_valuesBack);
     m_swapRequested.store(false, std::memory_order_release);
 
-    markDataChanged();
+    auto container = this->data().data();
+    if (!container)
+        return;
+
+    const int count = m_keys.size();
+    if (container->size() != count) {
+        // 尺寸变化：重建
+        container->clear();
+        QVector<QCPBarsData> newData;
+        newData.reserve(count);
+        for (int i = 0; i < count; ++i) {
+            newData.append({ m_keys[i], m_valuesFront[i] });
+        }
+        container->add(newData, true);
+    }
+    else {
+        // 尺寸一致：原位修改值
+        auto it = container->begin();
+        for (int i = 0; i < count; ++i, ++it) {
+            it->value = m_valuesFront[i];
+        }
+    }
+
+    if (auto* plot = parentPlot()) {
+        plot->replot(QCustomPlot::rpQueuedReplot);
+    }
 }
 
 void CyHistogram::setSamplingEnabled(bool enabled) {
-    mSamplingEnabled = enabled;
+    m_samplingEnabled = enabled;
 }
 
 bool CyHistogram::isSamplingEnabled() const {
-    return mSamplingEnabled;
+    return m_samplingEnabled;
 }
 
 void CyHistogram::setSamplingThreshold(int threshold) {
-    mSamplingThreshold = qMax(1, threshold);
+    m_samplingThreshold = qMax(1, threshold);
 }
 
 int CyHistogram::samplingThreshold() const {
-    return mSamplingThreshold;
+    return m_samplingThreshold;
 }
 
 QLineF CyHistogram::keyToBarLine(double key, double value) const {
     double x = mKeyAxis->coordToPixel(key);
-    double yBottom = mValueAxis->coordToPixel(0);
+    double yBottom = mValueAxis->coordToPixel(0.0);
     double yTop = mValueAxis->coordToPixel(value);
     return QLineF(x, yBottom, x, yTop);
 }
 
 double CyHistogram::selectTest(const QPointF& pos, bool onlySelectable, QVariant* details /*= nullptr*/) const
 {
-    //QCPBars::selectTest(pos, onlySelectable, details);
-    return -1;
+    Q_UNUSED(pos);
+    Q_UNUSED(onlySelectable);
+    Q_UNUSED(details);
+    return -1.0;  // 禁用选择，提升性能
 }
 
 void CyHistogram::draw(QCPPainter* painter) {
-    // 检查轴是否有效
     if (!mKeyAxis || !mValueAxis) {
         QCPBars::draw(painter);
         return;
     }
 
-    // 检查当前可见区域
     double keyMin = mKeyAxis->range().lower;
     double keyMax = mKeyAxis->range().upper;
 
-    // 如果可见范围无效，直接绘制所有柱体
-    if (qFuzzyCompare(keyMin, keyMax)) {
+    if (qFuzzyCompare(keyMin, keyMax) || qFuzzyIsNull(width())) {
         QCPBars::draw(painter);
         return;
     }
 
-    // 计算可见区域内的柱体数量
-    double keyRange = keyMax - keyMin;
-    double barWidth = width(); // 柱体宽度（在键轴单位中）
-
-    // 如果柱体宽度为0，直接绘制
-    if (qFuzzyIsNull(barWidth)) {
-        QCPBars::draw(painter);
-        return;
-    }
-
-    int visibleBars = static_cast<int>(keyRange / barWidth);
-
-    drawSampledBars(painter, 1);
-    return;
-
-    // 如果柱体数量超过阈值，进行抽样
-    if (mSamplingEnabled && visibleBars > mSamplingThreshold) {
-        // 计算抽样间隔
-        int interval = qMax(1, data()->size() / mSamplingThreshold);
-
-        // 绘制抽样后的柱体
-        drawSampledBars(painter, interval);
+    // 判断是否需要抽样
+    int visibleBars = static_cast<int>((keyMax - keyMin) / width());
+    if (m_samplingEnabled && visibleBars > m_samplingThreshold) {
+        drawSampledBars(painter);
     }
     else {
-        // 不需要抽样，直接绘制
-        QCPBars::draw(painter);
+        drawSampledBars(painter, false);
     }
 }
 
-void CyHistogram::drawSampledBars(QCPPainter* painter, int interval) const {
-    if (!mKeyAxis || !mValueAxis || data()->isEmpty()) return;
+void CyHistogram::initializeHistogramUnsafe(int binCount) {
+    if (binCount <= 0 || m_keys.size() == binCount)
+        return;
 
+    m_keys.resize(binCount);
+    for (int i = 0; i < binCount; ++i) {
+        m_keys[i] = static_cast<double>(i);
+    }
+    m_expectedSize = binCount;
+    m_valuesBack.resize(binCount);
+    // 如果前台尚未初始化，也分配
+    if (m_valuesFront.size() != binCount)
+        m_valuesFront.resize(binCount);
+}
+
+void CyHistogram::drawSampledBars(QCPPainter* painter, bool sampling/* = true*/) const {
+    if (!mKeyAxis || !mValueAxis || data()->isEmpty())
+        return;
+
+    const auto* container = data().data();
     double keyMin = mKeyAxis->range().lower;
     double keyMax = mKeyAxis->range().upper;
-    if (keyMin >= keyMax) return;
+    if (keyMin >= keyMax)
+        return;
+    // 如果不启用抽样，或者可见柱数未超阈值 → 逐点画线
+    if (!sampling) {
+        painter->setPen(mPen);
+        for (auto it = container->constBegin(); it != container->constEnd(); ++it) {
+            if (it->key >= keyMin && it->key <= keyMax && it->value > 0.0)
+                painter->drawLine(keyToBarLine(it->key, it->value));
+        }
+        return;
+    }
 
+    // 计算可见像素范围
     int pixelStart = qRound(mKeyAxis->coordToPixel(keyMin));
     int pixelEnd = qRound(mKeyAxis->coordToPixel(keyMax));
     int visiblePixels = qAbs(pixelEnd - pixelStart);
-    if (visiblePixels <= 1) return;
+    if (visiblePixels <= 1)
+        return;
 
-    int bucketCount = qMin(visiblePixels, mSamplingThreshold);
-
+    int bucketCount = qMin(visiblePixels, m_samplingThreshold);
     struct Bucket {
-        double peakVal = -1e300;
-        double repKey = 0;
+        double peakVal = -std::numeric_limits<double>::max();
+        double repKey = 0.0;
         bool valid = false;
     };
     QVector<Bucket> buckets(bucketCount);
+
     double bucketWidth = (keyMax - keyMin) / bucketCount;
+    const int dataSize = container->size();
+    // 遍历所有数据，寻找每个桶内的最大值
+    for (int i = 0; i < dataSize; ++i) {
+        auto point = container->at(i);
+        double k = point->key;
+        double v = point->value;
+        if (k < keyMin || k > keyMax || v <= 0.0)
+            continue;
 
-    for (int i = 0; i < data()->size(); ++i) {
-        double k = data()->at(i)->key;
-        double v = data()->at(i)->value;
-        if (k < keyMin || k > keyMax || v <= 0) continue;
-
-        int idx = qBound(0, static_cast<int>((k - keyMin) / bucketWidth), bucketCount - 1);
+        int idx = static_cast<int>((k - keyMin) / bucketWidth);
+        idx = qBound(0, idx, bucketCount - 1);
         if (!buckets[idx].valid || v > buckets[idx].peakVal) {
             buckets[idx].peakVal = v;
             buckets[idx].repKey = k;
@@ -166,55 +207,12 @@ void CyHistogram::drawSampledBars(QCPPainter* painter, int interval) const {
     }
 
     painter->setPen(mPen);
-
     for (const auto& bucket : buckets) {
-        if (!bucket.valid) continue;
-        painter->drawLine(keyToBarLine(bucket.repKey, bucket.peakVal));
+        if (bucket.valid) {
+            painter->drawLine(keyToBarLine(bucket.repKey, bucket.peakVal));
+        }
     }
 }
-
-void CyHistogram::initializeHistogramUnsafe(int binCount) {
-    if (binCount <= 0) return;
-    if (m_keys.size() == binCount)
-        return;
-    m_keys.resize(binCount);
-    for (int i = 0; i < binCount; ++i)
-        m_keys[i] = static_cast<double>(i); // 显式类型转换更安全
-    m_expectedSize = binCount;
-    m_valuesBack.resize(binCount);
-}
-
-void CyHistogram::markDataChanged() {
-    m_dataChanged.store(true);
-
-    if (m_updateTimer->isActive()) m_updateTimer->stop();
-    m_updateTimer->start(50);
-}
-
-void CyHistogram::onUpdateTimeout() {
-    if (!m_dataChanged.load()) return;
-
-    if (auto container = data()) {
-        container->clear();
-        for (int i = 0; i < m_keys.size(); ++i)
-            container->add({ m_keys[i], m_valuesFront[i] });
-    }
-    m_dataChanged.store(false);
-    parentPlot()->replot(QCustomPlot::rpQueuedReplot);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //class CyLineChart------------------------------------------------------
 CyLineChart::CyLineChart(QCPAxis* keyAxis, QCPAxis* valueAxis)

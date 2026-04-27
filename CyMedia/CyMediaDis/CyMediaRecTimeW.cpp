@@ -43,7 +43,10 @@ void CyMediaRecTimeW::upRecTime(uint64_t time)
         p_data->m_LedButton->setStyleSheet("border:none; border-radius:6px; background-color:rgba(0,0,0,0);");
         p_data->bLedChange = true;
     }
-    p_data->m_RecTimeButton->setText(QString().sprintf("%02d:%02d:%02d", hh, mm, ss));
+    p_data->m_RecTimeButton->setText(QString("%1:%2:%3")
+        .arg(hh, 2, 10, QChar('0'))
+        .arg(mm, 2, 10, QChar('0'))
+        .arg(ss, 2, 10, QChar('0')));
 }
 
 void CyMediaRecTimeW::upRecTime(uint64_t saved, uint64_t sum)
@@ -79,9 +82,13 @@ void CyMediaRecTimeW::upRecTime_Timed(uint64_t saved, uint64_t sum)
         p_data->m_LedButton->setStyleSheet("border:none; border-radius:6px; background-color:rgba(0,0,0,0);");
         p_data->bLedChange = true;
     }
-    p_data->m_RecTimeButton->setText(QString().sprintf("%02d:%02d:%02d / %02d:%02d:%02d", 
-        hh_e, mm_e, ss_e,
-        hh_s, mm_s, ss_s));
+    p_data->m_RecTimeButton->setText(QString("%1:%2:%3 / %4:%5:%6")
+        .arg(hh_e, 2, 10, QChar('0'))
+        .arg(mm_e, 2, 10, QChar('0'))
+        .arg(ss_e, 2, 10, QChar('0'))
+        .arg(hh_s, 2, 10, QChar('0'))
+        .arg(mm_s, 2, 10, QChar('0'))
+        .arg(ss_s, 2, 10, QChar('0')));
 }
 
 void CyMediaRecTimeW::initGui()

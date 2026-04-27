@@ -8,6 +8,7 @@
 #include "CyMediaDis/drawItem/ItemDrawTool.h"
 
 #include <QElapsedTimer>
+#include <QOffscreenSurface>
 
 #include <queue>
 
@@ -24,12 +25,14 @@ public:
         bool            bisUpData = false;                  // 是否是新数据需要更新
         bool            bIsSource = false;                  // 是否是模块存储的原始数据
         bool            bUpImage = true;                    // 是否更新显示图像
+        bool            bUpStretch = true;                  // 是否更新灰度拉伸
         bool            bIsAddFps = true;                   // 是否统计帧频
     }oneFrameBuffer_;
 
     typedef struct opeFrameThreadPara {
         QElapsedTimer dataFpsTimer;
-        qint64 dataFpsTimerElapsed = 0;
+        int dataFpsTimePointMs = 3000;
+        int dataFpsFramePoint = 30;
 
         uint8_t* pAnalyImage = 0;
         uint32_t analyImageLen = 0;
@@ -41,7 +44,6 @@ public:
 
         void init() {
             dataFpsTimer.invalidate();
-            dataFpsTimerElapsed = 0;
             if (pAnalyImage) {
                 delete[] pAnalyImage;
                 pAnalyImage = nullptr;
@@ -76,6 +78,8 @@ public:
     bool upDataIsSlow();
 
     void stopImageOpeThread();
+
+    void setDrawMode(CyDisDrawItem::ItemType mode);
 
 private:
     void Thread_ImageData();
@@ -147,6 +151,7 @@ public:
 
     CyMediaRecTimeW* mRetimeItem = nullptr;
     CyMediaDisGrayStretch* mStretchWidget = nullptr;
+    CyMedia::StretchType lastUpStretchType = CyMedia::stretch_None;
     CyMediaDisGrayTest* mGrayTestWidget = nullptr;
 
 private:
@@ -158,6 +163,7 @@ CyMediaDis::CyMediaDis(QWidget* parent /* = nullptr */)
     , d(new CyMediaDis::privateData(this)){
     
     d->initGUI();
+    setDrawMode(CyDisDrawItem::Invalid);
     setThemeColor(d->mThemeColor);
     setContentsMargins(0, 0, 0, 0);
     setMouseTracking(true);
@@ -191,6 +197,42 @@ CyMediaDis::~CyMediaDis() {
         delete d;
         d = nullptr;
     }
+}
+
+bool CyMediaDis::supportsOpenGL(int& mainV, int& subV) {
+    // 1. 创建临时 OpenGL 上下文（不显示窗口）
+    QOpenGLContext ctx;
+    QSurfaceFormat fmt;
+    fmt.setRenderableType(QSurfaceFormat::OpenGL);
+    ctx.setFormat(fmt);
+
+    // 2. 创建离屏表面（不占用屏幕）
+    QOffscreenSurface surface;
+    surface.create();
+    if (!ctx.create()) {
+        mainV = 0;
+        subV = 0;
+        return false;
+    }
+
+    // 3. 绑定上下文并获取版本
+    ctx.makeCurrent(&surface);
+    auto ver = ctx.format();
+    mainV = ver.majorVersion();
+    subV = ver.minorVersion();
+    ctx.doneCurrent();
+
+    return true;
+}
+
+bool CyMediaDis::supportsOpenGLForCyMedia() {
+    int mainV, subV;
+    bool support = supportsOpenGL(mainV, subV);
+    if (false == support) {
+        return false;
+    }
+
+    return !((mainV > 3) || ((mainV == 3) && subV >= 3));
 }
 
 bool CyMediaDis::upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force /*= false*/) {
@@ -264,6 +306,10 @@ bool CyMediaDis::setColorMap(const QString& mapName) {
         }
     }*/
     return true;
+}
+
+void CyMediaDis::setDrawMode(CyDisDrawItem::ItemType mode) {
+    d->setDrawMode(mode);
 }
 
 void CyMediaDis::setThemeColor(QColor color) {
@@ -367,7 +413,7 @@ CyMediaDis::privateData::oneFrameBuffer* CyMediaDis::privateData::getBuffer(bool
         // 简单策略：从 (currentOpe + 1) % N 开始找第一个可覆盖的
         for (int i = 0; i < ImageStackMaxNum; ++i) {
             int idx = (currentOpe + 1 + i) % ImageStackMaxNum;
-            if (idx != currentOpe && threadPare_ImageDataArray[idx].bisUpData) {
+            if (idx != currentOpe) {
                 oldestValidSlot = idx;
                 break;
             }
@@ -451,10 +497,12 @@ void CyMediaDis::privateData::addOneGrayData(bool upImage, bool force /*= false*
     oneFrameBuffer* t_pBuffer = getBuffer(force);
     if (!t_pBuffer)
         return;
+    
     upImageToBuffer(t_pBuffer, m_rawInfo, m_rawImageData);
     //重置状态
-    t_pBuffer->bIsSource = false;
+    t_pBuffer->bIsSource = true;
     t_pBuffer->bUpImage = upImage;
+    t_pBuffer->bUpStretch = mStretchWidget->stretchtype() != lastUpStretchType;
     t_pBuffer->bIsAddFps = false;
 
     t_pBuffer->bisUpData = true;
@@ -475,9 +523,7 @@ void CyMediaDis::privateData::clearImage() {
             view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         }
         //关闭绘制模式
-        if (view->drawMode()) {
-            view->setDrawMode(false);
-        }
+        setDrawMode(CyDisDrawItem::Invalid);
         bHaveData = false;
         view->setImageShow(false);
         scene->setTipTextVisible(true);
@@ -501,6 +547,8 @@ void CyMediaDis::privateData::Thread_ImageData() {
     static opeFrameThreadPara opePara;
     opePara.init();
     bImageDataThread_flag = true;
+    QElapsedTimer eTiemr;
+    eTiemr.start();
     while (bImageDataThread_flag) {
         //取数据
         int targetIdx = -1;
@@ -520,7 +568,9 @@ void CyMediaDis::privateData::Thread_ImageData() {
             continue;
         }
         //处理
+        eTiemr.restart();
         Thread_ImageData_processOne(threadPare_ImageDataArray[targetIdx], opePara);
+        debug_msg("Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
         //回收，清除状态
         QMutexLocker lock(&m_dataLock);
         threadPare_ImageDataArray[targetIdx].bisUpData = false;
@@ -534,12 +584,14 @@ void CyMediaDis::privateData::Thread_ImageData() {
     }
 }
 void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, opeFrameThreadPara& opePara) {
+    QElapsedTimer eTimer;
+    eTimer.start();
+
     // 统计更新帧频
     if (opePara.dataFpsTimer.isValid())
         opePara.dataFpsTimer.start();
-    if (nDataFpsCount >= 30 || opePara.dataFpsTimer.elapsed() >= 3000) {
-        opePara.dataFpsTimerElapsed = opePara.dataFpsTimer.elapsed();
-        DataFps = 1000.0 * nDataFpsCount / opePara.dataFpsTimerElapsed;
+    if (nDataFpsCount >= opePara.dataFpsFramePoint || opePara.dataFpsTimer.elapsed() >= opePara.dataFpsTimePointMs) {
+        DataFps = 1000.0 * nDataFpsCount / opePara.dataFpsTimer.elapsed();
         //printf("DataFps:%llf  nDataFpsCount:%lld\n", DataFps, nDataFpsCount);
         nDataFpsCount = 0;
         opePara.dataFpsTimer.restart();
@@ -549,7 +601,9 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
         nDataFpsCount++;
         img.bIsAddFps = false;
     }
+    debug_msg("统计帧频 耗时：%lldms\n", eTimer.elapsed());
 
+    eTimer.restart();
     //等待图像更新完毕
     if (false == imageItem->upImageAvailable()) {
         return;
@@ -565,7 +619,9 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
     if (false == bImageDataThread_flag) {
         return;
     }
+    debug_msg("等待图像更新完毕 耗时：%lldms\n", eTimer.elapsed());
 
+    eTimer.restart();
     //拷贝原始数据，用以静态图像分析、保存raw等功能
     if (false == img.bIsSource) {
         QMutexLocker lock(&m_dataLock);
@@ -580,25 +636,38 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
     if (false == bImageDataThread_flag) {
         return;
     }
+    debug_msg("拷贝原始数据 耗时：%lldms\n", eTimer.elapsed());
+
+    eTimer.restart();
     // 特殊格式处理
     Thread_ImageData_SpecialOpe(Imageinfo, Imagedata, opePara);
+    debug_msg("特殊格式处理 耗时：%lldms\n", eTimer.elapsed());
 
     // 检查是否退出
     if (false == bImageDataThread_flag) {
         return;
     }
+
+    eTimer.restart();
     //更新状态
     if (false == bHaveData) {
         bHaveData = true;
         view->setImageShow(true);
     }
+    debug_msg("更新状态 耗时：%lldms\n", eTimer.elapsed());
+
     //图像处理
-    if (mStretchWidget->isVisible()) {
+    eTimer.restart();
+    if (mStretchWidget->isVisible() && img.bUpStretch) {
         mStretchWidget->upImageData(Imageinfo, Imagedata, imageItem->Demosaic());
+        lastUpStretchType = mStretchWidget->stretchtype();
     }
+    debug_msg("更新灰度拉伸 耗时：%lldms\n", eTimer.elapsed());
+    eTimer.restart();
     if (mGrayTestWidget->isVisible()) {
         mGrayTestWidget->upImageData(Imageinfo, Imagedata);
     }
+    debug_msg("更新灰度统计 耗时：%lldms\n", eTimer.elapsed());
     //缩略图
     if (false == img.bIsSource) {
         //帧率立即更新
@@ -621,6 +690,8 @@ void CyMediaDis::privateData::Thread_ImageData_processOne(oneFrameBuffer& img, o
     if (true == img.bUpImage) {
         Thread_ImageData_UpDis(Imageinfo, Imagedata, opePara, img.bIsSource);
     }
+
+
     // 检查是否退出
     if (false == bImageDataThread_flag) {
         return;
@@ -716,7 +787,7 @@ void CyMediaDis::privateData::Thread_ImageData_UpDis(CyMedia::ImageShowInfo& src
     if (calcolorTimer.isValid()) {
         if (calcolorTimer.elapsed() > 200 || imageItem->flushFps() <= 5.0) {
             CyMedia::calcCoordinateColor(src_info, src_data, posX, posY, &r, &g, &b, imageItem->Demosaic());
-            m_parent->emit upPosPix(posX, posY, r, g, b);
+            m_parent->emit upPosPix(posX, posY, r, g, b, src_info.isMono() || (src_info.isBayer() && imageItem->Demosaic() == CyMedia::BAYERSOUCE));
             emit startDataFpsTimer();
         }
     }
@@ -791,7 +862,7 @@ void CyMediaDis::privateData::initScene() {
         double r = 0, g = 0, b = 0;
         if (upDataIsSlow()) {
             CyMedia::calcCoordinateColor(m_rawInfo, m_rawImageData, x, y, &r, &g, &b, imageItem->Demosaic());
-            m_parent->emit upPosPix(x, y, r, g, b);
+            m_parent->emit upPosPix(x, y, r, g, b, m_rawInfo.isMono() || (m_rawInfo.isBayer() && imageItem->Demosaic() == CyMedia::BAYERSOUCE));
         }
         });
     connect(scene, &CyDMediaDisScen::urlsDrop, this, [this](QList<QUrl> urls) {
@@ -970,8 +1041,6 @@ void CyMediaDis::privateData::initItem() {
 
     //绘制工具
     drawingTool = new CyDisDrawItem::ItemDrawTool(drawmanager, view, m_parent);
-    drawingTool->setDrawMode(CyDisDrawItem::ItemType::Invalid);
-    drawingTool->setDrawMode(CyDisDrawItem::ItemType::Ellipse);
     connect(drawingTool, &CyDisDrawItem::ItemDrawTool::drawItem, this, &CyMediaDis::privateData::onDrawItem);
 
     //TipsWidget
@@ -1001,10 +1070,12 @@ void CyMediaDis::privateData::initItem() {
     mGrayTestWidget->setVisible(false);
     connect(mGrayTestWidget, &CyMediaDisGrayTest::needImage, this, &CyMediaDis::privateData::onGrayToolNeedImage);
     connect(mGrayTestWidget, &CyMediaDisGrayTest::testModeChange, this, [this](int drawType) {
-        drawingTool->setDrawMode(CyDisDrawItem::ItemType(drawType));
-        view->setDrawMode(drawType != CyDisDrawItem::Invalid);
+        setDrawMode(CyDisDrawItem::ItemType(drawType));
+        if (drawType == CyDisDrawItem::Invalid) {
+            drawmanager->removeItem(mGrayTestWidget->getCurrentItem());
+            onGrayToolNeedImage();
+        }
         });
-
 }
 
 void CyMediaDis::privateData::initLayout() {
@@ -1051,7 +1122,8 @@ void CyMediaDis::privateData::ImageDataDoneReceive(bool InfoChange, CyMedia::Ima
 
 void CyMediaDis::privateData::onGrayToolNeedImage() {
     if (upDataIsSlow()) {
-        addOneGrayData(true);
+        bool upImage = (sender() == mStretchWidget);
+        addOneGrayData(upImage, true);
     }
 }
 
@@ -1059,6 +1131,11 @@ void CyMediaDis::privateData::onDrawItem(CyDisDrawItem::BaseItem* item) {
     if (mGrayTestWidget->isVisible()) {
         mGrayTestWidget->Itemdraw(item);
     }
+}
+
+void CyMediaDis::privateData::setDrawMode(CyDisDrawItem::ItemType mode) {
+    drawingTool->setDrawMode(CyDisDrawItem::ItemType(mode));
+    view->setDrawMode(mode != CyDisDrawItem::Invalid);
 }
 
 #include "CyMediaDis.moc"

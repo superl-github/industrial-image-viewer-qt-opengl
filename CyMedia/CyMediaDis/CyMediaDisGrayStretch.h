@@ -83,7 +83,7 @@ private:
     void onTransImageType(int index);
     void onUpStretchRange(int start, int end);
     void onUpHisRange(int minX, int maxX, int maxY);
-    void onUpBoxCahnge();
+    void onUpEditRange();
     //UI
     QColor mThemeColor = QColor(0x2a, 0xa3, 0xc6);
     bool mIsInit = false;

@@ -6,6 +6,8 @@
 CyMediaDisTest::CyMediaDisTest(QWidget *parent)
     : QMainWindow(parent) {
     ui.setupUi(this);
+    this->menuBar()->setVisible(false);
+
     m_view = new CyMediaDis(this);
     m_view->setGrayStretchVisible(true);
     m_view->setGrayTestVisible(true);
@@ -17,6 +19,12 @@ CyMediaDisTest::CyMediaDisTest(QWidget *parent)
     mUpImageThread = new QThread(this);
     connect(mUpImageThread, &QThread::started, this, &CyMediaDisTest::thread_up_image, Qt::DirectConnection);
     mUpImageThread->start();
+
+    int openglV_main, openglV_sub;
+    bool suportOpenGl = CyMediaDis::supportsOpenGL(openglV_main, openglV_sub);
+    if (openglV_main > 3.0) {
+        printf("yes!!!");
+    }
 }
 
 CyMediaDisTest::~CyMediaDisTest() {
@@ -52,6 +60,8 @@ void CyMediaDisTest::thread_up_image() {
     }
 
     mUpImageThreadFlag = true;
+    bool onlyupOnece = true;
+    bool haveUp = false;
     while (mUpImageThreadFlag) {
         int tempR, tempG, tempB;
         for (int h = 360; h < 5000; h++) {
@@ -65,9 +75,14 @@ void CyMediaDisTest::thread_up_image() {
             }
         }
 
-        m_view->upImageData(tinfo, pImage);
+        if (onlyupOnece && haveUp) {
+            QThread::msleep(10);
+            continue;
+        }
 
-        QThread::msleep(100);
+        m_view->upImageData(tinfo, pImage);
+        haveUp = true;
+        QThread::msleep(10);
     }
 
     delete[] pImage;

@@ -2,6 +2,8 @@
 #include "qcustomplot.h"
 #include <QMutex>
 #include <QMutexLocker>
+#include <QTimer>
+#include <atomic>
 
 class CyHistogram : public QCPBars {
     Q_OBJECT
@@ -10,44 +12,44 @@ public:
     explicit CyHistogram(QCPAxis* keyAxis, QCPAxis* valueAxis);
 
 public:
+    // 外部调用，线程安全
     void updateHistogramFromThread(const double* values, int size);
-
-    Q_INVOKABLE void processPendingSwap();
-
+    
+    // 采样设置
     void setSamplingEnabled(bool enabled);
     bool isSamplingEnabled() const;
-
     void setSamplingThreshold(int threshold);
     int samplingThreshold() const;
 
-private:
-    //draw
-    QLineF keyToBarLine(double key, double value) const; 
-    virtual double selectTest(const QPointF& pos, bool onlySelectable, QVariant* details = nullptr) const override;
+public slots:
+    void processPendingSwap();
+
+protected:
+    // 绘制相关
     virtual void draw(QCPPainter* painter) override;
-    void drawSampledBars(QCPPainter* painter, int interval) const;
-
-    //update
-    void initializeHistogramUnsafe(int binCount);
-    void markDataChanged();
-    void onUpdateTimeout();
+    virtual double selectTest(const QPointF& pos, bool onlySelectable, QVariant* details = nullptr) const override;
 
 private:
-    QMutex m_dataMutex;
-    //draw
-    bool mSamplingEnabled = true;
-    int mSamplingThreshold = 500;
+    void initializeHistogramUnsafe(int binCount);
+    void drawSampledBars(QCPPainter* painter, bool sampling = true) const;
+    QLineF keyToBarLine(double key, double value) const;
 
-    //update
-    QVector<double> m_keys;          // 固定横轴（初始化后不变）
-    QVector<double> m_valuesFront;   // GUI线程当前使用（用于抽样/渲染）
-    QVector<double> m_valuesBack;    // GUI线程待交换缓冲区
+private:
+    // 数据
+    QMutex m_dataMutex;
+    QVector<double> m_keys;          // 固定键值
+    QVector<double> m_valuesFront;   // GUI 线程读取
+    QVector<double> m_valuesBack;    // 后台写入缓冲区
 
     std::atomic<bool> m_swapRequested{ false };
-    int m_expectedSize = 0;
+    std::atomic<bool> m_updatePending{ false };   // 防止重复投递事件
 
-    QTimer* m_updateTimer;
-    std::atomic<bool> m_dataChanged{ false };
+    // 采样参数
+    bool m_samplingEnabled = true;
+    int m_samplingThreshold = 500;
+
+    // 记录上次尺寸，用于快速检测变化
+    int m_expectedSize = 0;
 };
 
 

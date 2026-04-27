@@ -258,9 +258,9 @@ void CyDMediaDisBack::updateTextureFormat()
                 d->textureFormat = GL_RGBA;
                 d->textureType = GL_UNSIGNED_SHORT;
             }
-            else {
-                d->textureInternalFormat = GL_RGBA;
-                d->textureFormat = GL_RGBA;
+            else if (d->imageDataInfo.bit <= 31) {
+                d->textureInternalFormat = GL_R32F;
+                d->textureFormat = GL_RED;
                 d->textureType = GL_UNSIGNED_INT;
             }
         }break;
@@ -759,7 +759,7 @@ void CyDMediaDisBack::upTexture(QOpenGLFunctions* f)
             d->loadDataToGLBuffer(d->imageData.data(), d->imageDataInfo, f);
             d->DisFpsCount++;
         }
-        printf("更新纹理%lldd字节用时%lldms\n", d->imageData.size(), elapTimer.elapsed());
+        printf("更新纹理%lld字节用时%lldms\n", d->imageData.size(), elapTimer.elapsed());
         d->bImageDataChange = false;
     }
     else {
@@ -772,7 +772,6 @@ void CyDMediaDisBack::upColorMapTexture(QOpenGLFunctions* f)
     f->glActiveTexture(GL_TEXTURE1);
     f->glBindTexture(GL_TEXTURE_2D, d->pTexture_ColorMap->textureId());
     if (true == d->bColorMapChange) {
-
         f->glTexImage2D(
             GL_TEXTURE_2D, 0, GL_LUMINANCE8, 
             d->m_ColorMapData_Width, 

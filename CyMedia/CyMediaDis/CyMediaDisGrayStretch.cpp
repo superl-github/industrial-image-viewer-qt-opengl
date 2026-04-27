@@ -1,6 +1,8 @@
 #include "CyMediaDisGrayStretch.h"
 #include <QToolTip>
 
+#define debug_msg(fmt, ...) printf("[CyMediaDisGrayStretch(%d)  " fmt, __LINE__, ##__VA_ARGS__)
+
 enum grayHistogrameIndex {
     hisI_Gray = 0,
     hisI_R,
@@ -38,6 +40,9 @@ void CyMediaDisGrayStretch::setThemeColor(QColor color) {
 }
 
 bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::DemosaicMethod Method) {
+    QElapsedTimer eTimer;
+
+    eTimer.restart();
     int currentCtrIndex = mControlTab->currentIndex();
     //切换
     if (info.isMono()) {
@@ -52,7 +57,9 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
             currentCtrIndex = 1;
         }
     }
+    debug_msg("切换界面 耗时：%lldms\n", eTimer.elapsed());
 
+    eTimer.restart();
     mImageBit = info.bit;
     //计算直方图
     int32_t maxBitValue = 1 << info.bit;
@@ -63,12 +70,18 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
         calcHisMaxX = 120;
         stretchMax = 100;
     }
+    debug_msg("计算直方图 耗时：%lldms\n", eTimer.elapsed());
+
+    eTimer.restart();
     //更新拉伸边界范围
     if (stretchMax != mSelect_max) {
         mSelect_max = stretchMax;
         emit upEditRange();
     }
+    debug_msg("更新拉伸边界范围 耗时：%lldms\n", eTimer.elapsed());
 
+    eTimer.restart();
+    //更新直方图
     double calcHisMaxY = 0;
     if (info.isMono()) {
         double maxV, minV, aveV;
@@ -98,11 +111,15 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
 
         mHistogram->updateHistogramFromThread(mHisData.data(), mHisData.size());
     }
+    debug_msg("更新直方图 耗时：%lldms\n", eTimer.elapsed());
+
+    eTimer.restart();
     //更新显示范围
     std::sort(mHisData.begin(), mHisData.end());
     size_t idx97 = static_cast<size_t>(mHisData.size() * 0.97);
     calcHisMaxY = mHisData[idx97];
     emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(calcHisMaxY));
+    debug_msg("更新显示范围 耗时：%lldms\n", eTimer.elapsed());
 
     return true;
 }
@@ -136,9 +153,7 @@ void CyMediaDisGrayStretch::setAxisToolTipVisible(bool visi) {
 }
 
 CyMedia::StretchType CyMediaDisGrayStretch::stretchtype() {
-    if (false == isVisible() || (
-        mStretchValue.start == 0 &&
-        mStretchValue.end == mStretchValue.max)) {
+    if (false == isVisible()/* || (mStretchValue.start == 0 && mStretchValue.end == mStretchValue.max)*/) {
         return CyMedia::stretch_None;
     }
     return mStretchType;
@@ -380,6 +395,10 @@ void CyMediaDisGrayStretch::onAutoStretchChange(bool enable) {
 
 void CyMediaDisGrayStretch::onStretchTypeChange(int idx) {
     mStretchType = CyMedia::StretchType(idx + 1);
+    if (mStretchType == CyMedia::stretch_Lab && mSelect_max != 100) {
+        mSelect_max = 100;
+        onUpEditRange();
+    }
     emit needImage();
 }
 
@@ -543,7 +562,7 @@ void CyMediaDisGrayStretch::initGUI() {
     connect(this, &CyMediaDisGrayStretch::transImageType, this, &CyMediaDisGrayStretch::onTransImageType);
     connect(this, &CyMediaDisGrayStretch::upStretchRange, this, &CyMediaDisGrayStretch::onUpStretchRange);
     connect(this, &CyMediaDisGrayStretch::upHisRange, this, &CyMediaDisGrayStretch::onUpHisRange);
-    connect(this, &CyMediaDisGrayStretch::upEditRange, this, &CyMediaDisGrayStretch::onUpBoxCahnge);
+    connect(this, &CyMediaDisGrayStretch::upEditRange, this, &CyMediaDisGrayStretch::onUpEditRange);
 }
 
 QString CyMediaDisGrayStretch::getPosToolTip(double xValue, double yValue) {
@@ -589,7 +608,9 @@ void CyMediaDisGrayStretch::onUpHisRange(int minX, int maxX, int maxY) {
     }
 }
 
-void CyMediaDisGrayStretch::onUpBoxCahnge() {
+void CyMediaDisGrayStretch::onUpEditRange() {
+    mStretchValue.max = mSelect_max;
+
     auto oldS = mStartNumberBox->value();
     auto oldE = mEndNumberBox->value();
 
@@ -601,7 +622,5 @@ void CyMediaDisGrayStretch::onUpBoxCahnge() {
 
     onStartValueEdit();
     onEndValueEdit();
-
-    mStretchValue.max = mSelect_max;
 }
 

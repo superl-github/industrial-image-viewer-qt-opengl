@@ -36,16 +36,9 @@ void main() {
     //===== 计算像素值 =====
     float maxPixelValue = pixrange - 1.0;
     if (colorType == 0) {//Moon
-        //32位灰度图
-        if (nbits > 16 && nbits <= 32) {
-            float tempColor = rgba.a * pow(2,24) + rgba.b * pow(2,16) + rgba.g * pow(2,8) + rgba.r * pow(2,0);
-            tempColor = tempColor * 255;
-            rgba.r = mod(tempColor, pixrange) / maxPixelValue;
-            rgba.g = rgba.r;
+        rgba.g = rgba.r;
             rgba.b = rgba.r;
             rgba.a = 1.0;
-            //rgba.r = mod(tempColor, 262144) / 262143;
-        }
     }
     else if (colorType == 11) {//MONO_OVERSIZE
         int monoIndex = intTexCoord.y * texSize.x + intTexCoord.x;
