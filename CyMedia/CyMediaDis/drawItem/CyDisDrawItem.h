@@ -1,4 +1,9 @@
 #pragma once
+
+#include "../../CyMediaBaseDef.h"
+
+#include <vector>
+
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
@@ -6,8 +11,6 @@
 #include <QUuid>
 #include <QAction>
 #include <QPainter>
-
-#include <vector>
 
 namespace CyDisDrawItem {
     enum ItemType {
@@ -25,8 +28,8 @@ namespace CyDisDrawItem {
         BottomLeft, Bottom, BottomRight,
     };
 
-    QImage pathToMask(const QPainterPath& scenePath, const QSize& imageSize);
-    void pathToMask(const QPainterPath& scenePath, const QSize& imageSize, std::vector<uint8_t>& outMask);
+    QImage CYMEDIA_LIB pathToMask(const QPainterPath& scenePath, const QSize& imageSize);
+    void CYMEDIA_LIB pathToMask(const QPainterPath& scenePath, const QSize& imageSize, std::vector<uint8_t>& outMask);
 
-    QPixmap drawItemIcon(ItemType type, int size = 24, QColor color = Qt::black);
+    QPixmap CYMEDIA_LIB drawItemIcon(ItemType type, int size = 24, QColor color = Qt::black);
 };

@@ -1,5 +1,10 @@
-#include "CyMediaDisGrayTest.h"
-#include "CyMediaDis.h"
+﻿#include "CyMediaDisGrayTest.h"
+
+#include "../CyMediaCalc/CyMediaCalc.h"
+#include "cycustomwidget.h"
+#include "Histogram/CyQCP.h"
+
+#include "../CyMediaDis.h"
 #include "drawItem/CyDisDrawItem.h"
 
 #include <QThread>
@@ -8,19 +13,74 @@
 #include <QToolTip>
 #include <QActionGroup>
 
+struct CyMediaDisGrayTest::PrivateData {
+public:
+	//UI
+	QColor m_ThemeColor = QColor(0x2a, 0xa3, 0xc6);
+	bool mIsInit = false;
+	QCustomPlot* mCustomPlot = nullptr;
+	CyHistogram* mHistogram[4] = { nullptr };
+	CyLineChart* mLineChart[4] = { nullptr };
+	QColor mHisColor[4];
+	QWidget* nTestInfoEditWidget[4] = { nullptr };
+	QLabel* mCahnnelLabel = nullptr;
+	QCheckBox* mChannelCtlLab[4] = { nullptr };
+	QLabel* mAveageLabel[5] = { nullptr };
+	QLabel* mMaximumLabel[5] = { nullptr };
+	QLabel* mMinimumLabel[5] = { nullptr };
+	QLabel* mStdLabel[5] = { nullptr };
+	QLabel* mUniformityLabel[5] = { nullptr };
+
+	QActionGroup* mDrawBtnGroup = nullptr;
+	QAction* mDrawAct[5];
+
+	QPushButton* mResetBtn = nullptr;
+
+	//histogram
+	bool mfirstShow = true;
+	std::vector<double> mHistogramData[4];
+	QVector<QCPGraphData> mPosHistogramData[4];
+	PosHis mPosHisData[4];
+	double mPosHisMaxY = 0.0;
+	bool mZoomable = true;
+
+	int m_XRangeMax = 255;
+	int m_XRangeMin = 0;
+	int m_YRangeMax = 1;
+
+	bool mShowPlotTips = true;
+	QPoint mLastPlotTipPos;
+	int mLastPlotTopX = -1;
+
+	bool mIsGray = false;
+	bool mIsPos = false;
+
+	//test
+	QUuid mCurrentItemID;
+	CyDisDrawItem::ItemType mDrawType = CyDisDrawItem::ItemType::Invalid;
+
+	std::vector<uint8_t> mClacMask;
+	bool mMaskHaveData = false;
+
+	oneChannelTestInfo mHisTestData;
+	threeChannelTestInfo mRGBTestData;
+	bool currentIsPosCalc = false;
+};
+
 CyMediaDisGrayTest::CyMediaDisGrayTest(QWidget* parent /*= nullptr*/)
     :QWidget(parent) {
+    d = new CyMediaDisGrayTest::PrivateData;
     initGUI();
 
     connect(this, &CyMediaDisGrayTest::uphisVisible, this, &CyMediaDisGrayTest::onUphisVisible);
     connect(this, &CyMediaDisGrayTest::upTestData, this, &CyMediaDisGrayTest::onUpTestData);
     connect(this, &CyMediaDisGrayTest::upHisRange, this, &CyMediaDisGrayTest::onUpHisRange);
     connect(this, &CyMediaDisGrayTest::flushHis, this, [this]() {
-        mCustomPlot->replot();
+        d->mCustomPlot->replot();
         });
 
-    mZoomable = !mZoomable;
-    setZoomble(!mZoomable);
+    d->mZoomable = !d->mZoomable;
+    setZoomble(!d->mZoomable);
 }
 
 CyMediaDisGrayTest::~CyMediaDisGrayTest() {
@@ -30,11 +90,11 @@ CyMediaDisGrayTest::~CyMediaDisGrayTest() {
 void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
     if (false == isVisible() ||
         false == isEnabled() || 
-        mDrawType == CyDisDrawItem::ItemType::Invalid) {
+        d->mDrawType == CyDisDrawItem::ItemType::Invalid) {
         return;
     }
 
-    mCurrentItemID = item->id();
+    d->mCurrentItemID = item->id();
     emit needImage();
 
     connect(item, &CyDisDrawItem::BaseItem::geometryChanged, this, 
@@ -45,56 +105,56 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
 
 void CyMediaDisGrayTest::ItemRemoved(QUuid id) {
     if (QThread::currentThread() != this->thread()) {
-        mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
+        d->mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
     }
     else {
         QTimer::singleShot(0, this, [this]() {
-                mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
+            d->mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
             });
     }
 }
 
 CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
-    if (mCurrentItemID.isNull()) {
+    if (d->mCurrentItemID.isNull()) {
         return nullptr;
     }
-    return ((CyMediaDis*)parent())->getItem(mCurrentItemID);
+    return ((CyMedia::CyMediaDis*)parent())->getItem(d->mCurrentItemID);
 }
 
 bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
     //切换
-    if (mIsGray != info.isMono() || 
-        mIsPos != currentItemIsPos()) {
-        mIsGray = info.isMono();
-        mIsPos = currentItemIsPos();
+    if (d->mIsGray != info.isMono() ||
+        d->mIsPos != currentItemIsPos()) {
+        d->mIsGray = info.isMono();
+        d->mIsPos = currentItemIsPos();
         emit uphisVisible();
     }
 
     //计算直方图
-    if (mIsPos != currentIsPosCalc) {
-        mPosHisMaxY = 0.0;
-        currentIsPosCalc = true;
-        mPosHisData[hisI_Gray].init();
-        mPosHisData[hisI_R].init();
-        mPosHisData[hisI_G].init();
-        mPosHisData[hisI_B].init();
+    if (d->mIsPos != d->currentIsPosCalc) {
+        d->mPosHisMaxY = 0.0;
+        d->currentIsPosCalc = true;
+        d->mPosHisData[hisI_Gray].init();
+        d->mPosHisData[hisI_R].init();
+        d->mPosHisData[hisI_G].init();
+        d->mPosHisData[hisI_B].init();
         int initHisIndex = 0;
         for (int i = hisI_Gray; i <= hisI_B; i++) {
-            if (mPosHistogramData[i].size() != mPosHisMax) {
-                mPosHistogramData[i].resize(mPosHisMax);
+            if (d->mPosHistogramData[i].size() != mPosHisMax) {
+                d->mPosHistogramData[i].resize(mPosHisMax);
                 initHisIndex++;
             }
         }
         if (initHisIndex) {
             for (int posI = 0; posI < mPosHisMax; posI++) {
                 for (int hisI = hisI_Gray; hisI <= hisI_B; hisI++) {
-                    mPosHistogramData[hisI][posI].key = posI;
+                    d->mPosHistogramData[hisI][posI].key = posI;
                 }
             }
         }
     }
-    if (false == mIsPos) {
-        currentIsPosCalc = false;
+    if (false == d->mIsPos) {
+        d->currentIsPosCalc = false;
     }
 
     upMask({info.width, info.height});
@@ -107,47 +167,47 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
     double calcHisMaxY = 0.0;
 
     if (info.isMono()) {
-        if (mIsPos) {
+        if (d->mIsPos) {
             //计算像素点
             double temR, tempG, tempB;
             auto pos = getCurrentItem()->pos();
             CyMedia::calcCoordinateColor(info, data, pos.x(), pos.y(),
                 &temR, &tempG, &tempB);
             //入队
-            mPosHisData[hisI_Gray].addData(temR);
-            mPosHisData[hisI_Gray].getLinearData(mHistogramData[hisI_Gray]);
-            if (mPosHisMaxY <= temR) {
-                mPosHisMaxY = temR;
+            d->mPosHisData[hisI_Gray].addData(temR);
+            d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
+            if (d->mPosHisMaxY <= temR) {
+                d->mPosHisMaxY = temR;
             }
-            mHisTestData.currentGray = temR;
-            calcHisMaxY = mPosHisMaxY;
+            d->mHisTestData.currentGray = temR;
+            calcHisMaxY = d->mPosHisMaxY;
             calcXRangePara = mPosHisMax;
             //更新数据
-            for (int i = 0; i < mHistogramData[hisI_Gray].size(); i++) {
-                mPosHistogramData[hisI_Gray][i].value = mHistogramData[hisI_Gray][i];
+            for (int i = 0; i < d->mHistogramData[hisI_Gray].size(); i++) {
+                d->mPosHistogramData[hisI_Gray][i].value = d->mHistogramData[hisI_Gray][i];
             }
-            mLineChart[hisI_Gray]->setGraphData(mPosHistogramData[hisI_Gray]);
+            d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
         }
         else {
-            CyMedia::computeGrayHistogram(data, info, &mClacMask, mMaskHaveData,
-                mHistogramData[hisI_Gray],
-                &mHisTestData.max, &mHisTestData.min, &mHisTestData.ave);
+            CyMedia::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                d->mHistogramData[hisI_Gray],
+                &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
             //更新数据
-            mHistogram[hisI_Gray]->updateHistogramFromThread(mHistogramData[hisI_Gray].data(), mHistogramData[hisI_Gray].size());
+            d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
 
-            std::sort(mHistogramData[hisI_Gray].begin(), mHistogramData[hisI_Gray].end());
-            size_t idx97 = static_cast<size_t>(mHistogramData[hisI_Gray].size() * 0.97);
-            calcHisMaxY = mHistogramData[hisI_Gray][idx97];
+            std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
+            size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * 0.97);
+            calcHisMaxY = d->mHistogramData[hisI_Gray][idx97];
         }
         //计算参数
-        CyMedia::computerUniformity(mHistogramData[hisI_Gray], mHisTestData.ave, mHisTestData.max,
-            &mHisTestData.std, &mHisTestData.Uniformity);
+        CyMedia::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
+            &d->mHisTestData.std, &d->mHisTestData.Uniformity);
     }
     else if (info.isBayer()) {
         return false;
     }
     else {
-        if (mIsPos) {
+        if (d->mIsPos) {
             //计算像素点
             double tempRGB[4];
             auto pos = getCurrentItem()->pos();
@@ -155,57 +215,57 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
                 &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B]);
             //入队
             for (int i = hisI_R; i <= hisI_B; i++) {
-                mPosHisData[i].addData(tempRGB[i]);
-                mPosHisData[i].getLinearData(mHistogramData[i]);
+                d->mPosHisData[i].addData(tempRGB[i]);
+                d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
             }
             //更新数据
-            for (int posI = 0; posI < mHistogramData[hisI_R].size(); posI++) {
+            for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
                 for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                    mPosHistogramData[hisI][posI].value = mHistogramData[hisI][posI];
+                    d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
                 }
             }
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                mLineChart[hisI]->setGraphData(mPosHistogramData[hisI]);
+                d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
             }
             
-            if (mPosHisMaxY <= tempRGB[hisI_R]) {
-                mPosHisMaxY = tempRGB[hisI_R];
+            if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
+                d->mPosHisMaxY = tempRGB[hisI_R];
             }
-            if (mPosHisMaxY <= tempRGB[hisI_G]) {
-                mPosHisMaxY = tempRGB[hisI_G];
+            if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
+                d->mPosHisMaxY = tempRGB[hisI_G];
             }
-            if (mPosHisMaxY <= tempRGB[hisI_B]) {
-                mPosHisMaxY = tempRGB[hisI_B];
+            if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
+                d->mPosHisMaxY = tempRGB[hisI_B];
             }
-            if (mRGBTestData.currentGray.size() != 3) {
-                mRGBTestData.currentGray.resize(3);
+            if (d->mRGBTestData.currentGray.size() != 3) {
+                d->mRGBTestData.currentGray.resize(3);
             }
-            mRGBTestData.currentGray[0] = tempRGB[hisI_R];
-            mRGBTestData.currentGray[1] = tempRGB[hisI_G];
-            mRGBTestData.currentGray[2] = tempRGB[hisI_B];
-            calcHisMaxY = mPosHisMaxY;
+            d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
+            d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
+            d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
+            calcHisMaxY = d->mPosHisMaxY;
             calcXRangePara = mPosHisMax;
         }
         else {
-            CyMedia::computeRGBHistogram(data, info, &mClacMask, mMaskHaveData,
-                mHistogramData[hisI_R], mHistogramData[hisI_G], mHistogramData[hisI_B],
-                mRGBTestData.max, mRGBTestData.min, mRGBTestData.ave);
+            CyMedia::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
             //更新数据
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                mHistogram[hisI]->updateHistogramFromThread(mHistogramData[hisI].data(), mHistogramData[hisI].size());
+                d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
             }
         }
         //计算参数
         CyMedia::computerThreeUniformity(
-            mHistogramData[hisI_R], mHistogramData[hisI_G], mHistogramData[hisI_B],
-            mRGBTestData.ave, mRGBTestData.max,
-            mRGBTestData.std, mRGBTestData.Uniformity);
+            d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+            d->mRGBTestData.ave, d->mRGBTestData.max,
+            d->mRGBTestData.std, d->mRGBTestData.Uniformity);
         for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-            std::sort(mHistogramData[hisI].begin(), mHistogramData[hisI].end());
+            std::sort(d->mHistogramData[hisI].begin(), d->mHistogramData[hisI].end());
         }
 
-        size_t idx97 = static_cast<size_t>(mHistogramData[hisI_R].size() * 0.97);
-        calcHisMaxY = mHistogramData[hisI_R][idx97] > mHistogramData[hisI_G][idx97] ? std::max(mHistogramData[hisI_R][idx97], mHistogramData[hisI_B][idx97]) : std::max(mHistogramData[hisI_G][idx97], mHistogramData[hisI_B][idx97]);
+        size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_R].size() * 0.97);
+        calcHisMaxY = d->mHistogramData[hisI_R][idx97] > d->mHistogramData[hisI_G][idx97] ? std::max(d->mHistogramData[hisI_R][idx97], d->mHistogramData[hisI_B][idx97]) : std::max(d->mHistogramData[hisI_G][idx97], d->mHistogramData[hisI_B][idx97]);
     }
 
     calcHisMinX = -(calcXRangePara * 0.05);
@@ -217,16 +277,16 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
 }
 
 bool CyMediaDisGrayTest::isZoomble() {
-    return mZoomable;
+    return d->mZoomable;
 }
 
 void CyMediaDisGrayTest::setZoomble(bool zoom) {
-    if (mZoomable == zoom)
+    if (d->mZoomable == zoom)
         return;
-    if (mZoomable != zoom) {
-        mZoomable = zoom;
-        if (mZoomable) {
-            mCustomPlot->setInteractions(
+    if (d->mZoomable != zoom) {
+        d->mZoomable = zoom;
+        if (d->mZoomable) {
+            d->mCustomPlot->setInteractions(
                 QCP::iRangeDrag |
                 QCP::iRangeZoom |
                 QCP::iSelectAxes |
@@ -234,23 +294,23 @@ void CyMediaDisGrayTest::setZoomble(bool zoom) {
                 QCP::iSelectPlottables); // 可拖动 / 缩放
         }
         else {
-            mCustomPlot->setInteractions(QCP::iNone); // 可拖动 / 缩放
+            d->mCustomPlot->setInteractions(QCP::iNone); // 可拖动 / 缩放
         }
     }
 }
 
 bool CyMediaDisGrayTest::axisToolTipVisible() {
-    return mShowPlotTips;
+    return d->mShowPlotTips;
 }
 
 void CyMediaDisGrayTest::setAxisToolTipVisible(bool visi) {
-    mShowPlotTips = visi;
+    d->mShowPlotTips = visi;
     if (!visi)
         QToolTip::hideText();
 }
 
 bool CyMediaDisGrayTest::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == mCustomPlot && event->type() == QEvent::MouseMove) {
+    if (watched == d->mCustomPlot && event->type() == QEvent::MouseMove) {
         plotMouseMove(static_cast<QMouseEvent*>(event)->pos());
     }
 
@@ -269,18 +329,18 @@ void CyMediaDisGrayTest::closeEvent(QCloseEvent* event) {
 }
 
 void CyMediaDisGrayTest::showEvent(QShowEvent* event) {
-    mfirstShow = true;
-    emit testModeChange(mDrawType);
+    d->mfirstShow = true;
+    emit testModeChange(d->mDrawType);
     emit needImage();
     QWidget::showEvent(event);
 }
 
 void CyMediaDisGrayTest::plotMouseMove(QPoint mousePos) {
-    if (false == mShowPlotTips)
+    if (false == d->mShowPlotTips)
         return;
     //鼠标坐标转化CustomPlot内部坐标
-    double dValueX = mCustomPlot->xAxis->pixelToCoord(mousePos.x());
-    double dValueY = mCustomPlot->yAxis->pixelToCoord(mousePos.y());
+    double dValueX = d->mCustomPlot->xAxis->pixelToCoord(mousePos.x());
+    double dValueY = d->mCustomPlot->yAxis->pixelToCoord(mousePos.y());
     ////判断是否超出坐标轴范围
     //if (dValueX < mCustomPlot->xAxis->range().lower || dValueX > mCustomPlot->xAxis->range().upper ||
     //    dValueY < mCustomPlot->yAxis->range().lower || dValueY > mCustomPlot->yAxis->range().upper) {
@@ -289,26 +349,26 @@ void CyMediaDisGrayTest::plotMouseMove(QPoint mousePos) {
     //}
     //逐个图像判断符合条件的曲线点
     if (plotToolTips(dValueX, dValueY))
-        mLastPlotTipPos = mousePos;
+        d->mLastPlotTipPos = mousePos;
 }
 
 bool CyMediaDisGrayTest::plotToolTips(double xValue, double yValue) {
     double calcXvalue = 0;
     double calcYvalue = 0.0;
     //X像素比
-    double dRatioX = mCustomPlot->xAxis->axisRect()->width() / (mCustomPlot->xAxis->range().upper - mCustomPlot->xAxis->range().lower);
+    double dRatioX = d->mCustomPlot->xAxis->axisRect()->width() / (d->mCustomPlot->xAxis->range().upper - d->mCustomPlot->xAxis->range().lower);
     CyHistogram* mainBar = nullptr;
     CyLineChart* mainLinChart = nullptr;
     for (int i = hisI_Gray; i < hisI_B; i++) {
-        if (mHistogram[i]->visible()) {
-            mainBar = mHistogram[i];
+        if (d->mHistogram[i]->visible()) {
+            mainBar = d->mHistogram[i];
             break;
         }
     }
     if (!mainBar) {
         for (int i = hisI_Gray; i < hisI_B; i++) {
-            if (mLineChart[i]->visible()) {
-                mainLinChart = mLineChart[i];
+            if (d->mLineChart[i]->visible()) {
+                mainLinChart = d->mLineChart[i];
                 break;
             }
         }
@@ -331,22 +391,22 @@ bool CyMediaDisGrayTest::plotToolTips(double xValue, double yValue) {
                 /*if (mLastPlotTopX == calcXvalue) {
                     return true;
                 }*/
-                mLastPlotTopX = calcXvalue;
-                if (mHistogram[hisI_Gray]->visible()) {
-                    calcYvalue = mHistogram[hisI_Gray]->data()->at(iPointIdx)->value;
+                d->mLastPlotTopX = calcXvalue;
+                if (d->mHistogram[hisI_Gray]->visible()) {
+                    calcYvalue = d->mHistogram[hisI_Gray]->data()->at(iPointIdx)->value;
                     tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_Gray)).arg(QString::number(calcYvalue));
                 }
                 else {
-                    if (mHistogram[hisI_R]->visible()) {
-                        calcYvalue = mHistogram[hisI_R]->data()->at(iPointIdx)->value;
+                    if (d->mHistogram[hisI_R]->visible()) {
+                        calcYvalue = d->mHistogram[hisI_R]->data()->at(iPointIdx)->value;
                         tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_R)).arg(QString::number(calcYvalue));
                     }
-                    if (mHistogram[hisI_G]->visible()) {
-                        calcYvalue = mHistogram[hisI_G]->data()->at(iPointIdx)->value;
+                    if (d->mHistogram[hisI_G]->visible()) {
+                        calcYvalue = d->mHistogram[hisI_G]->data()->at(iPointIdx)->value;
                         tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_G)).arg(QString::number(calcYvalue));
                     }
-                    if (mHistogram[hisI_B]->visible()) {
-                        calcYvalue = mHistogram[hisI_B]->data()->at(iPointIdx)->value;
+                    if (d->mHistogram[hisI_B]->visible()) {
+                        calcYvalue = d->mHistogram[hisI_B]->data()->at(iPointIdx)->value;
                         tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_B)).arg(QString::number(calcYvalue));
                     }
                 }
@@ -367,22 +427,22 @@ bool CyMediaDisGrayTest::plotToolTips(double xValue, double yValue) {
                 /*if (mLastPlotTopX == calcXvalue) {
                     return true;
                 }*/
-                mLastPlotTopX = calcXvalue;
-                if (mLineChart[hisI_Gray]->visible()) {
-                    calcYvalue = mLineChart[hisI_Gray]->data()->at(iPointIdx)->value;
+                d->mLastPlotTopX = calcXvalue;
+                if (d->mLineChart[hisI_Gray]->visible()) {
+                    calcYvalue = d->mLineChart[hisI_Gray]->data()->at(iPointIdx)->value;
                     tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_Gray)).arg(QString::number(calcYvalue));
                 }
                 else {
-                    if (mLineChart[hisI_R]->visible()) {
-                        calcYvalue = mLineChart[hisI_R]->data()->at(iPointIdx)->value;
+                    if (d->mLineChart[hisI_R]->visible()) {
+                        calcYvalue = d->mLineChart[hisI_R]->data()->at(iPointIdx)->value;
                         tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_R)).arg(QString::number(calcYvalue));
                     }
-                    if (mLineChart[hisI_G]->visible()) {
-                        calcYvalue = mLineChart[hisI_G]->data()->at(iPointIdx)->value;
+                    if (d->mLineChart[hisI_G]->visible()) {
+                        calcYvalue = d->mLineChart[hisI_G]->data()->at(iPointIdx)->value;
                         tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_G)).arg(QString::number(calcYvalue));
                     }
-                    if (mLineChart[hisI_B]->visible()) {
-                        calcYvalue = mLineChart[hisI_B]->data()->at(iPointIdx)->value;
+                    if (d->mLineChart[hisI_B]->visible()) {
+                        calcYvalue = d->mLineChart[hisI_B]->data()->at(iPointIdx)->value;
                         tooltipStr += QString(u8"%1:%2\n").arg(getPosToolTip_YStr(hisI_B)).arg(QString::number(calcYvalue));
                     }
                 }
@@ -391,8 +451,8 @@ bool CyMediaDisGrayTest::plotToolTips(double xValue, double yValue) {
     }
     if (tooltipStr.size() > 0) {
         tooltipStr.remove(tooltipStr.size() - 1, 1);
-        tooltipStr = QString(u8"%1:%2\n").arg(getPosToolTip_XStr(mHistogram[hisI_Gray]->visible())).arg(calcXvalue) + tooltipStr;
-        QToolTip::showText(cursor().pos(), tooltipStr, mCustomPlot);
+        tooltipStr = QString(u8"%1:%2\n").arg(getPosToolTip_XStr(d->mHistogram[hisI_Gray]->visible())).arg(calcXvalue) + tooltipStr;
+        QToolTip::showText(cursor().pos(), tooltipStr, d->mCustomPlot);
         return true;
     }
 
@@ -401,10 +461,10 @@ bool CyMediaDisGrayTest::plotToolTips(double xValue, double yValue) {
 }
 
 void CyMediaDisGrayTest::initGUI() {
-    if (mIsInit)
+    if (d->mIsInit)
         return;
 
-    mIsInit = true;
+    d->mIsInit = true;
 
     const char testLabHeadStyle[] =
         "QLabel{\n"
@@ -425,111 +485,111 @@ void CyMediaDisGrayTest::initGUI() {
         "}\n";
 
     //plot
-    mCustomPlot = new QCustomPlot(this);
-    mCustomPlot->installEventFilter(this);
-    mCustomPlot->xAxis->setRange(m_XRangeMin, m_XRangeMax);
-    mCustomPlot->yAxis->setRange(0, m_YRangeMax);
-    connect(mCustomPlot, &QCustomPlot::mousePress, this, &CyMediaDisGrayTest::plotPressEvent);
-    connect(mCustomPlot, &QCustomPlot::mouseWheel, this, &CyMediaDisGrayTest::plotwheelEvent);
+    d->mCustomPlot = new QCustomPlot(this);
+    d->mCustomPlot->installEventFilter(this);
+    d->mCustomPlot->xAxis->setRange(d->m_XRangeMin, d->m_XRangeMax);
+    d->mCustomPlot->yAxis->setRange(0, d->m_YRangeMax);
+    connect(d->mCustomPlot, &QCustomPlot::mousePress, this, &CyMediaDisGrayTest::plotPressEvent);
+    connect(d->mCustomPlot, &QCustomPlot::mouseWheel, this, &CyMediaDisGrayTest::plotwheelEvent);
 
     //His
-    mHisColor[hisI_Gray] = QColor(Qt::darkGray);
-    mHisColor[hisI_R] = QColor(200, 30, 30, 255);
-    mHisColor[hisI_G] = QColor(30, 200, 30, 200);
-    mHisColor[hisI_B] = QColor(30, 30, 200, 150);
+    d->mHisColor[hisI_Gray] = QColor(Qt::darkGray);
+    d->mHisColor[hisI_R] = QColor(200, 30, 30, 255);
+    d->mHisColor[hisI_G] = QColor(30, 200, 30, 200);
+    d->mHisColor[hisI_B] = QColor(30, 30, 200, 150);
 
     for (int i = hisI_Gray; i <= hisI_B; i++) {
-        mHistogram[i] = new CyHistogram(mCustomPlot->xAxis, mCustomPlot->yAxis);
-        mHistogram[i]->setWidthType(QCPBars::wtPlotCoords);
-        mHistogram[i]->setPen(mHisColor[i]);
-        mHistogram[i]->setVisible(false);
+        d->mHistogram[i] = new CyHistogram(d->mCustomPlot->xAxis, d->mCustomPlot->yAxis);
+        d->mHistogram[i]->setWidthType(QCPBars::wtPlotCoords);
+        d->mHistogram[i]->setPen(d->mHisColor[i]);
+        d->mHistogram[i]->setVisible(false);
 
-        mLineChart[i] = new CyLineChart(mCustomPlot->xAxis, mCustomPlot->yAxis);
-        mLineChart[i]->setLineStyle(QCPGraph::lsLine);
-        mLineChart[i]->setScatterStyle(QCPScatterStyle::ssDot/*QCPScatterStyle::ssDisc*/);
-        mLineChart[i]->setAdaptiveSampling(true);
-        mLineChart[i]->setScatterSkip(0);
-        mLineChart[i]->setPen(mHisColor[i]);
-        mLineChart[i]->setVisible(false);
+        d->mLineChart[i] = new CyLineChart(d->mCustomPlot->xAxis, d->mCustomPlot->yAxis);
+        d->mLineChart[i]->setLineStyle(QCPGraph::lsLine);
+        d->mLineChart[i]->setScatterStyle(QCPScatterStyle::ssDot/*QCPScatterStyle::ssDisc*/);
+        d->mLineChart[i]->setAdaptiveSampling(true);
+        d->mLineChart[i]->setScatterSkip(0);
+        d->mLineChart[i]->setPen(d->mHisColor[i]);
+        d->mLineChart[i]->setVisible(false);
     }
 
-    mCahnnelLabel = new QLabel(this);
-    mCahnnelLabel->setAlignment(Qt::AlignHCenter);
+    d->mCahnnelLabel = new QLabel(this);
+    d->mCahnnelLabel->setAlignment(Qt::AlignHCenter);
     for (int i = 0; i < 5; i++) {
         if (i <= 3) {
-            mChannelCtlLab[i] = new QCheckBox(this);
-            mChannelCtlLab[i]->setChecked(true);
-            connect(mChannelCtlLab[i], &QCheckBox::stateChanged, this, 
+            d->mChannelCtlLab[i] = new QCheckBox(this);
+            d->mChannelCtlLab[i]->setChecked(true);
+            connect(d->mChannelCtlLab[i], &QCheckBox::stateChanged, this,
                 [this](int state) {
                     onUphisVisible();
                 });
         }
-        mAveageLabel[i] = new QLabel(this);
-        mAveageLabel[i]->setAlignment(Qt::AlignHCenter);
+        d->mAveageLabel[i] = new QLabel(this);
+        d->mAveageLabel[i]->setAlignment(Qt::AlignHCenter);
 
-        mMaximumLabel[i] = new QLabel(this);
-        mMaximumLabel[i]->setAlignment(Qt::AlignHCenter);
+        d->mMaximumLabel[i] = new QLabel(this);
+        d->mMaximumLabel[i]->setAlignment(Qt::AlignHCenter);
 
-        mMinimumLabel[i] = new QLabel(this);
-        mMinimumLabel[i]->setAlignment(Qt::AlignHCenter);
+        d->mMinimumLabel[i] = new QLabel(this);
+        d->mMinimumLabel[i]->setAlignment(Qt::AlignHCenter);
 
-        mStdLabel[i] = new QLabel(this);
-        mStdLabel[i]->setAlignment(Qt::AlignHCenter);
+        d->mStdLabel[i] = new QLabel(this);
+        d->mStdLabel[i]->setAlignment(Qt::AlignHCenter);
 
-        mUniformityLabel[i] = new QLabel(this);
-        mUniformityLabel[i]->setAlignment(Qt::AlignHCenter);
+        d->mUniformityLabel[i] = new QLabel(this);
+        d->mUniformityLabel[i]->setAlignment(Qt::AlignHCenter);
     }
-    mChannelCtlLab[0]->setChecked(true);
+    d->mChannelCtlLab[0]->setChecked(true);
 
     QToolBar* itemtypeToolbar = new QToolBar(this);
     itemtypeToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly); // 仅显示图标
     itemtypeToolbar->setIconSize(QSize(24, 24));
 
-    mDrawBtnGroup = new QActionGroup(this);
+    d->mDrawBtnGroup = new QActionGroup(this);
     for (int i = CyDisDrawItem::ItemType::Invalid; i <= CyDisDrawItem::ItemType::Ellipse; i++) {
-        mDrawAct[i] = new QAction(QIcon(), "", itemtypeToolbar);
-        mDrawAct[i]->setData(QVariant(i));
-        mDrawAct[i]->setCheckable(true);
-        itemtypeToolbar->addAction(mDrawAct[i]);
+        d->mDrawAct[i] = new QAction(QIcon(), "", itemtypeToolbar);
+        d->mDrawAct[i]->setData(QVariant(i));
+        d->mDrawAct[i]->setCheckable(true);
+        itemtypeToolbar->addAction(d->mDrawAct[i]);
 
-        mDrawBtnGroup->addAction(mDrawAct[i]);
+        d->mDrawBtnGroup->addAction(d->mDrawAct[i]);
     }
-    mDrawAct[CyDisDrawItem::ItemType::Invalid]->setChecked(true);
-    mResetBtn = new QPushButton(QIcon(":/CyMediaDis/ICONS/ResetShaft.png"), "", this);
-    connect(mResetBtn, &QPushButton::clicked, this, &CyMediaDisGrayTest::onResetShaft);
+    d->mDrawAct[CyDisDrawItem::ItemType::Invalid]->setChecked(true);
+    d->mResetBtn = new QPushButton(QIcon(":/CyMediaDis/ICONS/ResetShaft.png"), "", this);
+    connect(d->mResetBtn, &QPushButton::clicked, this, &CyMediaDisGrayTest::onResetShaft);
 
     QWidget* testInfoHeadWidget = new QWidget(this);
     QHBoxLayout* tastInfoTitleLayout = new QHBoxLayout(testInfoHeadWidget);
-    tastInfoTitleLayout->addWidget(mCahnnelLabel);
-    tastInfoTitleLayout->addWidget(mAveageLabel[4]);
-    tastInfoTitleLayout->addWidget(mMaximumLabel[4]);
-    tastInfoTitleLayout->addWidget(mMinimumLabel[4]);
-    tastInfoTitleLayout->addWidget(mStdLabel[4]);
-    tastInfoTitleLayout->addWidget(mUniformityLabel[4]);
+    tastInfoTitleLayout->addWidget(d->mCahnnelLabel);
+    tastInfoTitleLayout->addWidget(d->mAveageLabel[4]);
+    tastInfoTitleLayout->addWidget(d->mMaximumLabel[4]);
+    tastInfoTitleLayout->addWidget(d->mMinimumLabel[4]);
+    tastInfoTitleLayout->addWidget(d->mStdLabel[4]);
+    tastInfoTitleLayout->addWidget(d->mUniformityLabel[4]);
     tastInfoTitleLayout->setContentsMargins(0, 0, 0, 0);
     tastInfoTitleLayout->setSpacing(2);
     testInfoHeadWidget->setStyleSheet(testLabHeadStyle);
 
     for (int i = hisI_Gray; i <= hisI_B; i++) {
-        nTestInfoEditWidget[i] = new QWidget(this);
-        QGridLayout* testInfoEditLayout = new QGridLayout(nTestInfoEditWidget[i]);
+        d->nTestInfoEditWidget[i] = new QWidget(this);
+        QGridLayout* testInfoEditLayout = new QGridLayout(d->nTestInfoEditWidget[i]);
         testInfoEditLayout->setContentsMargins(0, 0, 0, 0);
         testInfoEditLayout->setSpacing(2);
         int columI = 0;
-        testInfoEditLayout->addWidget(mChannelCtlLab[i], 0, columI++, 1, 1);
-        testInfoEditLayout->addWidget(mAveageLabel[i], 0, columI++, 1, 1);
-        testInfoEditLayout->addWidget(mMaximumLabel[i], 0, columI++, 1, 1);
-        testInfoEditLayout->addWidget(mMinimumLabel[i], 0, columI++, 1, 1);
-        testInfoEditLayout->addWidget(mStdLabel[i], 0, columI++, 1, 1);
-        testInfoEditLayout->addWidget(mUniformityLabel[i], 0, columI++, 1, 1);
-        nTestInfoEditWidget[i]->setStyleSheet(testLabInfoStyle);
+        testInfoEditLayout->addWidget(d->mChannelCtlLab[i], 0, columI++, 1, 1);
+        testInfoEditLayout->addWidget(d->mAveageLabel[i], 0, columI++, 1, 1);
+        testInfoEditLayout->addWidget(d->mMaximumLabel[i], 0, columI++, 1, 1);
+        testInfoEditLayout->addWidget(d->mMinimumLabel[i], 0, columI++, 1, 1);
+        testInfoEditLayout->addWidget(d->mStdLabel[i], 0, columI++, 1, 1);
+        testInfoEditLayout->addWidget(d->mUniformityLabel[i], 0, columI++, 1, 1);
+        d->nTestInfoEditWidget[i]->setStyleSheet(testLabInfoStyle);
     }
 
     QWidget* testInfoW = new QWidget(this);
     QVBoxLayout* testInfoLyout = new QVBoxLayout(testInfoW);
     testInfoLyout->addWidget(testInfoHeadWidget);
     for (int i = hisI_Gray; i <= hisI_B; i++) {
-        testInfoLyout->addWidget(nTestInfoEditWidget[i]);
+        testInfoLyout->addWidget(d->nTestInfoEditWidget[i]);
     }
     testInfoLyout->setContentsMargins(0, 0, 0, 0);
     testInfoLyout->setSpacing(2);
@@ -538,63 +598,63 @@ void CyMediaDisGrayTest::initGUI() {
     QWidget* tCtlW = new QWidget(this);
     QHBoxLayout* tCtrlLayout = new QHBoxLayout(tCtlW);
     tCtrlLayout->addWidget(itemtypeToolbar);
-    tCtrlLayout->addWidget(mResetBtn);
+    tCtrlLayout->addWidget(d->mResetBtn);
     tCtrlLayout->setContentsMargins(0, 0, 0, 0);
     tCtlW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    mResetBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    d->mResetBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     QVBoxLayout* mainLyout = new QVBoxLayout(this);
-    mainLyout->addWidget(mCustomPlot);
+    mainLyout->addWidget(d->mCustomPlot);
     mainLyout->addWidget(testInfoW);
     mainLyout->addWidget(tCtlW);
     mainLyout->setContentsMargins(0, 0, 0, 0);
     mainLyout->setSpacing(2);
 
     flushTrans();
-    setThemeColor(m_ThemeColor);
+    setThemeColor(d->m_ThemeColor);
 
     onUphisVisible();
 
     //connect
-    connect(mChannelCtlLab[hisI_Gray], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onGrayCheckClicked);
-    connect(mChannelCtlLab[hisI_R], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onRedCheckClicked);
-    connect(mChannelCtlLab[hisI_G], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onGreenCheckClicked);
-    connect(mChannelCtlLab[hisI_B], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onBlueCheckClicked);
+    connect(d->mChannelCtlLab[hisI_Gray], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onGrayCheckClicked);
+    connect(d->mChannelCtlLab[hisI_R], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onRedCheckClicked);
+    connect(d->mChannelCtlLab[hisI_G], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onGreenCheckClicked);
+    connect(d->mChannelCtlLab[hisI_B], &QCheckBox::clicked, this, &CyMediaDisGrayTest::onBlueCheckClicked);
 
-    connect(mDrawBtnGroup, &QActionGroup::triggered, this, &CyMediaDisGrayTest::onDrawActTriggered);
+    connect(d->mDrawBtnGroup, &QActionGroup::triggered, this, &CyMediaDisGrayTest::onDrawActTriggered);
 }
 
 void CyMediaDisGrayTest::plotPressEvent() {
-    auto xSelectedParts = mCustomPlot->xAxis->selectedParts();
-    auto ySelectedParts = mCustomPlot->yAxis->selectedParts();
+    auto xSelectedParts = d->mCustomPlot->xAxis->selectedParts();
+    auto ySelectedParts = d->mCustomPlot->yAxis->selectedParts();
     if (xSelectedParts.testFlag(QCPAxis::spAxis) || xSelectedParts.testFlag(QCPAxis::spTickLabels)) {
-        mCustomPlot->axisRect()->setRangeDrag(mCustomPlot->xAxis->orientation());
+        d->mCustomPlot->axisRect()->setRangeDrag(d->mCustomPlot->xAxis->orientation());
     }
     else if (ySelectedParts.testFlag(QCPAxis::spAxis) || ySelectedParts.testFlag(QCPAxis::spTickLabels)) {
-        mCustomPlot->axisRect()->setRangeDrag(mCustomPlot->yAxis->orientation());
+        d->mCustomPlot->axisRect()->setRangeDrag(d->mCustomPlot->yAxis->orientation());
     }
     else {
-        mCustomPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
+        d->mCustomPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
     }
 }
 
 void CyMediaDisGrayTest::plotwheelEvent() {
-    auto xSelectedParts = mCustomPlot->xAxis->selectedParts();
-    auto ySelectedParts = mCustomPlot->yAxis->selectedParts();
+    auto xSelectedParts = d->mCustomPlot->xAxis->selectedParts();
+    auto ySelectedParts = d->mCustomPlot->yAxis->selectedParts();
     if (xSelectedParts.testFlag(QCPAxis::spAxis) || xSelectedParts.testFlag(QCPAxis::spTickLabels)) {
-        mCustomPlot->axisRect()->setRangeZoom(mCustomPlot->xAxis->orientation());
+        d->mCustomPlot->axisRect()->setRangeZoom(d->mCustomPlot->xAxis->orientation());
     }
     else if (ySelectedParts.testFlag(QCPAxis::spAxis) || ySelectedParts.testFlag(QCPAxis::spTickLabels)) {
-        mCustomPlot->axisRect()->setRangeZoom(mCustomPlot->yAxis->orientation());
+        d->mCustomPlot->axisRect()->setRangeZoom(d->mCustomPlot->yAxis->orientation());
     }
     else {
-        mCustomPlot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
+        d->mCustomPlot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
     }
 }
 
 void CyMediaDisGrayTest::onGrayCheckClicked(bool flag) {
     Q_UNUSED(flag);
-    mChannelCtlLab[hisI_Gray]->setChecked(true);
+    d->mChannelCtlLab[hisI_Gray]->setChecked(true);
     return;
     onUphisVisible();
 }
@@ -615,152 +675,152 @@ void CyMediaDisGrayTest::onBlueCheckClicked(bool flag) {
 }
 
 void CyMediaDisGrayTest::onResetShaft() {
-    mCustomPlot->xAxis->setRange(m_XRangeMin, m_XRangeMax);
-    mCustomPlot->yAxis->setRange(0, m_YRangeMax);
+    d->mCustomPlot->xAxis->setRange(d->m_XRangeMin, d->m_XRangeMax);
+    d->mCustomPlot->yAxis->setRange(0, d->m_YRangeMax);
     emit flushHis();
 }
 
 void CyMediaDisGrayTest::onDrawActTriggered(QAction* act) {
-    mDrawType = CyDisDrawItem::ItemType(act->data().toInt());
-    emit testModeChange(int(mDrawType));
+    d->mDrawType = CyDisDrawItem::ItemType(act->data().toInt());
+    emit testModeChange(int(d->mDrawType));
 }
 
 void CyMediaDisGrayTest::flushTrans() {
-    mCahnnelLabel->setText(tr("Channel"));
-    mAveageLabel[4]->setText(tr("Average"));
-    mMaximumLabel[4]->setText(tr("Maximum"));
-    mMinimumLabel[4]->setText(tr("Minimum"));
-    mStdLabel[4]->setText(tr("std"));
-    mUniformityLabel[4]->setText(tr("Uniformity"));
+    d->mCahnnelLabel->setText(tr("Channel"));
+    d->mAveageLabel[4]->setText(tr("Average"));
+    d->mMaximumLabel[4]->setText(tr("Maximum"));
+    d->mMinimumLabel[4]->setText(tr("Minimum"));
+    d->mStdLabel[4]->setText(tr("std"));
+    d->mUniformityLabel[4]->setText(tr("Uniformity"));
 
-    mChannelCtlLab[0]->setText(tr("Gray"));
-    mChannelCtlLab[1]->setText(tr("Red"));
-    mChannelCtlLab[2]->setText(tr("Green"));
-    mChannelCtlLab[3]->setText(tr("Blue"));
+    d->mChannelCtlLab[0]->setText(tr("Gray"));
+    d->mChannelCtlLab[1]->setText(tr("Red"));
+    d->mChannelCtlLab[2]->setText(tr("Green"));
+    d->mChannelCtlLab[3]->setText(tr("Blue"));
 
-    mDrawAct[CyDisDrawItem::ItemType::Invalid]->setText(tr("None"));
-    mDrawAct[CyDisDrawItem::ItemType::Point]->setText(tr("Point"));
-    mDrawAct[CyDisDrawItem::ItemType::Rectangle]->setText(tr("Rectangle"));
-    mDrawAct[CyDisDrawItem::ItemType::Line]->setText(tr("Line"));
-    mDrawAct[CyDisDrawItem::ItemType::Ellipse]->setText(tr("Ellipse"));
+    d->mDrawAct[CyDisDrawItem::ItemType::Invalid]->setText(tr("None"));
+    d->mDrawAct[CyDisDrawItem::ItemType::Point]->setText(tr("Point"));
+    d->mDrawAct[CyDisDrawItem::ItemType::Rectangle]->setText(tr("Rectangle"));
+    d->mDrawAct[CyDisDrawItem::ItemType::Line]->setText(tr("Line"));
+    d->mDrawAct[CyDisDrawItem::ItemType::Ellipse]->setText(tr("Ellipse"));
 
-    mResetBtn->setText(tr("Reset shaft"));
+    d->mResetBtn->setText(tr("Reset shaft"));
 }
 
 void CyMediaDisGrayTest::setThemeColor(QColor color) {
-    mCustomPlot->xAxis->setSelectedBasePen(QPen(color, 2));
-    mCustomPlot->xAxis->setSelectedTickPen(QPen(color, 2));
-    mCustomPlot->xAxis->setSelectedSubTickPen(QPen(color, 1));
-    mCustomPlot->xAxis->setSelectedTickLabelColor(color);
+    d->mCustomPlot->xAxis->setSelectedBasePen(QPen(color, 2));
+    d->mCustomPlot->xAxis->setSelectedTickPen(QPen(color, 2));
+    d->mCustomPlot->xAxis->setSelectedSubTickPen(QPen(color, 1));
+    d->mCustomPlot->xAxis->setSelectedTickLabelColor(color);
 
-    mCustomPlot->yAxis->setSelectedBasePen(QPen(color, 2));
-    mCustomPlot->yAxis->setSelectedTickPen(QPen(color, 2));
-    mCustomPlot->yAxis->setSelectedSubTickPen(QPen(color, 1));
-    mCustomPlot->yAxis->setSelectedTickLabelColor(color);
+    d->mCustomPlot->yAxis->setSelectedBasePen(QPen(color, 2));
+    d->mCustomPlot->yAxis->setSelectedTickPen(QPen(color, 2));
+    d->mCustomPlot->yAxis->setSelectedSubTickPen(QPen(color, 1));
+    d->mCustomPlot->yAxis->setSelectedTickLabelColor(color);
 
-    mDrawAct[CyDisDrawItem::ItemType::Invalid]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Invalid, 32, color));
-    mDrawAct[CyDisDrawItem::ItemType::Point]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Point, 32, color));
-    mDrawAct[CyDisDrawItem::ItemType::Rectangle]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Rectangle, 32, color));
-    mDrawAct[CyDisDrawItem::ItemType::Line]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Line, 32, color));
-    mDrawAct[CyDisDrawItem::ItemType::Ellipse]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Ellipse, 32, color));
+    d->mDrawAct[CyDisDrawItem::ItemType::Invalid]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Invalid, 32, color));
+    d->mDrawAct[CyDisDrawItem::ItemType::Point]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Point, 32, color));
+    d->mDrawAct[CyDisDrawItem::ItemType::Rectangle]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Rectangle, 32, color));
+    d->mDrawAct[CyDisDrawItem::ItemType::Line]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Line, 32, color));
+    d->mDrawAct[CyDisDrawItem::ItemType::Ellipse]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Ellipse, 32, color));
 }
 
 void CyMediaDisGrayTest::onUphisVisible() {
     //折线图
-    if (mIsPos) {
+    if (d->mIsPos) {
         for (int i = hisI_Gray; i <= hisI_B; i++) {
-            mHistogram[i]->setVisible(false);
+            d->mHistogram[i]->setVisible(false);
         }
-        if (mIsGray) {
-            mLineChart[hisI_Gray]->setVisible(true);
+        if (d->mIsGray) {
+            d->mLineChart[hisI_Gray]->setVisible(true);
             for (int i = hisI_Gray + 1; i <= hisI_B; i++) {
-                mLineChart[i]->setVisible(false);
+                d->mLineChart[i]->setVisible(false);
             }
         }
         else {
             for (int i = hisI_Gray + 1; i <= hisI_B; i++) {
-                mLineChart[i]->setVisible(mChannelCtlLab[i]->isChecked());
+                d->mLineChart[i]->setVisible(d->mChannelCtlLab[i]->isChecked());
             }
         }
     }
     else {
         for (int i = hisI_Gray; i <= hisI_B; i++) {
-            mLineChart[i]->setVisible(false);
+            d->mLineChart[i]->setVisible(false);
         }
-        if (mIsGray) {
-            mHistogram[hisI_Gray]->setVisible(true);
+        if (d->mIsGray) {
+            d->mHistogram[hisI_Gray]->setVisible(true);
             for (int i = hisI_Gray + 1; i <= hisI_B; i++) {
-                mHistogram[i]->setVisible(false);
+                d->mHistogram[i]->setVisible(false);
             }
         }
         else {
             for (int i = hisI_Gray + 1; i <= hisI_B; i++) {
-                mHistogram[i]->setVisible(mChannelCtlLab[i]->isChecked());
+                d->mHistogram[i]->setVisible(d->mChannelCtlLab[i]->isChecked());
             }
         }
     }
 
-    nTestInfoEditWidget[hisI_Gray]->setVisible(mIsGray);
-    nTestInfoEditWidget[hisI_R]->setVisible(!mIsGray);
-    nTestInfoEditWidget[hisI_G]->setVisible(!mIsGray);
-    nTestInfoEditWidget[hisI_B]->setVisible(!mIsGray);
+    d->nTestInfoEditWidget[hisI_Gray]->setVisible(d->mIsGray);
+    d->nTestInfoEditWidget[hisI_R]->setVisible(!d->mIsGray);
+    d->nTestInfoEditWidget[hisI_G]->setVisible(!d->mIsGray);
+    d->nTestInfoEditWidget[hisI_B]->setVisible(!d->mIsGray);
 
-    mCustomPlot->replot();
+    d->mCustomPlot->replot();
 }
 
 void CyMediaDisGrayTest::onUpTestData() {
-    bool isPoint = mIsPos;
-    if (mIsGray) {
+    bool isPoint = d->mIsPos;
+    if (d->mIsGray) {
         if (isPoint) {
-            mAveageLabel[hisI_Gray]->setText(QString("%1(%2)")
-            .arg(QString::number(mHisTestData.ave, 'f', 3))
-            .arg(QString::number(mHisTestData.currentGray)));
+            d->mAveageLabel[hisI_Gray]->setText(QString("%1(%2)")
+            .arg(QString::number(d->mHisTestData.ave, 'f', 3))
+            .arg(QString::number(d->mHisTestData.currentGray)));
         }
         else {
-            mAveageLabel[hisI_Gray]->setText(QString::number(mHisTestData.ave, 'f', 3));
+            d->mAveageLabel[hisI_Gray]->setText(QString::number(d->mHisTestData.ave, 'f', 3));
         }
-        mMaximumLabel[hisI_Gray]->setText(QString::number(mHisTestData.max, 'f', 3));
-        mMinimumLabel[hisI_Gray]->setText(QString::number(mHisTestData.min, 'f', 3));
-        mStdLabel[hisI_Gray]->setText(QString::number(mHisTestData.std, 'f', 3));
-        mUniformityLabel[hisI_Gray]->setText(QString::number(mHisTestData.Uniformity, 'f', 3));
+        d->mMaximumLabel[hisI_Gray]->setText(QString::number(d->mHisTestData.max, 'f', 3));
+        d->mMinimumLabel[hisI_Gray]->setText(QString::number(d->mHisTestData.min, 'f', 3));
+        d->mStdLabel[hisI_Gray]->setText(QString::number(d->mHisTestData.std, 'f', 3));
+        d->mUniformityLabel[hisI_Gray]->setText(QString::number(d->mHisTestData.Uniformity, 'f', 3));
     }
     else{
         for (int i = hisI_R; i <= hisI_B; i++) {
             if (isPoint) {
-                mAveageLabel[i]->setText(QString("%1(%2)")
-                    .arg(QString::number(mRGBTestData.ave[i - 1], 'f', 3))
-                    .arg(QString::number(mRGBTestData.currentGray[i - 1])));
+                d->mAveageLabel[i]->setText(QString("%1(%2)")
+                    .arg(QString::number(d->mRGBTestData.ave[i - 1], 'f', 3))
+                    .arg(QString::number(d->mRGBTestData.currentGray[i - 1])));
             }
             else {
-                mAveageLabel[i]->setText(QString::number(mRGBTestData.ave[i - 1], 'f', 3));
+                d->mAveageLabel[i]->setText(QString::number(d->mRGBTestData.ave[i - 1], 'f', 3));
             }
-            mMaximumLabel[i]->setText(QString::number(mRGBTestData.max[i - 1], 'f', 3));
-            mMinimumLabel[i]->setText(QString::number(mRGBTestData.min[i - 1], 'f', 3));
-            mStdLabel[i]->setText(QString::number(mRGBTestData.std[i - 1], 'f', 3));
-            mUniformityLabel[i]->setText(QString::number(mRGBTestData.Uniformity[i - 1], 'f', 3));
+            d->mMaximumLabel[i]->setText(QString::number(d->mRGBTestData.max[i - 1], 'f', 3));
+            d->mMinimumLabel[i]->setText(QString::number(d->mRGBTestData.min[i - 1], 'f', 3));
+            d->mStdLabel[i]->setText(QString::number(d->mRGBTestData.std[i - 1], 'f', 3));
+            d->mUniformityLabel[i]->setText(QString::number(d->mRGBTestData.Uniformity[i - 1], 'f', 3));
         }
     }
 }
 
 void CyMediaDisGrayTest::onUpHisRange(int minX, int maxX, int maxY) {
-    if (minX != m_XRangeMin || maxX != m_XRangeMax) {
-        m_XRangeMin = minX;
-        m_XRangeMax = maxX;
-        mCustomPlot->xAxis->setRange(m_XRangeMin, m_XRangeMax);
+    if (minX != d->m_XRangeMin || maxX != d->m_XRangeMax) {
+        d->m_XRangeMin = minX;
+        d->m_XRangeMax = maxX;
+        d->mCustomPlot->xAxis->setRange(d->m_XRangeMin, d->m_XRangeMax);
     }
 
-    float change = abs(m_YRangeMax - maxY) * 1.0 / m_YRangeMax;
-    if (change > 0.20 || mfirstShow) {
-        if (mfirstShow)
-            mfirstShow = false;
-        m_YRangeMax = maxY;
-        mCustomPlot->yAxis->setRange(0, m_YRangeMax);
+    float change = abs(d->m_YRangeMax - maxY) * 1.0 / d->m_YRangeMax;
+    if (change > 0.20 || d->mfirstShow) {
+        if (d->mfirstShow)
+            d->mfirstShow = false;
+        d->m_YRangeMax = maxY;
+        d->mCustomPlot->yAxis->setRange(0, d->m_YRangeMax);
     }
 }
  
 QString CyMediaDisGrayTest::getPosToolTip_XStr(bool Mono) {
     if (false == Mono || 
-        mIsPos) {
+        d->mIsPos) {
         return tr("Horizontal axis");
     }
 
@@ -769,7 +829,7 @@ QString CyMediaDisGrayTest::getPosToolTip_XStr(bool Mono) {
 
 QString CyMediaDisGrayTest::getPosToolTip_YStr(hisIndex color) {
     if (color == hisI_Gray) {
-        if (mIsPos) {
+        if (d->mIsPos) {
             return tr("Grayscale");
         }
         return tr("Quantity");
@@ -797,15 +857,15 @@ bool CyMediaDisGrayTest::currentItemIsPos() {
 void CyMediaDisGrayTest::upMask(QSize imgSize) {
     auto item = getCurrentItem();
     if (!item) {
-        mMaskHaveData = false;
+        d->mMaskHaveData = false;
         return;
     }
     if (item->itemType() == CyDisDrawItem::Point || item->itemType() == CyDisDrawItem::Invalid) {
-        mMaskHaveData = false;
+        d->mMaskHaveData = false;
         return;
     }
 
-    CyDisDrawItem::pathToMask(item->pathInScene(), imgSize, mClacMask);
+    CyDisDrawItem::pathToMask(item->pathInScene(), imgSize, d->mClacMask);
 
-    mMaskHaveData = true;
+    d->mMaskHaveData = true;
 }

@@ -15,4 +15,8 @@
         <file>glslSource/Fragment.c</file>
         <file>glslSource/Vertex.c</file>
     </qresource>
+    <qresource prefix="/ttranslations">
+        <file>CyMedia_en_US.qm</file>
+        <file>CyMedia_zh_CN.qm</file>
+    </qresource>
 </RCC>

@@ -1,86 +1,142 @@
 #pragma once
-
-#include <QtCore/qglobal.h>
-
-# if defined(CYMEDIA_EXPORT)
-#  define CYMEDIA_LIB Q_DECL_EXPORT
-# else
-#  define CYMEDIA_LIB Q_DECL_IMPORT
-# endif
-
-#include <QWidget>
-#include <QPushButton>
-#include <QLayout>
-#include <QUrl>
-
 #include "CyMediaBaseDef.h"
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
 #include "CyMediaDis/CyMediaDisGrayTest.h"
 #include "CyMediaDis/drawItem/CyDisDrawItem.h"
 
-class CYMEDIA_LIB CyMediaDis : public QWidget {
-    Q_OBJECT
+#include <QWidget>
+#include <QDialog>
+#include <QPushButton>
+#include <QLayout>
+#include <QUrl>
 
-public:
-    CyMediaDis(QWidget* parent = nullptr);
-    ~CyMediaDis();
+namespace CyMedia {
+    class CYMEDIA_LIB CyMediaDis : public QFrame {
+        Q_OBJECT
 
-public:signals:
-    void urlsDrop(QList<QUrl> urls);
-    void PressOnView();
-    void DoubleClickOnView();
+    public:
+        using CyMediaDisImageCallBack = std::function<void(CyMedia::ImageShowInfo&, uint8_t*, void*)>;
 
-    void upPosPix(int32_t x, int32_t y, double r, double g, double b, bool signlR);
-    void zoomValueChange(double value);
-    void pressOnView();
+    public:
+        CyMediaDis(QWidget* parent = nullptr);
+        ~CyMediaDis();
 
-public:
-    static bool supportsOpenGL(int& mainV, int& subV);
-    static bool supportsOpenGLForCyMedia();
+    public:signals:
+        void urlsDrop(QList<QUrl> urls);
+        void PressOnView();
+        void DoubleClickOnView();
 
-    void setPrintLog(bool flag);
-    void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
+        void upPosPix(int32_t x, int32_t y, double r, double g, double b, bool signlR);
+        void zoomValueChange(double value);
+        void pressOnView();
+
+        void itemDrawed(CyDisDrawItem::BaseItem* item);
+
+    public:
+        static bool supportsOpenGL(int& mainV, int& subV);
+        static bool supportsOpenGLForCyMedia();
+        static QString pixelFormatStr(CyMedia::ePixType format);
+
+        CyMedia::eLanguage currentLanguage();
+        bool setLanguage(CyMedia::eLanguage lang);
+
+        void setPrintLog(bool flag);
+        void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
+
+        //Widget
+        void setSceneAcceptDrop(bool accept);
     
-    //image Process
-    bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
-    bool haveDate(void);
-    void clearImage(void);
+        //image Process
+        void setImageStackNum(uint32_t num);
+        bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
+        void registerImageCallBack(CyMediaDisImageCallBack func, void*pUser);
+        
+        bool haveDate(void);
+        void clearImage(void);
 
-    CyMedia::StretchType stretchType();
-    void setStretchType(CyMedia::StretchType type);
-    void setStreaChPara(uint32_t start = 0, uint32_t end = 0);
+        CyMedia::ImageShowInfo& imageinfo();
+        double displayFps(void);
 
-    CyMedia::DemosaicMethod Demosaic();
-    void setDemosaic(CyMedia::DemosaicMethod method);
+        CyMedia::StretchType stretchType();
+        void setStretchType(CyMedia::StretchType type);
+        void setStreaChPara(uint32_t start = 0, uint32_t end = 0);
 
-    QStringList ColorMapList() const;
-    quint32 colorMapIndex() const;
-    bool setColorMap(quint32 index);
-    bool setColorMap(const QString& mapName);
+        CyMedia::DemosaicMethod Demosaic();
+        void setDemosaic(CyMedia::DemosaicMethod method);
 
-    //Tools/UI
-    void setDrawMode(CyDisDrawItem::ItemType mode);
+        QStringList ColorMapList() const;
+        quint32 colorMapIndex() const;
+        bool setColorMap(quint32 index);
+        bool setColorMap(const QString& mapName);
 
-    void setThemeColor(QColor color);
+        void zoomAuto();
 
-    CyDisDrawItem::BaseItem* getItem(QUuid& id);
+        //Tools/UI
+        void setDrawMode(CyDisDrawItem::ItemType mode);
 
-    bool toolBarVisible(void);
-    void setToolBarVisible(bool show);
+        void setThemeColor(QColor color);
 
-    bool zoomScrollBarVisible(void);
-    void setZoomScrollBarVisible(bool show);
+        bool toolBarVisible(void);
+        void setToolBarVisible(bool show);
 
-    CyMediaRecTimeW* rectimeItem();
+        bool zoomScrollBarVisible(void);
+        void setZoomScrollBarVisible(bool show);
 
-    CyMediaDisGrayStretch* stretchWidget();
-    void setGrayStretchVisible(bool visible);
+		// DrawItem
+        QUuid addItem(CyDisDrawItem::ItemType itemType);
+        QUuid addItem(CyDisDrawItem::ItemType itemType, QPainterPath path);
+		CyDisDrawItem::BaseItem* getItem(QUuid& id);
 
-    CyMediaDisGrayTest* grayTestWidget();
-    void setGrayTestVisible(bool visible);
+        //  RecTime
+        bool recTimeVisible();
+        void setRecTimeVisible(bool visi);
 
-private:
-    class privateData; 
-    privateData* d = nullptr;
+		void upRecTime(uint64_t time);
+		void upRecTime(uint64_t saved, uint64_t sum);
+		void upRecTime_Timed(uint64_t saved, uint64_t sum);
+
+        //  GraStretch
+        CyMediaDisGrayStretch* stretchWidget();
+        void setGrayStretchVisible(bool visible);
+
+        //  GrayTest
+        CyMediaDisGrayTest* grayTestWidget();
+        void setGrayTestVisible(bool visible);
+
+    private:
+        class privateData; 
+        privateData* d = nullptr;
+    };
+
+
+
+	class CYMEDIA_LIB CyMediaDis_GetRawInfoDialog : public QDialog {
+		Q_OBJECT
+	public:
+		explicit CyMediaDis_GetRawInfoDialog(CyMedia::eLanguage language = CyMedia::CHINESE, QWidget* parent = nullptr);
+
+		QString openFileName();
+		quint32 imageWidth();
+		quint32 imageHeight();
+		quint32 imagenBit();
+		quint32 imageColorChannels();
+        CyMedia::ePixType imagePixelType();
+		quint32 imageOffset();
+
+		void setLanguage(CyMedia::eLanguage language);
+		void setOpenFileName(QString name);
+		void setOpenInfo(quint32 w, quint32 h, quint32 bit, CyMedia::ePixType pixelType, quint32 ch, quint32 offset);
+
+	protected:
+		void initGUI(bool first = false);
+
+	private slots:
+		void onOkClicked();
+		void onCanCelClicked();
+
+	private:
+		class PrivateData;
+		PrivateData* p_data;
+	};
 };

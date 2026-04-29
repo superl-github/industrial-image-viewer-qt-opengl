@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CyDisDrawItem.h"
 
 namespace CyDisDrawItem {
@@ -27,6 +27,8 @@ namespace CyDisDrawItem {
         virtual void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) = 0;
 
         virtual void setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals = true) = 0;
+
+        virtual void setPainterPathInScene(QPainterPath path, bool needSignals = true) = 0;
 
         virtual void setPreviewMode(bool preview);
 

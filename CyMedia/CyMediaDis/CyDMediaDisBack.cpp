@@ -1,4 +1,4 @@
-#include "CyDMediaDisBack.h"
+﻿#include "CyDMediaDisBack.h"
 
 #include <QMessageBox>
 #include <QFile>
@@ -340,6 +340,24 @@ void CyDMediaDisBack::updateTextureFormat()
                 d->textureType = GL_UNSIGNED_INT;
             }
         }break;
+
+		case CyMedia::RGBA: {
+			if (d->imageDataInfo.bit <= 8) {
+				d->textureInternalFormat = GL_RGBA;
+				d->textureFormat = GL_RGBA;
+				d->textureType = GL_UNSIGNED_BYTE;
+			}
+			else if (d->imageDataInfo.bit <= 16) {
+				d->textureInternalFormat = GL_RGBA;
+				d->textureFormat = GL_RGBA;
+				d->textureType = GL_UNSIGNED_SHORT;
+			}
+			else {
+				d->textureInternalFormat = GL_RGBA;
+				d->textureFormat = GL_RGBA;
+				d->textureType = GL_UNSIGNED_INT;
+			}
+		}break;
     }
 }
 

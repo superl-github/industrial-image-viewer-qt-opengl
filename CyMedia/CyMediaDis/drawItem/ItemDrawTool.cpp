@@ -1,4 +1,4 @@
-#include "ItemDrawTool.h"
+﻿#include "ItemDrawTool.h"
 
 #include <QMouseEvent>
 #include <QLineF>
@@ -140,7 +140,7 @@ namespace CyDisDrawItem {
         if (m_previewItem) {
             m_previewItem->setSelectedContourColor(mThemeColor);
             m_previewItem->setPreviewMode(true);
-            m_manager->addItem(m_previewItem);
+            m_manager->addItemByType(m_previewItem);
         }
     }
 
@@ -159,7 +159,7 @@ namespace CyDisDrawItem {
         if (!m_previewItem) return;
 
         m_previewItem->setPreviewMode(false);
-        m_manager->addItem(m_previewItem); // 可能只是从 preview 列表移到正式列表
+        m_manager->addItemByType(m_previewItem); // 可能只是从 preview 列表移到正式列表
         m_previewItem->setSelected(true);
         m_lastItem = m_previewItem;
         m_previewItem = nullptr;

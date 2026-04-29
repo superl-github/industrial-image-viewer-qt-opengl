@@ -1,14 +1,16 @@
-#include "CyMediaDisTest.h"
+﻿#include "CyMediaDisTest.h"
 
 #include <random>
 #include <chrono>
+
+#include <QFile>
 
 CyMediaDisTest::CyMediaDisTest(QWidget *parent)
     : QMainWindow(parent) {
     ui.setupUi(this);
     this->menuBar()->setVisible(false);
 
-    m_view = new CyMediaDis(this);
+    m_view = new CyMedia::CyMediaDis(this);
     m_view->setGrayStretchVisible(true);
     m_view->setGrayTestVisible(true);
 
@@ -21,7 +23,7 @@ CyMediaDisTest::CyMediaDisTest(QWidget *parent)
     mUpImageThread->start();
 
     int openglV_main, openglV_sub;
-    bool suportOpenGl = CyMediaDis::supportsOpenGL(openglV_main, openglV_sub);
+    bool suportOpenGl = CyMedia::CyMediaDis::supportsOpenGL(openglV_main, openglV_sub);
     if (openglV_main > 3.0) {
         printf("yes!!!");
     }

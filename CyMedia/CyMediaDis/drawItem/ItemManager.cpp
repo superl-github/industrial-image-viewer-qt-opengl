@@ -1,4 +1,5 @@
-#include "ItemManager.h"
+﻿#include "ItemManager.h"
+#include "ItemFactory.h"
 
 #include <QDebug>
 
@@ -16,7 +17,11 @@ namespace CyDisDrawItem {
         clearAll();
     }
 
-    void ItemManager::addItem(BaseItem* item) {
+	void ItemManager::flushTrans() {
+        ;
+	}
+
+	void ItemManager::addItemByType(BaseItem* item) {
         if (!item || !m_scene) return;
         if (m_items.contains(item)) return;
 
@@ -41,7 +46,19 @@ namespace CyDisDrawItem {
         emit itemAdded(item->id());
     }
 
-    void ItemManager::removeItem(BaseItem* item) {
+    QUuid ItemManager::addItemByType(CyDisDrawItem::ItemType itemType) {
+        auto tempItem = ItemFactory::createItem(itemType);
+        addItemByType(tempItem);
+        return tempItem->id();
+	}
+
+	QUuid ItemManager::addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path) {
+        auto tempItem = ItemFactory::createItem(itemType);
+        tempItem->setPainterPathInScene(path);
+        return tempItem->id();
+	}
+
+	void ItemManager::removeItem(BaseItem* item) {
         if (!item || !m_items.contains(item)) return;
 
         m_scene->removeItem(item);

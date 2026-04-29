@@ -21,10 +21,10 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{52077782-F739-44E3-ABDE-40765948B425}</ProjectGuid>
     <Keyword>QtVS_v304</Keyword>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.26100.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">10.0.26100.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.26100.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">10.0.26100.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">10.0</WindowsTargetPlatformVersion>
     <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
     <ProjectName>CyMedia</ProjectName>
   </PropertyGroup>
@@ -51,12 +51,12 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>5.14.2_msvc2017_64</QtInstall>
-    <QtModules>core;opengl;gui;widgets;opengl</QtModules>
+    <QtModules>core;opengl;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="QtSettings">
     <QtInstall>5.14.2_msvc2017</QtInstall>
-    <QtModules>core;opengl;gui;widgets;opengl</QtModules>
+    <QtModules>core;opengl;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
@@ -258,7 +258,7 @@
     <ClCompile Include="CyMediaDis\drawItem\ItemManager.cpp" />
     <ClCompile Include="CyMediaDis\Histogram\CyQCP.cpp" />
     <ClCompile Include="CyMediaDis\Histogram\qcustomplot.cpp" />
-    <QtMoc Include="CyMediaDis\drawItem\RectItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Rect.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
@@ -268,7 +268,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\PointItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Point.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
@@ -278,7 +278,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\LineItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Line.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
@@ -288,7 +288,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\EllipseItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
@@ -320,15 +320,29 @@
     <ClInclude Include="CyMediaDis\drawItem\ItemFactory.h" />
     <QtMoc Include="CyMediaDis\Histogram\qcustomplot.h" />
     <QtMoc Include="CyMediaDis\Histogram\CyQCP.h" />
-    <QtMoc Include="CyMediaDis\drawItem\RectItem.h" />
-    <QtMoc Include="CyMediaDis\drawItem\PointItem.h" />
-    <QtMoc Include="CyMediaDis\drawItem\LineItem.h" />
+    <QtMoc Include="CyMediaDis\drawItem\Item_Rect.h" />
+    <QtMoc Include="CyMediaDis\drawItem\Item_Point.h" />
+    <QtMoc Include="CyMediaDis\drawItem\Item_Line.h" />
     <QtMoc Include="CyMediaDis\drawItem\ItemManager.h" />
     <QtMoc Include="CyMediaDis\drawItem\ItemDrawTool.h" />
-    <QtMoc Include="CyMediaDis\drawItem\EllipseItem.h" />
+    <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.h" />
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="CyMediaDis\CyMediaDis.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtTranslation Include="CyMedia_en_US.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+    </QtTranslation>
+    <QtTranslation Include="CyMedia_zh_CN.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+    </QtTranslation>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

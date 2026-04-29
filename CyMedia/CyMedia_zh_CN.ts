@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="zh_CN">
+<context>
+    <name>CyCustomWidget::SaveFileDoneDialog</name>
+    <message>
+        <source>View</source>
+        <translation>查看</translation>
+    </message>
+    <message>
+        <source>File Saved!</source>
+        <translation>文件已保存！</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::CyMediaDisEllipseItem_Menu_geo</name>
+    <message>
+        <source>Width</source>
+        <translation>宽</translation>
+    </message>
+    <message>
+        <source>Height</source>
+        <translation>高</translation>
+    </message>
+    <message>
+        <source>Confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::CyMediaDisLineItem_Menu_geo</name>
+    <message>
+        <source>point1</source>
+        <translation>点1</translation>
+    </message>
+    <message>
+        <source>point2</source>
+        <translation>点2</translation>
+    </message>
+    <message>
+        <source>Line type</source>
+        <translation>线类型</translation>
+    </message>
+    <message>
+        <source>Free</source>
+        <translation>自由</translation>
+    </message>
+    <message>
+        <source>Horizon</source>
+        <translation>水平</translation>
+    </message>
+    <message>
+        <source>vertical</source>
+        <translation>垂直</translation>
+    </message>
+    <message>
+        <source>confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <source>cancel</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::CyMediaDisPointItem_Menu_geo</name>
+    <message>
+        <source>confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <source>cancel</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::CyMediaDisRectItem_Menu_geo</name>
+    <message>
+        <source>width</source>
+        <translation>宽</translation>
+    </message>
+    <message>
+        <source>height</source>
+        <translation>高</translation>
+    </message>
+    <message>
+        <source>confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <source>cancel</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::EllipseItem</name>
+    <message>
+        <source>Geometric shapes</source>
+        <translation>几何形状</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::LineItem</name>
+    <message>
+        <source>Geometric shapes</source>
+        <translation>几何形状</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::PointItem</name>
+    <message>
+        <source>Geometric shapes</source>
+        <translation>几何形状</translation>
+    </message>
+</context>
+<context>
+    <name>CyDisDrawItem::RectItem</name>
+    <message>
+        <source>Geometric shapes</source>
+        <translation>几何形状</translation>
+    </message>
+</context>
+<context>
+    <name>CyMediaDisGrayStretch</name>
+    <message>
+        <source>Automatic</source>
+        <translation>自动</translation>
+    </message>
+    <message>
+        <source>Stretching methods</source>
+        <translation>拉伸模式</translation>
+    </message>
+    <message>
+        <source>Gray</source>
+        <translation>Gray</translation>
+    </message>
+    <message>
+        <source>HSV</source>
+        <translation>HSV</translation>
+    </message>
+    <message>
+        <source>Lab</source>
+        <translation>Lab</translation>
+    </message>
+    <message>
+        <source>Grayscale</source>
+        <translation>灰度</translation>
+    </message>
+    <message>
+        <source>Quantity</source>
+        <translation>数量</translation>
+    </message>
+    <message>
+        <source>Brightness</source>
+        <translation>亮度</translation>
+    </message>
+</context>
+<context>
+    <name>CyMediaDisGrayTest</name>
+    <message>
+        <source>Channel</source>
+        <translation>通道</translation>
+    </message>
+    <message>
+        <source>Average</source>
+        <translation>平均值</translation>
+    </message>
+    <message>
+        <source>Maximum</source>
+        <translation>最大值</translation>
+    </message>
+    <message>
+        <source>Minimum</source>
+        <translation>最小值</translation>
+    </message>
+    <message>
+        <source>std</source>
+        <translation>标准差</translation>
+    </message>
+    <message>
+        <source>Uniformity</source>
+        <translation>均匀度</translation>
+    </message>
+    <message>
+        <source>Gray</source>
+        <translation>灰度</translation>
+    </message>
+    <message>
+        <source>Red</source>
+        <translation>红</translation>
+    </message>
+    <message>
+        <source>Green</source>
+        <translation>绿</translation>
+    </message>
+    <message>
+        <source>Blue</source>
+        <translation>蓝</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <source>Point</source>
+        <translation>点</translation>
+    </message>
+    <message>
+        <source>Rectangle</source>
+        <translation>矩形</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>线</translation>
+    </message>
+    <message>
+        <source>Ellipse</source>
+        <translation>椭圆</translation>
+    </message>
+    <message>
+        <source>Reset shaft</source>
+        <translation>重置轴</translation>
+    </message>
+    <message>
+        <source>Horizontal axis</source>
+        <translation>水平线</translation>
+    </message>
+    <message>
+        <source>Grayscale</source>
+        <translation>灰度</translation>
+    </message>
+    <message>
+        <source>Quantity</source>
+        <translation>数量</translation>
+    </message>
+</context>
+</TS>

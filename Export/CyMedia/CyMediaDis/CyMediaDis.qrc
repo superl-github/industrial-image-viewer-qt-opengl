@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/CyMediaDis">
+        <file>ICONS/FlipH.png</file>
+        <file>ICONS/FlipH-hover.png</file>
+        <file>ICONS/FlipV.png</file>
+        <file>ICONS/FlipV-hover.png</file>
+        <file>ICONS/ZommIn.png</file>
+        <file>ICONS/ZoomIn-hover.png</file>
+        <file>ICONS/ZoomOut.png</file>
+        <file>ICONS/ZoomOut-hover.png</file>
+        <file>ICONS/zoonFit.png</file>
+        <file>ICONS/zoonFit-hover.png</file>
+        <file>ICONS/zoonRaw.png</file>
+        <file>ICONS/zoonRaw-hover.png</file>
+        <file>glslSource/Fragment.c</file>
+        <file>glslSource/Vertex.c</file>
+    </qresource>
+</RCC>

@@ -54,10 +54,10 @@
     <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\EllipseItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\EllipseItem.h">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
     <QtMoc Include="CyMediaDis\drawItem\ItemDrawTool.h">
@@ -66,22 +66,22 @@
     <QtMoc Include="CyMediaDis\drawItem\ItemManager.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\LineItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Line.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\LineItem.h">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Line.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\PointItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Point.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\PointItem.h">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Point.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\RectItem.cpp">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Rect.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\RectItem.h">
+    <QtMoc Include="CyMediaDis\drawItem\Item_Rect.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
     <QtMoc Include="CyMediaDis\Histogram\CyQCP.h">
@@ -146,6 +146,9 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{35e06e41-8bdd-48e0-89b5-c66ddb38f532}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Translation Files">
+      <UniqueIdentifier>{903f3fd8-33b8-4baf-920c-c43d57339838}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CyMediaDis\drawItem\CyDisDrawItem.h">
@@ -174,5 +177,13 @@
     <QtRcc Include="CyMediaDis\CyMediaDis.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
+  </ItemGroup>
+  <ItemGroup>
+    <QtTranslation Include="CyMedia_en_US.ts">
+      <Filter>Translation Files</Filter>
+    </QtTranslation>
+    <QtTranslation Include="CyMedia_zh_CN.ts">
+      <Filter>Translation Files</Filter>
+    </QtTranslation>
   </ItemGroup>
 </Project>

@@ -1,8 +1,5 @@
-#pragma once
+﻿#pragma once
 #include "../CyMediaBaseDef.h"
-#include "../CyMediaCalc/CyMediaCalc.h"
-#include "cycustomwidget.h"
-#include "Histogram/CyQCP.h"
 #include "drawItem/BaseItem.h"
 
 #include <QWidget>
@@ -171,54 +168,7 @@ private:
 
     void upMask(QSize imgSize);
 
-    //UI
-    QColor m_ThemeColor = QColor(0x2a, 0xa3, 0xc6);
-    bool mIsInit = false;
-    QCustomPlot* mCustomPlot = nullptr;
-    CyHistogram* mHistogram[4] = { nullptr };
-    CyLineChart* mLineChart[4] = { nullptr };
-    QColor mHisColor[4];
-    QWidget* nTestInfoEditWidget[4] = { nullptr };
-    QLabel* mCahnnelLabel = nullptr;
-    QCheckBox* mChannelCtlLab[4] = { nullptr };
-    QLabel* mAveageLabel[5] = { nullptr };
-    QLabel* mMaximumLabel[5] = { nullptr };
-    QLabel* mMinimumLabel[5] = { nullptr };
-    QLabel* mStdLabel[5] = { nullptr };
-    QLabel* mUniformityLabel[5] = { nullptr };
-
-    QActionGroup* mDrawBtnGroup = nullptr;
-    QAction* mDrawAct[5];
-
-    QPushButton* mResetBtn = nullptr;
-
-    //histogram
-    bool mfirstShow = true;
-    std::vector<double> mHistogramData[4];
-    QVector<QCPGraphData> mPosHistogramData[4];
-    PosHis mPosHisData[4];
-    double mPosHisMaxY = 0.0;
-    bool mZoomable = true;
-
-    int m_XRangeMax = 255;
-    int m_XRangeMin = 0;
-    int m_YRangeMax = 1;
-
-    bool mShowPlotTips = true;
-    QPoint mLastPlotTipPos;
-    int mLastPlotTopX = -1;
-
-    bool mIsGray = false;
-    bool mIsPos = false;
-
-    //test
-    QUuid mCurrentItemID;
-    CyDisDrawItem::ItemType mDrawType = CyDisDrawItem::ItemType::Invalid;
-
-    std::vector<uint8_t> mClacMask;
-    bool mMaskHaveData = false;
-
-    oneChannelTestInfo mHisTestData;
-    threeChannelTestInfo mRGBTestData;
-    bool currentIsPosCalc = false;
+private:
+	struct PrivateData;
+	PrivateData* d = nullptr;
 };

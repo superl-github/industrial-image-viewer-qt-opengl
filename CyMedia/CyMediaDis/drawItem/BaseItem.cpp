@@ -1,4 +1,4 @@
-#include "BaseItem.h"
+﻿#include "BaseItem.h"
 
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
@@ -42,7 +42,7 @@ namespace CyDisDrawItem {
         painter.drawPath(scenePath);
     }
 
-    QPainterPath BaseItem::shape() const {
+	QPainterPath BaseItem::shape() const {
         {
             QPainterPath path;
             path.addRect(boundingRect());

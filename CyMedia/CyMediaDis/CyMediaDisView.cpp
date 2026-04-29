@@ -1,4 +1,4 @@
-
+﻿
 #include "CyMediaDisView.h"
 #include "CyDMediaDisScen.h"
 
@@ -606,12 +606,24 @@ void CyThumbnailView::upBackImage(CyMedia::ImageShowInfo info, uint8_t* data) {
             }
             else if (info.bit == 16) {
                 // 处理16位RGB图像
-                // 假设16位RGB是565格式
-                QImage temp(info.width, info.height, QImage::Format_RGB16);
+                QImage temp(info.width, info.height, QImage::Format_RGB32);
                 memcpy(temp.bits(), data, info.width * info.height * 2);
                 image = temp;
             }
         }break;
+
+		case CyMedia::RGBA: {
+			// RGBA图像
+			if (info.bit == 8) {
+				image = QImage(data, info.width, info.height, QImage::Format_RGBA8888);
+			}
+			else if (info.bit == 16) {
+				// 处理16位RGB图像
+				QImage temp(info.width, info.height, QImage::Format_RGBA64);
+				memcpy(temp.bits(), data, info.width * info.height * 2);
+				image = temp;
+			}
+		}break;
 
         case CyMedia::BAYERRG:
         case CyMedia::BAYERGR:

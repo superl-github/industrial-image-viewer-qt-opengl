@@ -1,9 +1,9 @@
 #include "ItemFactory.h"
 
-#include "PointItem.h"
-#include "RectItem.h"
-#include "LineItem.h"
-#include "EllipseItem.h"
+#include "Item_Point.h"
+#include "Item_Rect.h"
+#include "Item_Line.h"
+#include "Item_Ellipse.h"
 
 namespace CyDisDrawItem {
     BaseItem* ItemFactory::createBySceneDraw(CyDisDrawItem::ItemType type, QPointF startPos, QPointF endPos) {
@@ -13,20 +13,19 @@ namespace CyDisDrawItem {
                 break;
 
             case CyDisDrawItem::ItemType::Point: {
-                item = new PointItem();
-            }
-            break;
+                item = new Item_Point();
+            }break;
 
             case CyDisDrawItem::ItemType::Rectangle: {
-                item = new RectItem();
+                item = new Item_Rect();
             }break;
 
             case CyDisDrawItem::ItemType::Line: {
-                item = new LineItem();
+                item = new Item_Line();
             }break;
 
             case CyDisDrawItem::ItemType::Ellipse: {
-                item = new EllipseItem();
+                item = new Item_Ellipse();
             }break;
 
             default:
@@ -38,4 +37,33 @@ namespace CyDisDrawItem {
         }
         return item;
     }
+
+	CyDisDrawItem::BaseItem* ItemFactory::createItem(CyDisDrawItem::ItemType type) {
+		BaseItem* item = nullptr;
+		switch (type) {
+		    case CyDisDrawItem::ItemType::Invalid:
+			    break;
+
+		    case CyDisDrawItem::ItemType::Point: {
+			    item = new Item_Point();
+		    }break;
+
+		    case CyDisDrawItem::ItemType::Rectangle: {
+			    item = new Item_Rect();
+		    }break;
+
+		    case CyDisDrawItem::ItemType::Line: {
+			    item = new Item_Line();
+		    }break;
+
+		    case CyDisDrawItem::ItemType::Ellipse: {
+			    item = new Item_Ellipse();
+		    }break;
+
+		    default:
+			    break;
+		}
+
+        return item;
+	}
 }

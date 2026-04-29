@@ -3,6 +3,12 @@
 #include <functional>
 #include <string>
 
+# if defined(CYMEDIA_EXPORT)
+#  define CYMEDIA_LIB __declspec(dllexport)
+# else
+#  define CYMEDIA_LIB __declspec(dllimport)
+# endif
+
 namespace CyMedia {
     using LogCallback = std::function<void(const std::string&, void*)>;
 
@@ -25,6 +31,7 @@ namespace CyMedia {
         BAYERBG,
         BAYERGB,
         RGB,
+        RGBA,
         MONO10P,
         MONO10P_GVSP,
         MONO12P,
@@ -122,9 +129,55 @@ namespace CyMedia {
                 case CyMedia::RGB: {
                     return 3;
                 }break;
+
+				case CyMedia::RGBA: {
+					return 3;
+				}break;
             }
             return 1;
         }
+
+		int bytesPerLine() {
+			int bytesNumber = width;
+			if (format == MONO10P) {
+				return (bytesNumber * 10 + 7) / 8;;
+			}
+			else if (format == MONO10P_GVSP) {
+				return (bytesNumber * 10 + 7) / 8;
+			}
+			else if (format == MONO12P) {
+				return (bytesNumber * 12 + 7) / 8;
+			}
+			else if (format == MONO12P_GVSP) {
+				return (bytesNumber * 12 + 7) / 8;
+			}
+
+			int pixelLen = 0;
+			if (bit <= 8) {
+				pixelLen = 1;
+			}
+			else if (bit <= 16) {
+				pixelLen = 2;
+			}
+			else if (bit <= 31) {
+				pixelLen = 4;
+			}
+			switch (special_value) {
+			    case CyMedia::IMGVALUE_None: {
+				    ;
+			    }break;
+
+			    case CyMedia::IMGVALUE_F32: {
+				    pixelLen = 4;
+			    }break;
+
+			    case CyMedia::IMGVALUE_F64: {
+				    pixelLen = 8;
+			    }break;
+			}
+
+			return bytesNumber * pixelLen * channel();
+		}
 
         void upLenth() {
             int pixelNum = width * height;

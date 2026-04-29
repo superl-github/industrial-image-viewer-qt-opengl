@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <QObject>
 #include <QList>
 
@@ -17,7 +17,11 @@ namespace CyDisDrawItem {
         ItemManager& operator=(const ItemManager&) = delete;
 
     public:
-        void addItem(BaseItem* item);
+        void flushTrans();
+
+        void addItemByType(BaseItem* item);
+        QUuid addItemByType(CyDisDrawItem::ItemType itemType);
+        QUuid addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path);
         void removeItem(BaseItem* item);
         void clearAll();
 

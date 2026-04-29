@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaDis.h"
@@ -20,7 +20,7 @@ private:
 private:
     Ui::CyMediaDisTestClass ui;
 
-    CyMediaDis* m_view = nullptr;
+    CyMedia::CyMediaDis* m_view = nullptr;
 
     QThread* mUpImageThread = nullptr;
     bool mUpImageThreadFlag = false;
