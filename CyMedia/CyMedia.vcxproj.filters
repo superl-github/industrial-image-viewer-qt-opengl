@@ -60,13 +60,7 @@
     <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\ItemDrawTool.h">
-      <Filter>CyMediaDis\drawItem</Filter>
-    </QtMoc>
     <QtMoc Include="CyMediaDis\drawItem\ItemManager.h">
-      <Filter>CyMediaDis\drawItem</Filter>
-    </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\Item_Line.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
     <QtMoc Include="CyMediaDis\drawItem\Item_Line.h">
@@ -122,6 +116,12 @@
     </QtMoc>
     <QtMoc Include="CyMediaDis.cpp">
       <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\Item_Line.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\ItemDrawTool.h">
+      <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

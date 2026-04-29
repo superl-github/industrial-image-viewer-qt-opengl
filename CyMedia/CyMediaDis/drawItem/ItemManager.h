@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <QObject>
 #include <QList>
 
@@ -19,7 +19,7 @@ namespace CyDisDrawItem {
     public:
         void flushTrans();
 
-        void addItemByType(BaseItem* item);
+        void addItem(BaseItem* item);
         QUuid addItemByType(CyDisDrawItem::ItemType itemType);
         QUuid addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path);
         void removeItem(BaseItem* item);

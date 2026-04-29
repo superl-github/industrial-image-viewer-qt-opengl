@@ -244,4 +244,4 @@ namespace CyDisDrawItem {
     }
 }
 
-#include "PointItem.moc"
+#include "Item_Point.moc"

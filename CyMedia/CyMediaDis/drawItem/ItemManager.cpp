@@ -1,4 +1,4 @@
-﻿#include "ItemManager.h"
+#include "ItemManager.h"
 #include "ItemFactory.h"
 
 #include <QDebug>
@@ -21,7 +21,7 @@ namespace CyDisDrawItem {
         ;
 	}
 
-	void ItemManager::addItemByType(BaseItem* item) {
+	void ItemManager::addItem(BaseItem* item) {
         if (!item || !m_scene) return;
         if (m_items.contains(item)) return;
 
@@ -48,7 +48,7 @@ namespace CyDisDrawItem {
 
     QUuid ItemManager::addItemByType(CyDisDrawItem::ItemType itemType) {
         auto tempItem = ItemFactory::createItem(itemType);
-        addItemByType(tempItem);
+        addItem(tempItem);
         return tempItem->id();
 	}
 

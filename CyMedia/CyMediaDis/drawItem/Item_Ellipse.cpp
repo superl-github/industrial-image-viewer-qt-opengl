@@ -334,4 +334,4 @@ namespace CyDisDrawItem {
         connect(m_CancelBtn, &QPushButton::clicked, this, &QDialog::reject);
     }
 }
-#include "EllipseItem.moc"
+#include "Item_Ellipse.moc"

@@ -455,5 +455,5 @@ namespace CyDisDrawItem {
         m_Ylabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 }
-#include "LineItem.moc"
+#include "Item_Line.moc"
 

@@ -359,4 +359,4 @@ namespace CyDisDrawItem {
             });
     }
 }
-#include "RectItem.moc"
+#include "Item_Rect.moc"
