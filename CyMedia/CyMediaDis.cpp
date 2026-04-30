@@ -95,7 +95,8 @@ namespace CyMedia {
         void Thread_ImageData_UpDis(CyMedia::ImageShowInfo& info, uint8_t* data, opeFrameThreadPara& opePara, bool isSource);
         void ImageDataDoneReceive(bool InfoChange, CyMedia::ImageShowInfo info);
 
-        void onDrawItem(CyDisDrawItem::BaseItem* item);
+        void onAddItem(QUuid id);
+        void onRemoveItem(QUuid id);
         void onGrayToolNeedImage();
 
     private:
@@ -461,7 +462,29 @@ namespace CyMedia {
         return d->drawmanager->getItem(id);
     }
 
-	bool CyMediaDis::toolBarVisible(void) {
+    void CyMediaDis::clearItem() {
+        d->drawmanager->clearAll();
+    }
+
+    bool CyMediaDis::isSingleItemMode(){
+        return d->drawingTool->replaceMode();
+    }
+
+    void CyMediaDis::setSingleItemMode(bool flag){
+        d->drawingTool->setReplaceMode(flag);
+    }
+
+    QUuid CyMediaDis::getLaseItem() {
+        return d->drawmanager->getLaseItem();
+    }
+
+    bool CyMediaDis::isDrawing() {
+        if (!d->drawingTool)
+            return false;
+        return d->drawingTool->isDrawing();
+    }
+
+    bool CyMediaDis::toolBarVisible(void) {
         return d->toolWidget->isVisible();
     }
 
@@ -1217,10 +1240,11 @@ namespace CyMedia {
 
         //图形管理
         drawmanager = new CyDisDrawItem::ItemManager(scene, m_parent);
+        connect(drawmanager, &CyDisDrawItem::ItemManager::itemAdded, this, &CyMediaDis::privateData::onAddItem);
+        connect(drawmanager, &CyDisDrawItem::ItemManager::itemRemoved, this, &CyMediaDis::privateData::onRemoveItem);
 
         //绘制工具
         drawingTool = new CyDisDrawItem::DrawItemTool(drawmanager, view, m_parent);
-        connect(drawingTool, &CyDisDrawItem::DrawItemTool::drawItem, this, &CyMediaDis::privateData::onDrawItem);
 
         //TipsWidget
         mRetimeItem = new CyMediaRecTimeW(m_parent);
@@ -1244,6 +1268,7 @@ namespace CyMedia {
             });
 
         mGrayTestWidget = new CyMediaDisGrayTest(m_parent);
+        mGrayTestWidget->setParentDis(m_parent);
         mGrayTestWidget->setWindowFlag(Qt::Tool);
         mGrayTestWidget->resize(600, 300);
         mGrayTestWidget->setVisible(false);
@@ -1269,7 +1294,7 @@ namespace CyMedia {
     void CyMediaDis::privateData::ImageDataDoneReceive(bool InfoChange, CyMedia::ImageShowInfo info) {
         if (InfoChange) {
             scene->setSceneRect(QRect(0, 0, info.width, info.height));
-            view->setSceneRect(QRect(0, 0, info.width, info.height));
+            view->sceneRectUp(QRect(0, 0, info.width, info.height));
         }
         //检查线程是否退出
         if (false == bImageDataThread_flag) {
@@ -1302,7 +1327,10 @@ namespace CyMedia {
         }
     }
 
-    void CyMediaDis::privateData::onDrawItem(CyDisDrawItem::BaseItem* item) {
+    void CyMediaDis::privateData::onAddItem(QUuid id) {
+        auto item = drawmanager->getItem(id);
+        if (!item)
+            return;
         if (mGrayTestWidget->isVisible()) {
             mGrayTestWidget->Itemdraw(item);
         }
@@ -1314,6 +1342,11 @@ namespace CyMedia {
         view->setDrawMode(mode != CyDisDrawItem::Invalid);
     }
 
+    void CyMediaDis::privateData::onRemoveItem(QUuid id) {
+        if (mGrayTestWidget->isVisible()) {
+            mGrayTestWidget->ItemRemoved(id);
+        }
+    }
 
 
 

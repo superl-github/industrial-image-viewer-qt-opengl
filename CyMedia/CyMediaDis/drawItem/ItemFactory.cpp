@@ -67,4 +67,20 @@ namespace CyDisDrawItem {
 
         return item;
 	}
+
+    bool ItemFactory::requireDragThreshold(CyDisDrawItem::ItemType type) {
+        switch (type) {
+            case CyDisDrawItem::Invalid:
+                return false;
+            case CyDisDrawItem::Rectangle:
+            case CyDisDrawItem::Line:
+            case CyDisDrawItem::Ellipse:
+                return true;
+            case CyDisDrawItem::Point:
+            case CyDisDrawItem::Polygon:
+                return false;
+        }
+
+        return false;
+    }
 }

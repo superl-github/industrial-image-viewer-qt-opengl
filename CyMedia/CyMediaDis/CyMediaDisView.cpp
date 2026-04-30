@@ -1,4 +1,4 @@
-﻿
+
 #include "CyMediaDisView.h"
 #include "CyDMediaDisScen.h"
 
@@ -246,6 +246,11 @@ CyMediaDisView::~CyMediaDisView() {
 void CyMediaDisView::setCyScene(QGraphicsScene* scene) {
     this->setScene(scene);
     d->mThumbnailView->setScene(scene);
+}
+
+void CyMediaDisView::sceneRectUp(const QRectF& rect) {
+    setSceneRect(rect);
+    d->updateThumbnail();
 }
 
 void CyMediaDisView::setViewFromThumbnailPos(double xRatio, double yRatio) {

@@ -107,7 +107,7 @@ namespace CyDisDrawItem {
     }
 
     void Item_Line::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals /*= true*/) {
-        setLineInScene(QLine(p1, p2), true);
+        setLineInScene(QLine(p1, p2), needSignals);
     }
 
     QLine Item_Line::lineInScene() const {
@@ -169,11 +169,11 @@ namespace CyDisDrawItem {
             return true;
         }
         else if (type == QEvent::MouseMove) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), false);
+            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), m_bTrackGeometryChange);
             return true;
         }
         else if (type == QEvent::MouseButtonRelease) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), true);
+            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), !m_bTrackGeometryChange);
             m_drawFinished = true;
             return true;
         }
@@ -272,7 +272,6 @@ namespace CyDisDrawItem {
             updateHandles(); // 手柄随 item 移动自动更新，但显式调用更安全
             prepareGeometryChange(); // 虽然几何没变，但位置变了，boundingRect 在场景中变了
             update();
-            //emit geometryChanged(sceneBoundingRect());
             return true;
         }
         else if (handletype == CyDisDrawItem::TopLeft) {

@@ -87,6 +87,14 @@ namespace CyMedia {
         QUuid addItem(CyDisDrawItem::ItemType itemType);
         QUuid addItem(CyDisDrawItem::ItemType itemType, QPainterPath path);
 		CyDisDrawItem::BaseItem* getItem(QUuid& id);
+        void clearItem();
+
+        bool isSingleItemMode();
+        void setSingleItemMode(bool flag);
+
+        QUuid getLaseItem();
+
+        bool isDrawing();
 
         //  RecTime
         bool recTimeVisible();

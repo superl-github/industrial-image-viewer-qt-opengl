@@ -16,6 +16,7 @@
 struct CyMediaDisGrayTest::PrivateData {
 public:
 	//UI
+    CyMedia::CyMediaDis* m_parentDis = nullptr;
 	QColor m_ThemeColor = QColor(0x2a, 0xa3, 0xc6);
 	bool mIsInit = false;
 	QCustomPlot* mCustomPlot = nullptr;
@@ -61,6 +62,7 @@ public:
 
 	std::vector<uint8_t> mClacMask;
 	bool mMaskHaveData = false;
+    bool mMaskIsfullzero = false;
 
 	oneChannelTestInfo mHisTestData;
 	threeChannelTestInfo mRGBTestData;
@@ -87,6 +89,10 @@ CyMediaDisGrayTest::~CyMediaDisGrayTest() {
 
 }
 
+void CyMediaDisGrayTest::setParentDis(CyMedia::CyMediaDis* parentDis) {
+    d->m_parentDis = parentDis;
+}
+
 void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
     if (false == isVisible() ||
         false == isEnabled() || 
@@ -104,6 +110,8 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
 }
 
 void CyMediaDisGrayTest::ItemRemoved(QUuid id) {
+    if (id != d->mCurrentItemID)
+        return;
     if (QThread::currentThread() != this->thread()) {
         d->mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
     }
@@ -112,16 +120,22 @@ void CyMediaDisGrayTest::ItemRemoved(QUuid id) {
             d->mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
             });
     }
+    emit needImage();
 }
 
 CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
     if (d->mCurrentItemID.isNull()) {
         return nullptr;
     }
-    return ((CyMedia::CyMediaDis*)parent())->getItem(d->mCurrentItemID);
+    return d->m_parentDis->getItem(d->mCurrentItemID);
 }
 
 bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
+    if (d->m_parentDis->isSingleItemMode())
+        return false;
+    if (d->m_parentDis->isDrawing() && !getCurrentItem())
+        return false;
+
     //切换
     if (d->mIsGray != info.isMono() ||
         d->mIsPos != currentItemIsPos()) {
@@ -189,15 +203,22 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
         }
         else {
-            CyMedia::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
-                d->mHistogramData[hisI_Gray],
-                &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
+            if (d->mMaskIsfullzero) {
+                d->mHistogramData[hisI_Gray].assign(d->mHistogramData[hisI_Gray].size(), 0.0);
+            }
+            else {
+                CyMedia::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                    d->mHistogramData[hisI_Gray],
+                    &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
+            }
             //更新数据
             d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
 
-            std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
-            size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * 0.97);
-            calcHisMaxY = d->mHistogramData[hisI_Gray][idx97];
+            if (false == d->mMaskIsfullzero) {
+                std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
+                size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * 0.97);
+                calcHisMaxY = d->mHistogramData[hisI_Gray][idx97];
+            }
         }
         //计算参数
         CyMedia::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
@@ -247,25 +268,40 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             calcXRangePara = mPosHisMax;
         }
         else {
-            CyMedia::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
-                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
+            if (d->mMaskIsfullzero) {
+                d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
+                d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
+                d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
+
+                d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
+                d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
+                d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
+                d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
+                d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
+            }
+            else {
+                CyMedia::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                    d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
+            }
             //更新数据
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
                 d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
             }
         }
-        //计算参数
-        CyMedia::computerThreeUniformity(
-            d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-            d->mRGBTestData.ave, d->mRGBTestData.max,
-            d->mRGBTestData.std, d->mRGBTestData.Uniformity);
-        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-            std::sort(d->mHistogramData[hisI].begin(), d->mHistogramData[hisI].end());
-        }
 
-        size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_R].size() * 0.97);
-        calcHisMaxY = d->mHistogramData[hisI_R][idx97] > d->mHistogramData[hisI_G][idx97] ? std::max(d->mHistogramData[hisI_R][idx97], d->mHistogramData[hisI_B][idx97]) : std::max(d->mHistogramData[hisI_G][idx97], d->mHistogramData[hisI_B][idx97]);
+        if (false == d->mMaskIsfullzero) {
+            //计算参数
+            CyMedia::computerThreeUniformity(
+                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                d->mRGBTestData.ave, d->mRGBTestData.max,
+                d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                std::sort(d->mHistogramData[hisI].begin(), d->mHistogramData[hisI].end());
+            }
+            size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_R].size() * 0.97);
+            calcHisMaxY = d->mHistogramData[hisI_R][idx97] > d->mHistogramData[hisI_G][idx97] ? std::max(d->mHistogramData[hisI_R][idx97], d->mHistogramData[hisI_B][idx97]) : std::max(d->mHistogramData[hisI_G][idx97], d->mHistogramData[hisI_B][idx97]);
+        }
     }
 
     calcHisMinX = -(calcXRangePara * 0.05);
@@ -857,6 +893,8 @@ bool CyMediaDisGrayTest::currentItemIsPos() {
 }
 
 void CyMediaDisGrayTest::upMask(QSize imgSize) {
+    d->mMaskIsfullzero = false;
+
     auto item = getCurrentItem();
     if (!item) {
         d->mMaskHaveData = false;
@@ -872,7 +910,6 @@ void CyMediaDisGrayTest::upMask(QSize imgSize) {
         return;
     }
 
-    CyDisDrawItem::pathToMask(item->pathInScene(), imgSize, d->mClacMask);
-
+    d->mMaskIsfullzero = !CyDisDrawItem::pathToMask(item->pathInScene(), imgSize, d->mClacMask);
     d->mMaskHaveData = true;
 }

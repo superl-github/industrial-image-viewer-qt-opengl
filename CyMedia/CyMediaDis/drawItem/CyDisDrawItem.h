@@ -31,7 +31,7 @@ namespace CyDisDrawItem {
     };
 
     QImage CYMEDIA_LIB pathToMask(const QPainterPath& scenePath, const QSize& imageSize);
-    void CYMEDIA_LIB pathToMask(const QPainterPath& scenePath, const QSize& imageSize, std::vector<uint8_t>& outMask);
+    bool CYMEDIA_LIB pathToMask(const QPainterPath& scenePath, const QSize& imageSize, std::vector<uint8_t>& outMask);
 
     QPixmap CYMEDIA_LIB drawItemIcon(ItemType type, int size = 24, QColor color = Qt::black);
 };

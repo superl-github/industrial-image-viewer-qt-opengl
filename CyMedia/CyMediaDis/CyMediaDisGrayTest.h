@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../CyMediaBaseDef.h"
 #include "drawItem/BaseItem.h"
 
@@ -11,12 +11,16 @@
 #include <QAction>
 #include <QCheckBox>
 
+namespace CyMedia {
+    class CyMediaDis;
+}
 class CyMediaDisGrayTest : public QWidget {
     Q_OBJECT
 
 public:
     CyMediaDisGrayTest(QWidget* parent = nullptr);
     ~CyMediaDisGrayTest();
+    void setParentDis(CyMedia::CyMediaDis* parentDis);
 
 public:signals:
     void needImage();

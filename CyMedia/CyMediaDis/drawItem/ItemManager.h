@@ -25,13 +25,15 @@ namespace CyDisDrawItem {
         void addItem(BaseItem* item);
         QUuid addItemByType(CyDisDrawItem::ItemType itemType);
         QUuid addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path);
-        void removeItem(BaseItem* item);
+        void removeItem(BaseItem* item, bool needSignal = true);
+        void sendRemove(QUuid id);
         void clearAll();
 
         BaseItem* getItem(QUuid id);
 
         QList<BaseItem*> items() const { return m_items; }
-        BaseItem* selectedItem() const;
+        QUuid selectedItem() const;
+        QUuid getLaseItem();
 
         QGraphicsScene* scene() const { return m_scene; }
 

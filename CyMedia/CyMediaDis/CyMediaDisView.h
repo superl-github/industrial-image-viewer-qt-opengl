@@ -20,6 +20,8 @@ public: signals:
 public:
     void setCyScene(QGraphicsScene* scene);
 
+    void sceneRectUp(const QRectF& rect);
+
     //视图操作
     void setViewFromThumbnailPos(double xRatio, double yRatio);
 

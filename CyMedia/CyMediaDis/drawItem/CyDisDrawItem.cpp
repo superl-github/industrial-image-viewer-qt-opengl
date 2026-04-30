@@ -20,17 +20,36 @@ namespace CyDisDrawItem {
         return mask;
     }
 
-    void pathToMask(const QPainterPath& scenePath, const QSize& imageSize, std::vector<uint8_t>& outMask) {
+    bool pathToMask(const QPainterPath& scenePath, const QSize& imageSize, std::vector<uint8_t>& outMask) {
         const int width = imageSize.width();
         const int height = imageSize.height();
         const size_t pixelCount = static_cast<size_t>(width) * static_cast<size_t>(height);
 
-        outMask.assign(pixelCount, 0);
-
         if (width <= 0 || height <= 0 || scenePath.isEmpty()) {
-            return;
+            return false;
         }
 
+        bool isClosed = false;
+        if (scenePath.elementCount() >= 3) {
+            // 第一个元素（起点）
+            QPainterPath::Element first = scenePath.elementAt(0);
+            // 最后一个元素（终点）
+            QPainterPath::Element last = scenePath.elementAt(scenePath.elementCount() - 1);
+            if (first.type == QPainterPath::MoveToElement &&
+                last.type != QPainterPath::MoveToElement &&
+                qFuzzyCompare(first.x, last.x) &&
+                qFuzzyCompare(first.y, last.y)) {
+                isClosed = true;
+            }
+        }
+        else {
+            isClosed = true;
+        }
+        if (false == isClosed) {
+            return false;
+        }
+
+        outMask.assign(pixelCount, 0);
         QImage maskImg(
             reinterpret_cast<uchar*>(outMask.data()), // 外部数据指针
             width,
@@ -47,6 +66,8 @@ namespace CyDisDrawItem {
         painter.setBrush(Qt::white);
         painter.drawPath(scenePath);
         painter.end();
+
+        return true;
     }
 
 

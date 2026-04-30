@@ -45,9 +45,9 @@ namespace CyDisDrawItem {
     public:signals:
         void removeClicked();
 
-        void geometryChanged(); // 适用于有 rect 的 item
+        void geometryChanged();
         void selectedChanged();
-        
+
     protected:
         QUuid m_id;
 
@@ -80,7 +80,7 @@ namespace CyDisDrawItem {
 
         virtual void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
         virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
-
+        
     private:
         friend class HandleItem;
         virtual bool changeByHandle(HandlePosition handletype, int id, QPointF mousePos, QPointF delta) = 0;

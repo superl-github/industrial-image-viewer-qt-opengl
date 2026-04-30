@@ -28,7 +28,7 @@ namespace CyDisDrawItem {
     void ItemManager::setTrackingGeometry(bool track) {
         if (m_trackingGeometryChange != track) {
             m_trackingGeometryChange = track;
-            for (auto* item : m_items) {
+            for (auto item : m_items) {
                 item->setTrackingGeometry(m_trackingGeometryChange);
             }
         }
@@ -72,7 +72,7 @@ namespace CyDisDrawItem {
         return tempItem->id();
 	}
 
-	void ItemManager::removeItem(BaseItem* item) {
+	void ItemManager::removeItem(BaseItem* item, bool needSignal/* = true*/) {
         if (!item || !m_items.contains(item)) return;
 
         m_scene->removeItem(item);
@@ -85,8 +85,13 @@ namespace CyDisDrawItem {
             m_selectedItem = nullptr;
             emit selectionChanged(nullptr);
         }
-        emit itemRemoved(item->id());
+        if (needSignal)
+            emit itemRemoved(item->id());
         item->deleteLater();
+    }
+
+    void ItemManager::sendRemove(QUuid id) {
+        emit itemRemoved(id);
     }
 
     void ItemManager::clearAll() {
@@ -121,8 +126,16 @@ namespace CyDisDrawItem {
         }
     }
 
-    BaseItem* ItemManager::selectedItem() const {
-        return m_selectedItem;
+    QUuid ItemManager::selectedItem() const {
+        return m_selectedItem->id();
+    }
+
+    QUuid ItemManager::getLaseItem() {
+        if (m_items.size() <= 0)
+            return QUuid();
+        else {
+            return m_items[m_items.size() - 1]->id();
+        }
     }
 
     void ItemManager::onItemSelectionChanged() {

@@ -147,6 +147,7 @@ namespace CyDisDrawItem {
                         prepareGeometryChange();
                         updateHandles();
                         update();
+                        emit geometryChanged();
                         return true;
                     }
                 }
@@ -167,14 +168,15 @@ namespace CyDisDrawItem {
             return true;
         }
         else if (type == QEvent::MouseButtonDblClick) {
-            // 双击结束绘制，至少需要2个点
-            if (m_points.size() >= 2) {
+            // 双击结束绘制，至少需要3个点
+            if (m_points.size() > 2) {
                 m_drawFinished = true;
                 // 更新控制点
                 createHandles();
                 prepareGeometryChange();
                 updateHandles();
                 update();
+                emit geometryChanged();
             }
             return true;
         }
@@ -183,6 +185,7 @@ namespace CyDisDrawItem {
     bool Item_Polygon::isDrawFinished() const {
         return m_drawFinished;
     }
+
     void Item_Polygon::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
         Q_UNUSED(option);
         Q_UNUSED(widget);
@@ -194,6 +197,7 @@ namespace CyDisDrawItem {
         // 绘制过程中使用虚线预览
         if (!m_drawFinished) {
             pen.setStyle(Qt::DashLine);
+            pen.setColor(Qt::yellow);
         }
         painter->setPen(pen);
         painter->setBrush(Qt::transparent);

@@ -7,9 +7,6 @@
     <ClCompile Include="CyMediaDis\drawItem\CyDisDrawItem.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaDis\drawItem\DrawItemTool.cpp">
-      <Filter>CyMediaDis\drawItem</Filter>
-    </ClCompile>
     <ClCompile Include="CyMediaDis\drawItem\ItemFactory.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </ClCompile>
@@ -48,6 +45,9 @@
     </ClCompile>
     <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp">
       <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\drawItem\DrawItemTool.cpp">
+      <Filter>CyMediaDis\drawItem</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -120,13 +120,13 @@
     <QtMoc Include="CyMediaDis\drawItem\Item_Line.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\DrawItemTool.h">
-      <Filter>CyMediaDis\drawItem</Filter>
-    </QtMoc>
     <QtMoc Include="CyMediaDis\drawItem\Item_Polygon.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
     <QtMoc Include="CyMediaDis\drawItem\Item_Polygon.h">
+      <Filter>CyMediaDis\drawItem</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\drawItem\DrawItemTool.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
   </ItemGroup>

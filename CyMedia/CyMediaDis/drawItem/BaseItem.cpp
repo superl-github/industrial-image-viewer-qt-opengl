@@ -4,7 +4,7 @@ namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
 
     BaseItem::BaseItem(QGraphicsItem* parent /*= nullptr*/)
-        : QGraphicsObject(parent)
+        : QGraphicsObject(nullptr)
         , m_id(QUuid::createUuid()) {
         this->setFlags(
             QGraphicsItem::ItemIsSelectable |

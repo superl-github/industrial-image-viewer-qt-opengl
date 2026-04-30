@@ -328,6 +328,7 @@
     <QtMoc Include="CyMediaDis\CyDMediaDisScen.h" />
     <QtMoc Include="CyMediaDis\CyDMediaDisBack.h" />
     <ClInclude Include="CyMediaDis\drawItem\CyDisDrawItem.h" />
+    <QtMoc Include="CyMediaDis\drawItem\DrawItemTool.h" />
     <ClInclude Include="CyMediaDis\drawItem\ItemFactory.h" />
     <QtMoc Include="CyMediaDis\Histogram\qcustomplot.h" />
     <QtMoc Include="CyMediaDis\Histogram\CyQCP.h" />
@@ -335,7 +336,6 @@
     <QtMoc Include="CyMediaDis\drawItem\Item_Point.h" />
     <QtMoc Include="CyMediaDis\drawItem\Item_Line.h" />
     <QtMoc Include="CyMediaDis\drawItem\ItemManager.h" />
-    <QtMoc Include="CyMediaDis\drawItem\DrawItemTool.h" />
     <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.h" />
   </ItemGroup>
   <ItemGroup>

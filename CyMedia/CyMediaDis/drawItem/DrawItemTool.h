@@ -27,6 +27,8 @@ namespace CyDisDrawItem {
         void setReplaceMode(bool enable);
         bool replaceMode() const { return m_replaceMode; }
 
+        bool isDrawing() const { return m_bIsDrawing; }
+
     public:signals:
         void drawItem(CyDisDrawItem::BaseItem* item);
 
@@ -46,10 +48,13 @@ namespace CyDisDrawItem {
         bool m_replaceMode = true;
 
         //绘制实现相关
+        bool m_bIsDrawing = false;
         QPointF m_dragStartPos;      // 鼠标按下的位置（scene 坐标）
         bool m_isDragging = false;   // 是否已开始拖拽绘制(按下鼠标)
         BaseItem* m_previewItem = nullptr;
         QPointer<CyDisDrawItem::BaseItem> m_lastItem = nullptr;
+        bool lastItemRemoveWithNoSignal = false;
+        QUuid lastItemid;
         QGraphicsItem* m_selectedItem = nullptr;
         static constexpr qreal kDragThreshold = 3.0; // 拖拽判定阈值（scene 坐标）
     };
