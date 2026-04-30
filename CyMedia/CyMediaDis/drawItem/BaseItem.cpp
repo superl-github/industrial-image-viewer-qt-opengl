@@ -1,4 +1,4 @@
-﻿#include "BaseItem.h"
+#include "BaseItem.h"
 
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
@@ -25,23 +25,6 @@ namespace CyDisDrawItem {
         removeHandles();
     }
 
-    void BaseItem::pathToMask(const QPainterPath& scenePath, QImage& maskImage) {
-        if (maskImage.isNull() || maskImage.format() != QImage::Format_Grayscale8) {
-            return;
-        }
-
-        // 清空为黑色背景
-        maskImage.fill(Qt::black);
-
-        if (scenePath.isEmpty()) return;
-
-        QPainter painter(&maskImage);
-        painter.setRenderHint(QPainter::Antialiasing, false);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Qt::white);
-        painter.drawPath(scenePath);
-    }
-
 	QPainterPath BaseItem::shape() const {
         {
             QPainterPath path;
@@ -52,6 +35,20 @@ namespace CyDisDrawItem {
 
     QPainterPath BaseItem::pathInScene() const {
         return QPainterPath();
+    }
+
+    bool BaseItem::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
+        Q_UNUSED(type);
+        Q_UNUSED(scenePos);
+        return false;
+    }
+
+    bool BaseItem::isDrawFinished() const {
+        return false;
+    }
+
+    bool BaseItem::isPreViewMode() {
+        return m_isPreviewMode;
     }
 
     void BaseItem::setPreviewMode(bool preview) {
@@ -104,6 +101,36 @@ namespace CyDisDrawItem {
         update();
     }
 
+    bool BaseItem::trackingGeometry() {
+        return m_bTrackGeometryChange;
+    }
+
+    void BaseItem::setTrackingGeometry(bool track) {
+        m_bTrackGeometryChange = track;
+    }
+
+    void BaseItem::pathToMask(const QPainterPath& scenePath, QImage& maskImage) {
+        if (maskImage.isNull() || maskImage.format() != QImage::Format_Grayscale8) {
+            return;
+        }
+
+        // 清空为黑色背景
+        maskImage.fill(Qt::black);
+
+        if (scenePath.isEmpty()) return;
+
+        QPainter painter(&maskImage);
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(Qt::white);
+        painter.drawPath(scenePath);
+    }
+
+
+
+
+
+
     void BaseItem::updateHandles() {
         if (m_handles.isEmpty())
             return;
@@ -140,7 +167,7 @@ namespace CyDisDrawItem {
         if (change == ItemPositionHasChanged) {
             // 只要位置变了（且可移动），就标记
             m_positionChangedDuringDrag = true;
-            if (m_trackingMove) {
+            if (m_bTrackGeometryChange) {
                 emit geometryChanged();
             }
         }
@@ -167,7 +194,7 @@ namespace CyDisDrawItem {
             setCursor(Qt::ArrowCursor);
             if (m_positionChangedDuringDrag) {
                 m_positionChangedDuringDrag = false;
-                if (false == m_trackingMove) {
+                if (false == m_bTrackGeometryChange) {
                     emit geometryChanged();
                 }
             }
@@ -292,7 +319,7 @@ namespace CyDisDrawItem {
             return;
         }
 
-        m_parent->changeByHandle(m_type, event->scenePos(), event->scenePos() - m_dragStartScenePos);
+        m_parent->changeByHandle(m_type, m_id, event->scenePos(), event->scenePos() - m_dragStartScenePos);
 
         m_dragStartScenePos = m_parent->getHandlePosInScene(m_type);
         event->accept();
@@ -303,7 +330,7 @@ namespace CyDisDrawItem {
             m_isResizing = false;
             ungrabMouse();
             // 最终 emit 信号
-            if (m_parent) {
+            if (m_parent && false == m_parent->trackingGeometry()) {
                 m_parent->emit geometryChanged();
             }
             event->accept();

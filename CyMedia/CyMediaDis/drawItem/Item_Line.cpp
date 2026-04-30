@@ -163,6 +163,27 @@ namespace CyDisDrawItem {
         setLineInScene(QLineF(p1, p2).toLine(), needSignals);
     }
 
+    bool Item_Line::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
+        if (type == QEvent::MouseButtonPress) {
+            m_drawStartPos = scenePos;
+            return true;
+        }
+        else if (type == QEvent::MouseMove) {
+            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), false);
+            return true;
+        }
+        else if (type == QEvent::MouseButtonRelease) {
+            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), true);
+            m_drawFinished = true;
+            return true;
+        }
+        return false;
+    }
+
+    bool Item_Line::isDrawFinished() const {
+        return m_drawFinished;
+    }
+
     QVariant Item_Line::itemChange(GraphicsItemChange change, const QVariant& value) {
         QVariant result = BaseItem::itemChange(change, value);
 
@@ -229,8 +250,9 @@ namespace CyDisDrawItem {
         return constrainedPos;
     }
 
-    bool Item_Line::changeByHandle(CyDisDrawItem::HandlePosition handletype, QPointF mousePos, QPointF delta) {
+    bool Item_Line::changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta) {
         if (!scene()) return false;
+        Q_UNUSED(id);
         QPoint mousePos_I = mousePos.toPoint();
         QLine currentLine = lineInScene();
         QPoint currentCenter = currentLine.center();
@@ -279,7 +301,8 @@ namespace CyDisDrawItem {
         setHandlesVisible(m_handlesVisible);
     }
 
-    QPoint Item_Line::getHandlePos(CyDisDrawItem::HandlePosition type) {
+    QPoint Item_Line::getHandlePos(CyDisDrawItem::HandlePosition type, int id) {
+        Q_UNUSED(id);
         switch (type) {
         case CyDisDrawItem::TopLeft: return m_offsetP1;
         case CyDisDrawItem::Center: return QPoint(0, 0);
@@ -291,7 +314,8 @@ namespace CyDisDrawItem {
         return QPoint(0, 0);
     }
 
-    QPoint Item_Line::getHandlePosInScene(CyDisDrawItem::HandlePosition type) {
+    QPoint Item_Line::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
+        Q_UNUSED(id);
         switch (type) {
         case CyDisDrawItem::TopLeft: return mapToScene(m_offsetP1).toPoint();
         case CyDisDrawItem::Center: return pos().toPoint();
@@ -309,6 +333,7 @@ namespace CyDisDrawItem {
     }
 
     void Item_Line::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
+        if (!act || event) return;
         switch (act->data().toUInt()) {
         case 0: {
             if (!m_Menu) {

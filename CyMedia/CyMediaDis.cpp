@@ -1,11 +1,11 @@
-﻿#include "CyMediaDis.h"
+#include "CyMediaDis.h"
 
 #include "CyMediaDis/CyMediaDisView.h"
 #include "CyMediaDis/CyDMediaDisScen.h"
 #include "CyMediaDis/CyDMediaDisBack.h"
 #include "CyMediaCalc/CyMediaCalc.h"
 #include "CyMediaDis/drawItem/CyDisDrawItem.h"
-#include "CyMediaDis/drawItem/ItemDrawTool.h"
+#include "CyMediaDis/drawItem/DrawItemTool.h"
 
 #include <queue>
 
@@ -119,7 +119,7 @@ namespace CyMedia {
         CyDMediaDisScen* scene = nullptr;
         CyDMediaDisBack* imageItem = nullptr;
         CyDisDrawItem::ItemManager* drawmanager = nullptr;
-        CyDisDrawItem::ItemDrawTool* drawingTool = nullptr;
+        CyDisDrawItem::DrawItemTool* drawingTool = nullptr;
         QThread* pImageDataThread = 0;        ///< 图像处理线程句柄
         bool     bImageDataThread_flag = true;   ///< 图像处理线程循环标志
         std::queue<oneFrameBuffer*>  threadPare_ImageDataStack;      ///< 图像线程所使用的数据栈
@@ -1219,8 +1219,8 @@ namespace CyMedia {
         drawmanager = new CyDisDrawItem::ItemManager(scene, m_parent);
 
         //绘制工具
-        drawingTool = new CyDisDrawItem::ItemDrawTool(drawmanager, view, m_parent);
-        connect(drawingTool, &CyDisDrawItem::ItemDrawTool::drawItem, this, &CyMediaDis::privateData::onDrawItem);
+        drawingTool = new CyDisDrawItem::DrawItemTool(drawmanager, view, m_parent);
+        connect(drawingTool, &CyDisDrawItem::DrawItemTool::drawItem, this, &CyMediaDis::privateData::onDrawItem);
 
         //TipsWidget
         mRetimeItem = new CyMediaRecTimeW(m_parent);

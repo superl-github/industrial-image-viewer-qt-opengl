@@ -112,6 +112,19 @@ namespace CyDisDrawItem {
         setBoundingRectInScene(p, p, needSignals);
     }
 
+    bool Item_Point::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
+        if (type == QEvent::MouseButtonPress) {
+            setBoundingRectInScene(scenePos.toPoint(), scenePos.toPoint(), true);
+            m_drawFinished = true;
+            return true;
+        }
+        return false;
+    }
+
+    bool Item_Point::isDrawFinished() const {
+        return m_drawFinished;
+    }
+
     QPoint CyDisDrawItem::Item_Point::constrainToSceneByPos(const QPoint& pos) const {
         if (!scene())
             return pos;
@@ -125,7 +138,7 @@ namespace CyDisDrawItem {
         return std::move(newPos);
     }
 
-    bool CyDisDrawItem::Item_Point::changeByHandle(CyDisDrawItem::HandlePosition handletype, QPointF mousePos, QPointF delta) {
+    bool CyDisDrawItem::Item_Point::changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta) {
         return false;
     }
 
@@ -133,11 +146,11 @@ namespace CyDisDrawItem {
         ;
     }
 
-    QPoint CyDisDrawItem::Item_Point::getHandlePos(CyDisDrawItem::HandlePosition type) {
+    QPoint CyDisDrawItem::Item_Point::getHandlePos(CyDisDrawItem::HandlePosition type, int id) {
         return QPoint(0, 0);
     }
 
-    QPoint CyDisDrawItem::Item_Point::getHandlePosInScene(CyDisDrawItem::HandlePosition type) {
+    QPoint CyDisDrawItem::Item_Point::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
         return pos().toPoint();
     }
 
@@ -147,6 +160,7 @@ namespace CyDisDrawItem {
     }
 
     void CyDisDrawItem::Item_Point::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
+        if (!act || event) return;
         switch (act->data().toUInt()) {
             case 0: {
                 CyMediaDisPointItem_Menu_geo menuW;

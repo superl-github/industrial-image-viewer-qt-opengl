@@ -19,6 +19,7 @@ namespace CyDisDrawItem {
         Rectangle,
         Line,
         Ellipse,
+        Polygon,
         //Text, Image...
     };
 
@@ -26,6 +27,7 @@ namespace CyDisDrawItem {
         TopLeft = 0, Top, TopRight,
         Left, Center, Right,
         BottomLeft, Bottom, BottomRight,
+        Free,
     };
 
     QImage CYMEDIA_LIB pathToMask(const QPainterPath& scenePath, const QSize& imageSize);

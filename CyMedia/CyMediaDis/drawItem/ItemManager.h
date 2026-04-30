@@ -19,6 +19,9 @@ namespace CyDisDrawItem {
     public:
         void flushTrans();
 
+        bool trackingGeometry();
+        void setTrackingGeometry(bool track);
+
         void addItem(BaseItem* item);
         QUuid addItemByType(CyDisDrawItem::ItemType itemType);
         QUuid addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path);
@@ -46,5 +49,7 @@ namespace CyDisDrawItem {
 
         QGraphicsScene* m_scene = nullptr;
         BaseItem* m_selectedItem = nullptr;
+
+        bool m_trackingGeometryChange = false;
     };
 }

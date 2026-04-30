@@ -180,6 +180,18 @@ namespace CyDisDrawItem {
 
         return pixmap;
     }
+    QPixmap drawPolygonIcon(int size, QColor color) {
+        QPixmap pixmap(size, size);
+        pixmap.fill(Qt::transparent);
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(color, 2));
+        // 绘制三角形作为多边形的默认图标
+        QPolygonF poly;
+        poly << QPointF(size / 2.0, 3) << QPointF(size - 3, size - 3) << QPointF(3, size - 3);
+        painter.drawPolygon(poly);
+        return pixmap;
+    }
     QPixmap drawItemIcon(ItemType type, int size /*= 24*/, QColor color/* = Qt::black*/) {
         if (size < 24)
             size = 24;
@@ -194,9 +206,10 @@ namespace CyDisDrawItem {
                 return drawLineIcon(size, color);
             case CyDisDrawItem::Ellipse:
                 return drawEllipseIcon(size, color);
+            case CyDisDrawItem::Polygon:
+                return drawPolygonIcon(size, color);
         }
 
         return QPixmap();
     }
-
 };

@@ -21,10 +21,24 @@ namespace CyDisDrawItem {
         ;
 	}
 
-	void ItemManager::addItem(BaseItem* item) {
+    bool ItemManager::trackingGeometry() {
+        return m_trackingGeometryChange;
+    }
+
+    void ItemManager::setTrackingGeometry(bool track) {
+        if (m_trackingGeometryChange != track) {
+            m_trackingGeometryChange = track;
+            for (auto* item : m_items) {
+                item->setTrackingGeometry(m_trackingGeometryChange);
+            }
+        }
+    }
+
+    void ItemManager::addItem(BaseItem* item) {
         if (!item || !m_scene) return;
         if (m_items.contains(item)) return;
 
+        item->setTrackingGeometry(m_trackingGeometryChange);
         // 添加到场景
         if (item->scene() != m_scene) {
             if (item->scene()) {

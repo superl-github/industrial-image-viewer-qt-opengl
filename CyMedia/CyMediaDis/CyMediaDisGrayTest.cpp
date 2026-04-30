@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisGrayTest.h"
+#include "CyMediaDisGrayTest.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "cycustomwidget.h"
@@ -32,7 +32,7 @@ public:
 	QLabel* mUniformityLabel[5] = { nullptr };
 
 	QActionGroup* mDrawBtnGroup = nullptr;
-	QAction* mDrawAct[5];
+	QAction* mDrawAct[6];
 
 	QPushButton* mResetBtn = nullptr;
 
@@ -546,7 +546,7 @@ void CyMediaDisGrayTest::initGUI() {
     itemtypeToolbar->setIconSize(QSize(24, 24));
 
     d->mDrawBtnGroup = new QActionGroup(this);
-    for (int i = CyDisDrawItem::ItemType::Invalid; i <= CyDisDrawItem::ItemType::Ellipse; i++) {
+    for (int i = CyDisDrawItem::ItemType::Invalid; i <= CyDisDrawItem::ItemType::Polygon; i++) {
         d->mDrawAct[i] = new QAction(QIcon(), "", itemtypeToolbar);
         d->mDrawAct[i]->setData(QVariant(i));
         d->mDrawAct[i]->setCheckable(true);
@@ -703,6 +703,7 @@ void CyMediaDisGrayTest::flushTrans() {
     d->mDrawAct[CyDisDrawItem::ItemType::Rectangle]->setText(tr("Rectangle"));
     d->mDrawAct[CyDisDrawItem::ItemType::Line]->setText(tr("Line"));
     d->mDrawAct[CyDisDrawItem::ItemType::Ellipse]->setText(tr("Ellipse"));
+    d->mDrawAct[CyDisDrawItem::ItemType::Polygon]->setText(tr("Polygon"));
 
     d->mResetBtn->setText(tr("Reset shaft"));
 }
@@ -723,6 +724,7 @@ void CyMediaDisGrayTest::setThemeColor(QColor color) {
     d->mDrawAct[CyDisDrawItem::ItemType::Rectangle]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Rectangle, 32, color));
     d->mDrawAct[CyDisDrawItem::ItemType::Line]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Line, 32, color));
     d->mDrawAct[CyDisDrawItem::ItemType::Ellipse]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Ellipse, 32, color));
+    d->mDrawAct[CyDisDrawItem::ItemType::Polygon]->setIcon(CyDisDrawItem::drawItemIcon(CyDisDrawItem::Polygon, 32, color));
 }
 
 void CyMediaDisGrayTest::onUphisVisible() {
@@ -860,6 +862,11 @@ void CyMediaDisGrayTest::upMask(QSize imgSize) {
         d->mMaskHaveData = false;
         return;
     }
+    if (item->isPreViewMode()) {
+        d->mMaskHaveData = false;
+        return;
+    }
+
     if (item->itemType() == CyDisDrawItem::Point || item->itemType() == CyDisDrawItem::Invalid) {
         d->mMaskHaveData = false;
         return;

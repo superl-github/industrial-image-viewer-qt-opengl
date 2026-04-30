@@ -115,6 +115,27 @@ namespace CyDisDrawItem {
         }
     }
 
+    bool Item_Rect::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
+        if (type == QEvent::MouseButtonPress) {
+            m_drawStartPos = scenePos;
+            return true;
+        }
+        else if (type == QEvent::MouseMove) {
+            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), false);
+            return true;
+        }
+        else if (type == QEvent::MouseButtonRelease) {
+            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), true);
+            m_drawFinished = true;
+            return true;
+        }
+        return false;
+    }
+
+    bool Item_Rect::isDrawFinished() const {
+        return m_drawFinished;
+    }
+
     QPoint Item_Rect::constrainToSceneByPos(const QPoint& pos) const {
         if (!scene())
             return pos;
@@ -129,7 +150,9 @@ namespace CyDisDrawItem {
         return std::move(newPos);
     }
 
-    bool Item_Rect::changeByHandle(CyDisDrawItem::HandlePosition handletype, QPointF mousePos, QPointF delta) {
+    bool Item_Rect::changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta) {
+        if (!scene()) return false;
+        Q_UNUSED(id);
         ////判断增量
         //if (abs(delta.x()) < 1.0 &&
         //    abs(delta.y()) < 1.0) {
@@ -188,7 +211,8 @@ namespace CyDisDrawItem {
         setHandlesVisible(m_handlesVisible);
     }
 
-    QPoint Item_Rect::getHandlePos(CyDisDrawItem::HandlePosition type) {
+    QPoint Item_Rect::getHandlePos(CyDisDrawItem::HandlePosition type, int id) {
+        Q_UNUSED(id);
         int32_t l = 0;
         int32_t t = 0;
         int32_t r = m_localRect.width();
@@ -211,7 +235,8 @@ namespace CyDisDrawItem {
         return QPoint(0, 0);
     }
 
-    QPoint Item_Rect::getHandlePosInScene(CyDisDrawItem::HandlePosition type) {
+    QPoint Item_Rect::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
+        Q_UNUSED(id);
         int32_t l = 0;
         int32_t t = 0;
         int32_t r = m_localRect.width();
@@ -240,6 +265,7 @@ namespace CyDisDrawItem {
     }
 
     void Item_Rect::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
+        if (!act || event) return;
         switch (act->data().toUInt()) {
             case 0: {
                 CyMediaDisRectItem_Menu_geo menuW;

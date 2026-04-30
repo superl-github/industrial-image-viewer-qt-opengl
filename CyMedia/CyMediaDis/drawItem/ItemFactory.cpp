@@ -4,6 +4,7 @@
 #include "Item_Rect.h"
 #include "Item_Line.h"
 #include "Item_Ellipse.h"
+#include "Item_Polygon.h"
 
 namespace CyDisDrawItem {
     BaseItem* ItemFactory::createBySceneDraw(CyDisDrawItem::ItemType type, QPointF startPos, QPointF endPos) {
@@ -15,17 +16,17 @@ namespace CyDisDrawItem {
             case CyDisDrawItem::ItemType::Point: {
                 item = new Item_Point();
             }break;
-
             case CyDisDrawItem::ItemType::Rectangle: {
                 item = new Item_Rect();
             }break;
-
             case CyDisDrawItem::ItemType::Line: {
                 item = new Item_Line();
             }break;
-
             case CyDisDrawItem::ItemType::Ellipse: {
                 item = new Item_Ellipse();
+            }break;
+            case CyDisDrawItem::ItemType::Polygon: {
+                item = new Item_Polygon();
             }break;
 
             default:
@@ -47,18 +48,18 @@ namespace CyDisDrawItem {
 		    case CyDisDrawItem::ItemType::Point: {
 			    item = new Item_Point();
 		    }break;
-
 		    case CyDisDrawItem::ItemType::Rectangle: {
 			    item = new Item_Rect();
 		    }break;
-
 		    case CyDisDrawItem::ItemType::Line: {
 			    item = new Item_Line();
 		    }break;
-
 		    case CyDisDrawItem::ItemType::Ellipse: {
 			    item = new Item_Ellipse();
 		    }break;
+            case CyDisDrawItem::ItemType::Polygon: {
+                item = new Item_Polygon();
+            }break;
 
 		    default:
 			    break;
