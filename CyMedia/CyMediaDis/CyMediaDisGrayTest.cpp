@@ -131,7 +131,7 @@ CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
 }
 
 bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
-    if (d->m_parentDis->isSingleItemMode())
+    if (false == d->m_parentDis->isSingleItemMode())
         return false;
     if (d->m_parentDis->isDrawing() && !getCurrentItem())
         return false;

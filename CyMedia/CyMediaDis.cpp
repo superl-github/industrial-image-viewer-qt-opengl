@@ -1276,7 +1276,7 @@ namespace CyMedia {
         connect(mGrayTestWidget, &CyMediaDisGrayTest::testModeChange, this, [this](int drawType) {
             setDrawMode(CyDisDrawItem::ItemType(drawType));
             if (drawType == CyDisDrawItem::Invalid) {
-                drawmanager->removeItem(mGrayTestWidget->getCurrentItem());
+                //drawmanager->removeItem(mGrayTestWidget->getCurrentItem());
                 onGrayToolNeedImage();
             }
             });
