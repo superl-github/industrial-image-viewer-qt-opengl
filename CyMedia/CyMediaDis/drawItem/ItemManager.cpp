@@ -1,4 +1,4 @@
-#include "ItemManager.h"
+﻿#include "ItemManager.h"
 #include "ItemFactory.h"
 
 #include <QDebug>
@@ -56,6 +56,10 @@ namespace CyDisDrawItem {
         connect(item, &BaseItem::selectedChanged,
             this, &ItemManager::onItemSelectionChanged,
             Qt::UniqueConnection);
+        //处理删除事件
+		connect(item, &BaseItem::removeThis,
+			this, &ItemManager::onItemRemoveClicked,
+			Qt::UniqueConnection);
 
         emit itemAdded(item->id());
     }
@@ -67,9 +71,20 @@ namespace CyDisDrawItem {
 	}
 
 	QUuid ItemManager::addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path) {
-        auto tempItem = ItemFactory::createItem(itemType);
-        tempItem->setPainterPathInScene(path);
-        return tempItem->id();
+        BaseItem* tempItem = nullptr;
+        //查找是否有相同Item
+        for (auto item : m_items) {
+            if (item->itemType() == itemType && item->pathInScene() == path) {
+                return item->id();
+            }
+        }
+        tempItem = ItemFactory::createItem(itemType);
+        if (tempItem) {
+            tempItem->setPainterPathInScene(path);
+            addItem(tempItem);
+            return tempItem->id();
+        }
+        return nullptr;
 	}
 
 	void ItemManager::removeItem(BaseItem* item, bool needSignal/* = true*/) {
@@ -81,24 +96,31 @@ namespace CyDisDrawItem {
         disconnect(item, &BaseItem::selectedChanged, this, nullptr);
 
         // 如果是当前选中项，清空
-        if (m_selectedItem == item) {
-            m_selectedItem = nullptr;
-            emit selectionChanged(nullptr);
-        }
-        if (needSignal)
-            emit itemRemoved(item->id());
+        if (m_selectedItem == item) m_selectedItem = nullptr;
+
+        if (needSignal) emit itemRemoved(item->id());
+
+        emit itemSelectionChanged(item->id(), false);
         item->deleteLater();
     }
 
-    void ItemManager::sendRemove(QUuid id) {
+	void ItemManager::removeItem(QUuid id, bool needSignal /*= true*/) {
+        auto item = getItem(id);
+        if (item) {
+            removeItem(item);
+        }
+	}
+
+	void ItemManager::sendRemove(QUuid id) {
         emit itemRemoved(id);
     }
 
     void ItemManager::clearAll() {
         mIdAndItemMap.clear();
-        for (auto* item : m_items) {
-            item->setSelected(false);
-        }
+		for (auto* item : m_items) {
+            disconnect(item, &BaseItem::selectedChanged, this, nullptr);
+			item->setSelected(false);
+		}
 
         for (auto* item : m_items) {
             m_scene->removeItem(item);
@@ -106,17 +128,19 @@ namespace CyDisDrawItem {
 
         for (auto* item : m_items) {
             emit itemRemoved(item->id());
-            disconnect(item, &BaseItem::selectedChanged, this, nullptr);
             item->deleteLater();
         }
 
         m_items.clear();
         
         m_selectedItem = nullptr;
-        emit selectionChanged(nullptr);
     }
 
-    CyDisDrawItem::BaseItem* ItemManager::getItem(QUuid id) {
+	int ItemManager::itemCount() {
+        return m_items.count();
+	}
+
+	CyDisDrawItem::BaseItem* ItemManager::getItem(QUuid id) {
         auto it = mIdAndItemMap.find(id);
         if (it == mIdAndItemMap.end()) {
             return nullptr;
@@ -143,12 +167,20 @@ namespace CyDisDrawItem {
         if (!senderItem) return;
 
         if (senderItem->isSelected()) {
+            if (m_selectedItem && m_selectedItem != senderItem) {
+                m_selectedItem->setSelected(false);
+            }
             m_selectedItem = senderItem;
-            emit selectionChanged(senderItem);
+            emit itemSelectionChanged(senderItem->id(), true);
         }
         else if (m_selectedItem == senderItem) {
             m_selectedItem = nullptr;
-            emit selectionChanged(nullptr);
+            emit itemSelectionChanged(senderItem->id(), false);
         }
     }
+
+	void ItemManager::onItemRemoveClicked(QUuid id) {
+        removeItem(id, true);
+	}
+
 }

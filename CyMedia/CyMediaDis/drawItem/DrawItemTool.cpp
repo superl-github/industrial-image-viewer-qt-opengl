@@ -1,4 +1,4 @@
-#include "DrawItemTool.h"
+﻿#include "DrawItemTool.h"
 #include "../CyDMediaDisScen.h"
 #include <QMouseEvent>
 #include <QLineF>
@@ -41,10 +41,6 @@ namespace CyDisDrawItem {
     void DrawItemTool::setReplaceMode(bool enable) {
         m_replaceMode = enable;
         //m_manager->clearAll();
-        if (m_lastItem) {
-            m_manager->removeItem(m_lastItem);
-            m_lastItem = nullptr;
-        }
         // 关闭替换模式时，重置拖拽状态
         if (!enable) {
             m_isDragging = false;

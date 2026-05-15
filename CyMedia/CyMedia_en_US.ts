@@ -13,6 +13,17 @@
     </message>
 </context>
 <context>
+    <name>CyDisDrawItem::BaseItem</name>
+    <message>
+        <source>Geometric shapes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>CyDisDrawItem::CyMediaDisEllipseItem_Menu_geo</name>
     <message>
         <source>Width</source>
@@ -78,7 +89,7 @@
     </message>
 </context>
 <context>
-    <name>CyDisDrawItem::CyMediaDisRectItem_Menu_geo</name>
+    <name>CyDisDrawItem::CyMediaDisPolygonItem_Menu_geo</name>
     <message>
         <source>width</source>
         <translation type="unfinished"></translation>
@@ -97,30 +108,21 @@
     </message>
 </context>
 <context>
-    <name>CyDisDrawItem::EllipseItem</name>
+    <name>CyDisDrawItem::CyMediaDisRectItem_Menu_geo</name>
     <message>
-        <source>Geometric shapes</source>
+        <source>width</source>
         <translation type="unfinished"></translation>
     </message>
-</context>
-<context>
-    <name>CyDisDrawItem::LineItem</name>
     <message>
-        <source>Geometric shapes</source>
+        <source>height</source>
         <translation type="unfinished"></translation>
     </message>
-</context>
-<context>
-    <name>CyDisDrawItem::PointItem</name>
     <message>
-        <source>Geometric shapes</source>
+        <source>confirm</source>
         <translation type="unfinished"></translation>
     </message>
-</context>
-<context>
-    <name>CyDisDrawItem::RectItem</name>
     <message>
-        <source>Geometric shapes</source>
+        <source>cancel</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -235,6 +237,10 @@
     </message>
     <message>
         <source>Quantity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Polygon</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

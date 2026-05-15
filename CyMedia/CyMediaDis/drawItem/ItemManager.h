@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <QObject>
 #include <QList>
 
@@ -16,6 +16,11 @@ namespace CyDisDrawItem {
         ItemManager(const ItemManager&) = delete;
         ItemManager& operator=(const ItemManager&) = delete;
 
+    public:signals:
+		void itemAdded(QUuid id);
+		void itemRemoved(QUuid id);
+		void itemSelectionChanged(QUuid id, bool selected);
+
     public:
         void flushTrans();
 
@@ -26,24 +31,22 @@ namespace CyDisDrawItem {
         QUuid addItemByType(CyDisDrawItem::ItemType itemType);
         QUuid addItemByTypeWidthPath(CyDisDrawItem::ItemType itemType, QPainterPath path);
         void removeItem(BaseItem* item, bool needSignal = true);
+        void removeItem(QUuid id, bool needSignal = true);
         void sendRemove(QUuid id);
         void clearAll();
 
+        int itemCount();
         BaseItem* getItem(QUuid id);
 
-        QList<BaseItem*> items() const { return m_items; }
+        QList<BaseItem*>& items() { return m_items; }
         QUuid selectedItem() const;
         QUuid getLaseItem();
 
         QGraphicsScene* scene() const { return m_scene; }
 
-    signals:
-        void itemAdded(QUuid id);
-        void itemRemoved(QUuid id);
-        void selectionChanged(BaseItem* item);
-
     private slots:
         void onItemSelectionChanged();
+        void onItemRemoveClicked(QUuid id);
 
     private:
         QList<BaseItem*> m_items;

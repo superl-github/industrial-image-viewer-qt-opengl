@@ -3,6 +3,7 @@
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
 #include "CyMediaDis/CyMediaDisGrayTest.h"
+#include "CyMediaDis/drawItem/BaseItem.h"
 #include "CyMediaDis/drawItem/CyDisDrawItem.h"
 
 #include <QWidget>
@@ -31,7 +32,10 @@ namespace CyMedia {
         void zoomValueChange(double value);
         void pressOnView();
 
-        void itemDrawed(CyDisDrawItem::BaseItem* item);
+        void drawModeChange(CyDisDrawItem::ItemType mode);
+        void itemDrawed(QUuid id);
+        void itemRemoved(QUuid id);
+        void itemSelected(QUuid id);
 
     public:
         static bool supportsOpenGL(int& mainV, int& subV);
@@ -73,6 +77,7 @@ namespace CyMedia {
         void zoomAuto();
 
         //Tools/UI
+        CyDisDrawItem::ItemType drawMode();
         void setDrawMode(CyDisDrawItem::ItemType mode);
 
         void setThemeColor(QColor color);
@@ -83,10 +88,24 @@ namespace CyMedia {
         bool zoomScrollBarVisible(void);
         void setZoomScrollBarVisible(bool show);
 
+        bool thumbnailEnable();
+        //Sets the thumbnail enabled status. 
+        //This interface is ineffective when `thumbnailAutoEnable()` is set to `true`.
+        void setThumbnailEnable(bool enable);
+        bool thumbnailAutoEnable();
+        void setThumbnailAutoEnable(bool enable);
+        QSize thumbnailAutoEnableSize();
+        void setThumbnailAutoEnableSize(QSize size);
+
 		// DrawItem
         QUuid addItem(CyDisDrawItem::ItemType itemType);
         QUuid addItem(CyDisDrawItem::ItemType itemType, QPainterPath path);
-		CyDisDrawItem::BaseItem* getItem(QUuid& id);
+        void removeItme(QUuid id);
+        int itemCount();
+        QList<CyDisDrawItem::BaseItem*>& items();
+        CyDisDrawItem::BaseItem* getItem(QUuid& id);
+        void setItemSelected(QUuid id);
+
         void clearItem();
 
         bool isSingleItemMode();

@@ -1,5 +1,5 @@
 #include "BaseItem.h"
-
+#include <QTimer>
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
 
@@ -13,12 +13,17 @@ namespace CyDisDrawItem {
             QGraphicsItem::ItemSendsGeometryChanges);
         setAcceptHoverEvents(true);
 
-        //调试
-        connect(this, &BaseItem::geometryChanged, this, [this]() {
-            CyDisDrawItem::BaseItem* senderItem = qobject_cast<CyDisDrawItem::BaseItem*>(sender());
-            auto rect = senderItem->boundingRectInScene();
-            printf("geometryChanged:(%d,%d) %d * %d\n", rect.x(), rect.y(), rect.width(), rect.height());
-            });
+        ////调试
+        //connect(this, &BaseItem::geometryChanged, this, [this]() {
+        //    CyDisDrawItem::BaseItem* senderItem = qobject_cast<CyDisDrawItem::BaseItem*>(sender());
+        //    auto rect = senderItem->boundingRectInScene();
+        //    printf("geometryChanged:(%d,%d) %d * %d\n", rect.x(), rect.y(), rect.width(), rect.height());
+        //    });
+
+        // 初始化闪烁定时器
+        m_flickeringTimer = new QTimer(this);
+        connect(m_flickeringTimer, &QTimer::timeout, this, &BaseItem::onFlickeringTimeout);
+        m_flickeringTimer->setInterval(500); // 500ms切换一次，闪烁频率1Hz
     }
 
     BaseItem::~BaseItem() {
@@ -126,10 +131,65 @@ namespace CyDisDrawItem {
         painter.drawPath(scenePath);
     }
 
+	void BaseItem::registerCreateContextMenuFunc(ItemCreateContexMenuCallBack func) {
+        m_createContextMenuFunc = func;
+	}
 
+	void BaseItem::registerContextMenuTriggerFunc(ItemContexMenuTriger func, void* pUser) {
+        m_ContextMenuTriigerFunc = func;
+        m_ContextMenuTriigerFunc_user = pUser;
+	}
 
+    bool BaseItem::flickeringEnable() {
+        return m_flickeringEnable;
+    }
 
+    void BaseItem::setFlickeringEnable(bool enable) {
+        if (m_flickeringEnable == enable)
+            return;
 
+        m_flickeringEnable = enable;
+        if (enable) {
+            // 保存原始颜色
+            m_oldContourColorUnselect = m_contour_color_unselect;
+            m_oldContourColorSelect = m_contour_color_select;
+
+            // 初始状态显示用户设置的闪烁颜色
+            m_flickeringState = true;
+            m_contour_color_unselect = m_flickeringColor;
+            m_contour_color_select = m_flickeringColor;
+
+            m_flickeringTimer->start();
+        }
+        else {
+            // 停止定时器
+            m_flickeringTimer->stop();
+
+            // 恢复原始颜色
+            m_contour_color_unselect = m_oldContourColorUnselect;
+            m_contour_color_select = m_oldContourColorSelect;
+        }
+
+        update();
+    }
+
+    QColor BaseItem::flickeringColor() {
+        return m_flickeringColor;
+    }
+
+    void BaseItem::setFlickeringColor(QColor color) {
+        if (m_flickeringColor == color)
+            return;
+
+        m_flickeringColor = color;
+
+        // 如果当前正在闪烁且处于显示用户颜色的状态，立即更新
+        if (m_flickeringEnable && m_flickeringState) {
+            m_contour_color_unselect = color;
+            m_contour_color_select = color;
+            update();
+        }
+    }
 
     void BaseItem::updateHandles() {
         if (m_handles.isEmpty())
@@ -203,16 +263,23 @@ namespace CyDisDrawItem {
 
     void BaseItem::contextMenuEvent(QGraphicsSceneContextMenuEvent* event) {
         QMenu menu;
-        onContextMenuCreate(menu);
+        auto menuMap = onContextMenuCreate(menu);
         if (menu.actions().size() <= 0)
             return QGraphicsObject::contextMenuEvent(event);
 
         QAction* selectedAction = menu.exec(event->screenPos());
-        onContexMenu(selectedAction, event);
+        if (!selectedAction) return;
+        auto findeType = menuMap.find(selectedAction);
+        if (findeType != menuMap.end()) {
+            onContexMenu(findeType.value(), event);
+        }
+        else {
+            if (m_ContextMenuTriigerFunc) m_ContextMenuTriigerFunc(m_id, selectedAction->data().toInt(), m_ContextMenuTriigerFunc_user);
+        }
         event->accept();
     }
 
-    void BaseItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
+	void BaseItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
         setCursor(Qt::ArrowCursor);
         QGraphicsObject::hoverLeaveEvent(event);
     }
@@ -221,6 +288,60 @@ namespace CyDisDrawItem {
         setCursor(Qt::ArrowCursor);
         QGraphicsObject::hoverLeaveEvent(event);
     }
+
+	QString BaseItem::getContextStr(ContextMenuType contexType) {
+		switch (contexType) {
+		case CyDisDrawItem::BaseItem::Contex_Geometric: return tr("Geometric shapes");
+		case CyDisDrawItem::BaseItem::Contex_Delete: return tr("Delete");
+		}
+		return ("None");
+	}
+
+	bool BaseItem::getContextSupport(ContextMenuType contexType) {
+		switch (contexType) {
+		    case CyDisDrawItem::BaseItem::Contex_Geometric: return true;
+		    case CyDisDrawItem::BaseItem::Contex_Delete: return true;
+		}
+		return false;
+	}
+
+    QMap<QAction*, BaseItem::ContextMenuType> BaseItem::onContextMenuCreate(QMenu& menu) {
+        QMap<QAction*, BaseItem::ContextMenuType> menuMap;
+		for (int i = 0; i < Contex_End; i++) {
+            if (getContextSupport(ContextMenuType(i))) {
+				QAction* act = menu.addAction(getContextStr(ContextMenuType(i)));
+				act->setData(i);
+                menuMap.insert(act, BaseItem::ContextMenuType(i));
+            }
+		}
+        if (m_createContextMenuFunc) {
+            m_createContextMenuFunc(&menu);
+        }
+
+        return menuMap;
+	}
+
+    void BaseItem::onFlickeringTimeout() {
+        if (!m_flickeringEnable)
+            return;
+
+        // 切换闪烁状态
+        m_flickeringState = !m_flickeringState;
+
+        if (m_flickeringState) {
+            // 显示用户设置的颜色
+            m_contour_color_unselect = m_flickeringColor;
+            m_contour_color_select = m_flickeringColor;
+        }
+        else {
+            // 显示灰色
+            m_contour_color_unselect = Qt::gray;
+            m_contour_color_select = Qt::gray;
+        }
+
+        update();
+    }
+
 
 
 

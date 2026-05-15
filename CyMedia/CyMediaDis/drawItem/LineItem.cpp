@@ -1,4 +1,4 @@
-﻿#include "Item_Line.h"
+#include "LineItem.h"
 
 #include <QDialog>
 #include <QLabel>
@@ -51,7 +51,7 @@ namespace CyDisDrawItem {
         EndPoint
     };
 
-    Item_Line::Item_Line(QGraphicsItem* parent /*= nullptr*/) {
+    LineItem::LineItem(QGraphicsItem* parent /*= nullptr*/) {
         m_offsetP1 = QPoint(-50, 0);
         m_offsetP2 = QPoint(50, 0);
         setPos(0, 0);
@@ -60,14 +60,14 @@ namespace CyDisDrawItem {
         updateHandles();
     }
 
-    Item_Line::~Item_Line() {
+    LineItem::~LineItem() {
         if (m_Menu) {
             m_Menu->close();
             delete m_Menu;
         }
     }
 
-    QRectF Item_Line::boundingRect() const {
+    QRectF LineItem::boundingRect() const {
         return QRectF(
             qMin(m_offsetP1.x(), m_offsetP2.x()),
             qMin(m_offsetP1.y(), m_offsetP2.y()),
@@ -75,11 +75,11 @@ namespace CyDisDrawItem {
             qAbs(m_offsetP2.y() - m_offsetP1.y()));
     }
 
-    QRect Item_Line::boundingRectInScene() const {
+    QRect LineItem::boundingRectInScene() const {
         return boundingRect().toRect();
     }
 
-    QPainterPath Item_Line::shape() const {
+    QPainterPath LineItem::shape() const {
         QPainterPath path;
         QPainterPathStroker stroker;
         stroker.setWidth(10.0); // 可点击宽度
@@ -88,14 +88,14 @@ namespace CyDisDrawItem {
         return stroker.createStroke(path);
     }
 
-    QPainterPath Item_Line::pathInScene() const {
+    QPainterPath LineItem::pathInScene() const {
         QPainterPath localPath;
         localPath.moveTo(m_offsetP1);
         localPath.lineTo(m_offsetP2);
         return mapToScene(localPath);
     }
 
-    void Item_Line::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
+    void LineItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
         Q_UNUSED(option);
         Q_UNUSED(widget);
 
@@ -106,15 +106,15 @@ namespace CyDisDrawItem {
         painter->drawLine(m_offsetP1, m_offsetP2); // 绘制本地线段 
     }
 
-    void Item_Line::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals /*= true*/) {
-        setLineInScene(QLine(p1, p2), needSignals);
+    void LineItem::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals /*= true*/) {
+        setLineInScene(QLine(p1, p2), true);
     }
 
-    QLine Item_Line::lineInScene() const {
+    QLine LineItem::lineInScene() const {
         return QLine(mapToScene(m_offsetP1).toPoint(), mapToScene(m_offsetP2).toPoint());
     }
 
-    void Item_Line::setLineInScene(const QLine& line, bool needSignals/* = true*/) {
+    void LineItem::setLineInScene(const QLine& line, bool needSignals/* = true*/) {
         if (!scene())
             return;
 
@@ -152,39 +152,7 @@ namespace CyDisDrawItem {
         }
     }
 
-    void Item_Line::setPainterPathInScene(QPainterPath path, bool needSignals /*= true*/) {
-        if (path.isEmpty() || path.elementCount() < 2) {
-            return;
-        }
-        // 从场景路径中提取线段的两个端点
-        QPointF p1 = path.elementAt(0);
-        QPointF p2 = path.elementAt(1);
-        // 复用已有的线段设置逻辑
-        setLineInScene(QLineF(p1, p2).toLine(), needSignals);
-    }
-
-    bool Item_Line::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
-        if (type == QEvent::MouseButtonPress) {
-            m_drawStartPos = scenePos;
-            return true;
-        }
-        else if (type == QEvent::MouseMove) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), m_bTrackGeometryChange);
-            return true;
-        }
-        else if (type == QEvent::MouseButtonRelease) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), !m_bTrackGeometryChange);
-            m_drawFinished = true;
-            return true;
-        }
-        return false;
-    }
-
-    bool Item_Line::isDrawFinished() const {
-        return m_drawFinished;
-    }
-
-    QVariant Item_Line::itemChange(GraphicsItemChange change, const QVariant& value) {
+    QVariant LineItem::itemChange(GraphicsItemChange change, const QVariant& value) {
         QVariant result = BaseItem::itemChange(change, value);
 
         // 检查是否是被添加到了场景
@@ -207,7 +175,7 @@ namespace CyDisDrawItem {
         return result;
     }
 
-    QPoint Item_Line::constrainToSceneByPos(const QPoint& pos) const {
+    QPoint LineItem::constrainToSceneByPos(const QPoint& pos) const {
         if (!scene()) return pos;
 
         QRect currentBBox = boundingRect().toRect(); // 本地包围盒
@@ -250,9 +218,8 @@ namespace CyDisDrawItem {
         return constrainedPos;
     }
 
-    bool Item_Line::changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta) {
+    bool LineItem::changeByHandle(CyDisDrawItem::HandlePosition handletype, QPointF mousePos, QPointF delta) {
         if (!scene()) return false;
-        Q_UNUSED(id);
         QPoint mousePos_I = mousePos.toPoint();
         QLine currentLine = lineInScene();
         QPoint currentCenter = currentLine.center();
@@ -272,6 +239,7 @@ namespace CyDisDrawItem {
             updateHandles(); // 手柄随 item 移动自动更新，但显式调用更安全
             prepareGeometryChange(); // 虽然几何没变，但位置变了，boundingRect 在场景中变了
             update();
+            //emit geometryChanged(sceneBoundingRect());
             return true;
         }
         else if (handletype == CyDisDrawItem::TopLeft) {
@@ -290,7 +258,7 @@ namespace CyDisDrawItem {
         return true;
     }
 
-    void Item_Line::createHandles() {
+    void LineItem::createHandles() {
         m_handles.clear();
         // 0: Start (TopLeft), 1: End (BottomRight), 2: Center
         m_handles.append(new HandleItem(CyDisDrawItem::TopLeft, this));
@@ -300,8 +268,7 @@ namespace CyDisDrawItem {
         setHandlesVisible(m_handlesVisible);
     }
 
-    QPoint Item_Line::getHandlePos(CyDisDrawItem::HandlePosition type, int id) {
-        Q_UNUSED(id);
+    QPoint LineItem::getHandlePos(CyDisDrawItem::HandlePosition type) {
         switch (type) {
         case CyDisDrawItem::TopLeft: return m_offsetP1;
         case CyDisDrawItem::Center: return QPoint(0, 0);
@@ -313,8 +280,7 @@ namespace CyDisDrawItem {
         return QPoint(0, 0);
     }
 
-    QPoint Item_Line::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
-        Q_UNUSED(id);
+    QPoint LineItem::getHandlePosInScene(CyDisDrawItem::HandlePosition type) {
         switch (type) {
         case CyDisDrawItem::TopLeft: return mapToScene(m_offsetP1).toPoint();
         case CyDisDrawItem::Center: return pos().toPoint();
@@ -326,30 +292,33 @@ namespace CyDisDrawItem {
         return pos().toPoint();
     }
 
-	void Item_Line::onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) {
-		switch (type) {
-		    case CyDisDrawItem::BaseItem::Contex_Geometric: {
-			    if (!m_Menu) {
-				    m_Menu = new CyMediaDisLineItem_Menu_geo();
-			    }
-			    m_Menu->flushTrans();
-			    m_Menu->setWindowTitle(getContextStr(type));
-			    auto scenePath = pathInScene();
-			    m_Menu->setPara(
-				    scenePath.elementAt(0),
-				    scenePath.elementAt(1),
-				    { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
-			    auto sel = m_Menu->exec();
-			    if (sel == m_Menu->Accepted) {
-				    setLineInScene(m_Menu->getSetPara());
-			    }
-		    }break;
+    void LineItem::onContextMenuCreate(QMenu& menu) {
+        QAction* act = menu.addAction(tr("Geometric shapes"));
+        act->setData(0);
+    }
 
-		    case CyDisDrawItem::BaseItem::Contex_Delete: {
-				this->setEnabled(false);
-				emit removeThis(m_id);
-		    }break;
-		}
+    void LineItem::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
+        switch (act->data().toUInt()) {
+        case 0: {
+            if (!m_Menu) {
+                m_Menu = new CyMediaDisLineItem_Menu_geo();
+            }
+            m_Menu->flushTrans();
+            m_Menu->setWindowTitle(act->text());
+            auto scenePath = pathInScene();
+            m_Menu->setPara(
+                scenePath.elementAt(0),
+                scenePath.elementAt(1),
+                { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
+            auto sel = m_Menu->exec();
+            if (sel == m_Menu->Accepted) {
+                setLineInScene(m_Menu->getSetPara());
+            }
+        }break;
+
+        default: break;
+        }
+
     }
 
 
@@ -475,5 +444,5 @@ namespace CyDisDrawItem {
         m_Ylabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 }
-#include "Item_Line.moc"
+#include "LineItem.moc"
 

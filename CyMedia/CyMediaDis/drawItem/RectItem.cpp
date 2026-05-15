@@ -1,5 +1,5 @@
-﻿// ResizableRectItem.cpp
-#include "Item_Rect.h"
+// ResizableRectItem.cpp
+#include "RectItem.h"
 
 #include <QPen>
 #include <QBrush>
@@ -38,7 +38,7 @@ namespace CyDisDrawItem {
         QPushButton* m_CancelBtn = nullptr;
     };
 
-    Item_Rect::Item_Rect(QGraphicsItem* parent /*= nullptr*/)
+    RectItem::RectItem(QGraphicsItem* parent /*= nullptr*/)
         : BaseItem(parent) {
         //m_MinSize = QSize(HandleItem::handleSize() * 3, HandleItem::handleSize() * 3);
         m_MinSize = QSize(5, 5);
@@ -48,27 +48,27 @@ namespace CyDisDrawItem {
         updateHandles();
     }
 
-    QRectF Item_Rect::boundingRect() const {
+    QRectF RectItem::boundingRect() const {
 
         return m_localRect; // 返回本地坐标系的矩形 
     }
 
-    QRect Item_Rect::boundingRectInScene() const {
+    QRect RectItem::boundingRectInScene() const {
         auto pos_I = pos().toPoint();
         return QRect(pos_I.x(), pos_I.y(), m_localRect.width(), m_localRect.height());
     }
 
-    QPainterPath Item_Rect::shape() const {
+    QPainterPath RectItem::shape() const {
         QPainterPath path;
         path.addRect(m_localRect);
         return path;
     }
 
-    QPainterPath Item_Rect::pathInScene() const {
+    QPainterPath RectItem::pathInScene() const {
         return mapToScene(shape());
     }
 
-    void Item_Rect::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
+    void RectItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
         Q_UNUSED(option);
         Q_UNUSED(widget);
 
@@ -85,7 +85,7 @@ namespace CyDisDrawItem {
         // painter->drawEllipse(m_localRect.center(), 2, 2);
     }
 
-    void Item_Rect::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals/* = true*/) {
+    void RectItem::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals/* = true*/) {
         //约束不越界
         QRect sceneRect(p1, p2);
         QRect newRect = constrainToSceneByPos(sceneRect);
@@ -101,42 +101,7 @@ namespace CyDisDrawItem {
         }
     }
 
-    void Item_Rect::setPainterPathInScene(QPainterPath path, bool needSignals /*= true*/) {
-        // 从场景路径获取包围盒
-        QRect sceneRect = path.boundingRect().toRect();
-        QRect newRect = constrainToSceneByPos(sceneRect);
-        m_localRect = QRect(0, 0, newRect.width(), newRect.height());
-        setPos(newRect.topLeft());
-        updateHandles();
-        prepareGeometryChange();
-        update(); // 触发重绘
-        if (needSignals) {
-            emit geometryChanged();
-        }
-    }
-
-    bool Item_Rect::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
-        if (type == QEvent::MouseButtonPress) {
-            m_drawStartPos = scenePos;
-            return true;
-        }
-        else if (type == QEvent::MouseMove) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), false);
-            return true;
-        }
-        else if (type == QEvent::MouseButtonRelease) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), true);
-            m_drawFinished = true;
-            return true;
-        }
-        return false;
-    }
-
-    bool Item_Rect::isDrawFinished() const {
-        return m_drawFinished;
-    }
-
-    QPoint Item_Rect::constrainToSceneByPos(const QPoint& pos) const {
+    QPoint RectItem::constrainToSceneByPos(const QPoint& pos) const {
         if (!scene())
             return pos;
 
@@ -150,9 +115,7 @@ namespace CyDisDrawItem {
         return std::move(newPos);
     }
 
-    bool Item_Rect::changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta) {
-        if (!scene()) return false;
-        Q_UNUSED(id);
+    bool RectItem::changeByHandle(CyDisDrawItem::HandlePosition handletype, QPointF mousePos, QPointF delta) {
         ////判断增量
         //if (abs(delta.x()) < 1.0 &&
         //    abs(delta.y()) < 1.0) {
@@ -191,7 +154,7 @@ namespace CyDisDrawItem {
         return true;
     }
 
-    void Item_Rect::createHandles() {
+    void RectItem::createHandles() {
         static const QList<CyDisDrawItem::HandlePosition> positions = {
             CyDisDrawItem::TopLeft,
             CyDisDrawItem::Top,
@@ -211,8 +174,7 @@ namespace CyDisDrawItem {
         setHandlesVisible(m_handlesVisible);
     }
 
-    QPoint Item_Rect::getHandlePos(CyDisDrawItem::HandlePosition type, int id) {
-        Q_UNUSED(id);
+    QPoint RectItem::getHandlePos(CyDisDrawItem::HandlePosition type) {
         int32_t l = 0;
         int32_t t = 0;
         int32_t r = m_localRect.width();
@@ -235,8 +197,7 @@ namespace CyDisDrawItem {
         return QPoint(0, 0);
     }
 
-    QPoint Item_Rect::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
-        Q_UNUSED(id);
+    QPoint RectItem::getHandlePosInScene(CyDisDrawItem::HandlePosition type) {
         int32_t l = 0;
         int32_t t = 0;
         int32_t r = m_localRect.width();
@@ -259,30 +220,32 @@ namespace CyDisDrawItem {
         return pos().toPoint();
     }
 
-	void Item_Rect::onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) {
-		switch (type) {
-		    case CyDisDrawItem::BaseItem::Contex_Geometric: {
-			    CyMediaDisRectItem_Menu_geo menuW;
-			    menuW.flushTrans();
-			    menuW.setWindowTitle(getContextStr(type));
-			    menuW.setPara(
-				    boundingRectInScene(),
-				    { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
-			    auto sel = menuW.exec();
-			    if (sel == menuW.Accepted) {
-				    auto setRect = menuW.getSetRect();
-				    setBoundingRectInScene(setRect.topLeft(), setRect.bottomRight());
-			    }
-		    }break;
-
-		    case CyDisDrawItem::BaseItem::Contex_Delete: {
-				this->setEnabled(false);
-				emit removeThis(m_id);
-		    }break;
-		}
+    void RectItem::onContextMenuCreate(QMenu& menu) {
+        QAction* act = menu.addAction(tr("Geometric shapes"));
+        act->setData(0);
     }
 
-    QRect Item_Rect::constrainToSceneByPos(const QRect& r) const {
+    void RectItem::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
+        switch (act->data().toUInt()) {
+            case 0: {
+                CyMediaDisRectItem_Menu_geo menuW;
+                menuW.flushTrans();
+                menuW.setWindowTitle(act->text());
+                menuW.setPara(
+                    boundingRectInScene(),
+                    { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
+                auto sel = menuW.exec();
+                if (sel == menuW.Accepted) {
+                    auto setRect = menuW.getSetRect();
+                    setBoundingRectInScene(setRect.topLeft(), setRect.bottomRight());
+                }
+            }break;
+
+            default: break;
+        }
+    }
+
+    QRect RectItem::constrainToSceneByPos(const QRect& r) const {
         if (!scene())
             return r;
 
@@ -382,4 +345,4 @@ namespace CyDisDrawItem {
             });
     }
 }
-#include "Item_Rect.moc"
+#include "RectItem.moc"

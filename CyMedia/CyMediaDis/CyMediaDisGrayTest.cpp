@@ -1,4 +1,4 @@
-#include "CyMediaDisGrayTest.h"
+﻿#include "CyMediaDisGrayTest.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "cycustomwidget.h"
@@ -366,7 +366,8 @@ void CyMediaDisGrayTest::closeEvent(QCloseEvent* event) {
 
 void CyMediaDisGrayTest::showEvent(QShowEvent* event) {
     d->mfirstShow = true;
-    emit testModeChange(d->mDrawType);
+    if (!d->m_parentDis || true == d->m_parentDis->isSingleItemMode())
+        emit testModeChange(d->mDrawType);
     emit needImage();
     QWidget::showEvent(event);
 }
@@ -718,7 +719,8 @@ void CyMediaDisGrayTest::onResetShaft() {
 
 void CyMediaDisGrayTest::onDrawActTriggered(QAction* act) {
     d->mDrawType = CyDisDrawItem::ItemType(act->data().toInt());
-    emit testModeChange(int(d->mDrawType));
+    if (!d->m_parentDis || true == d->m_parentDis->isSingleItemMode())
+        emit testModeChange(int(d->mDrawType));
 }
 
 void CyMediaDisGrayTest::flushTrans() {

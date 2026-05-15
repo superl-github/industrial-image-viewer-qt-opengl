@@ -111,10 +111,10 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <QtMoc>
-      <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(Platform)\$(Configuration)\moc\</QtMocDir>
+      <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
     </QtMoc>
     <QtRcc>
-      <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(Platform)\$(Configuration)\rcc\</QtRccDir>
+      <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\rcc\</QtRccDir>
     </QtRcc>
     <QtUic>
       <QtUicDir>$(SolutionDir)OutFile\BuildTemp\$(Platform)\$(Configuration)\uic\</QtUicDir>
@@ -130,10 +130,10 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <QtMoc>
-      <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(Platform)\$(Configuration)\moc\</QtMocDir>
+      <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
     </QtMoc>
     <QtRcc>
-      <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(Platform)\$(Configuration)\rcc\</QtRccDir>
+      <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\rcc\</QtRccDir>
     </QtRcc>
     <QtUic>
       <QtUicDir>$(SolutionDir)OutFile\BuildTemp\$(Platform)\$(Configuration)\uic\</QtUicDir>
@@ -154,6 +154,12 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
     </ClCompile>
+    <QtMoc>
+      <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
+    </QtMoc>
+    <QtRcc>
+      <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\rcc\</QtRccDir>
+    </QtRcc>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -162,6 +168,12 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
     </ClCompile>
+    <QtMoc>
+      <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
+    </QtMoc>
+    <QtRcc>
+      <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\rcc\</QtRccDir>
+    </QtRcc>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ClCompile>

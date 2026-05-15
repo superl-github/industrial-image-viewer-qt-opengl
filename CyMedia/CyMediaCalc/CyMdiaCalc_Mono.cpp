@@ -1,4 +1,4 @@
-#include "CyMdiaCalc_Mono.h"
+﻿#include "CyMdiaCalc_Mono.h"
 #if defined _MSC_VER
     #include <ppl.h>
     #include <thread>
@@ -23,7 +23,7 @@ namespace CyMedia {
         if (info.bit <= 8) {
             return ((uint8_t*)pdata)[idx];
         }
-        if (info.bit < 16) {
+        if (info.bit <= 16) {
             return ((uint16_t*)pdata)[idx]/* & int((1U << info.bit) - 1)*/;
         }
         if (info.bit <= 31) {

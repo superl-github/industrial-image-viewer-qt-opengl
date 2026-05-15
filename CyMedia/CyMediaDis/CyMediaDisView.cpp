@@ -1,4 +1,4 @@
-
+﻿
 #include "CyMediaDisView.h"
 #include "CyDMediaDisScen.h"
 
@@ -314,9 +314,9 @@ void CyMediaDisView::zoomAuto(void) {
         return;
 
     QRect fRect = this->rect();
-
-    qreal sw = qreal(fRect.width() * 0.99) / this->scene()->width();
-    qreal sh = qreal(fRect.height() * 0.99) / this->scene()->height();
+    QRectF sceneRect = this->scene()->sceneRect();
+    qreal sw = qreal(fRect.width() * 0.99) / sceneRect.width();
+    qreal sh = qreal(fRect.height() * 0.99) / sceneRect.height();
     qreal s = qMin(sh, sw);
     d->zoom(s);
 }
@@ -326,7 +326,7 @@ void CyMediaDisView::zoomRaw(bool Reset /*= true*/) {
         return;
 
     QTransform transform(this->transform());
-    double value = 1.0 / d->xZoomValue;
+    double value = 1.0;
     d->zoom(value);
     if (Reset) {
         resetTransform();

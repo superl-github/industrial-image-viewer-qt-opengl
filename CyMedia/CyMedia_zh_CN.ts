@@ -13,6 +13,17 @@
     </message>
 </context>
 <context>
+    <name>CyDisDrawItem::BaseItem</name>
+    <message>
+        <source>Geometric shapes</source>
+        <translation>几何形状</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+</context>
+<context>
     <name>CyDisDrawItem::CyMediaDisEllipseItem_Menu_geo</name>
     <message>
         <source>Width</source>
@@ -78,6 +89,25 @@
     </message>
 </context>
 <context>
+    <name>CyDisDrawItem::CyMediaDisPolygonItem_Menu_geo</name>
+    <message>
+        <source>width</source>
+        <translation>宽</translation>
+    </message>
+    <message>
+        <source>height</source>
+        <translation>高</translation>
+    </message>
+    <message>
+        <source>confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <source>cancel</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
     <name>CyDisDrawItem::CyMediaDisRectItem_Menu_geo</name>
     <message>
         <source>width</source>
@@ -100,28 +130,28 @@
     <name>CyDisDrawItem::EllipseItem</name>
     <message>
         <source>Geometric shapes</source>
-        <translation>几何形状</translation>
+        <translation type="vanished">几何形状</translation>
     </message>
 </context>
 <context>
     <name>CyDisDrawItem::LineItem</name>
     <message>
         <source>Geometric shapes</source>
-        <translation>几何形状</translation>
+        <translation type="vanished">几何形状</translation>
     </message>
 </context>
 <context>
     <name>CyDisDrawItem::PointItem</name>
     <message>
         <source>Geometric shapes</source>
-        <translation>几何形状</translation>
+        <translation type="vanished">几何形状</translation>
     </message>
 </context>
 <context>
     <name>CyDisDrawItem::RectItem</name>
     <message>
         <source>Geometric shapes</source>
-        <translation>几何形状</translation>
+        <translation type="vanished">几何形状</translation>
     </message>
 </context>
 <context>
@@ -236,6 +266,10 @@
     <message>
         <source>Quantity</source>
         <translation>数量</translation>
+    </message>
+    <message>
+        <source>Polygon</source>
+        <translation>多边形</translation>
     </message>
 </context>
 </TS>

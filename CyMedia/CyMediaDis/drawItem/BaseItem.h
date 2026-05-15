@@ -4,14 +4,32 @@
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
     class HandleItem;
-    class BaseItem : public QGraphicsObject {
+    class CYMEDIA_LIB BaseItem : public QGraphicsObject {
         Q_OBJECT
+
+    public:
+        enum ContextMenuType {
+            Contex_Geometric = 0,
+            Contex_Delete,
+            Contex_End,
+        };
+
+    public:
+        using ItemCreateContexMenuCallBack = std::function<void(QMenu* menu)>;
+        using ItemContexMenuTriger = std::function<void(QUuid id, int actId, void* puser)>;
+
     public:
         explicit BaseItem(QGraphicsItem* parent = nullptr);
         virtual ~BaseItem();
 
+	public:signals:
+		void removeThis(QUuid id);
+
+		void geometryChanged();
+		void selectedChanged();
+
     public:
-        //固有重写
+        // Intrinsic Override
         QUuid id() const { return m_id; }
         void setid(QUuid& id) { m_id = id; }
         virtual ItemType itemType() const = 0;
@@ -20,16 +38,16 @@ namespace CyDisDrawItem {
         virtual QPainterPath shape() const override;
         virtual QPainterPath pathInScene() const = 0;
 
-        //更新形状
+        // Update shape
         virtual void setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals = true) = 0;
         virtual void setPainterPathInScene(QPainterPath path, bool needSignals = true) = 0;
 
-        //绘制
+        // draw
         virtual bool onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos);
         virtual bool isDrawFinished() const;
         virtual void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) = 0;
 
-        //样式/方法
+        // Style / function
         bool isPreViewMode();
         virtual void setPreviewMode(bool preview);
         virtual void setHandleColor(QColor color);
@@ -42,11 +60,15 @@ namespace CyDisDrawItem {
 
         void pathToMask(const QPainterPath& scenePath, QImage& maskImage);
 
-    public:signals:
-        void removeClicked();
+        void registerCreateContextMenuFunc(ItemCreateContexMenuCallBack func);
+        void registerContextMenuTriggerFunc(ItemContexMenuTriger func, void* pUser);
 
-        void geometryChanged();
-        void selectedChanged();
+        // Flickering
+        bool flickeringEnable();
+        void setFlickeringEnable(bool enable);
+
+        QColor flickeringColor();
+        void setFlickeringColor(QColor color);
 
     protected:
         QUuid m_id;
@@ -55,13 +77,19 @@ namespace CyDisDrawItem {
         QColor m_contour_color_select = QColor(0x2a, 0xa3, 0xc6);
         QColor m_handleColor = Qt::white;
 
-        bool m_bTrackGeometryChange = false;//true:实时追踪，位置或形状改变立即发送 false:移动/调整完成发出信号
+        // true:Real-time tracking: Immediately sends an update if the position or shape changes. 
+        // false: Sends a signal only when movement/resizing is complete.
+        bool m_bTrackGeometryChange = false;
         bool m_positionChangedDuringDrag = false;
 
         bool m_isPreviewMode = false;
 
         QList<HandleItem*> m_handles;
         bool m_handlesVisible = true;
+
+        ItemCreateContexMenuCallBack m_createContextMenuFunc = nullptr;
+        ItemContexMenuTriger m_ContextMenuTriigerFunc = nullptr;
+        void* m_ContextMenuTriigerFunc_user = nullptr;
 
         virtual QPoint getHandlePos(HandlePosition type, int id = 0) = 0;
         virtual QPoint getHandlePosInScene(HandlePosition type, int id = 0) = 0;
@@ -75,13 +103,28 @@ namespace CyDisDrawItem {
         virtual void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
         virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
         virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent* event)override;
-        virtual void onContextMenuCreate(QMenu& menu) {};
-        virtual void onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {};
-
+        
         virtual void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
         virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+
+		//Right-click Menu
+        QString getContextStr(ContextMenuType contexType);
+        virtual bool getContextSupport(ContextMenuType contexType);
+        QMap<QAction*, BaseItem::ContextMenuType> onContextMenuCreate(QMenu& menu);
+        virtual void onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) = 0;
         
+    private slots:
+        void onFlickeringTimeout();
+
     private:
+        // Blink-related members
+        bool m_flickeringEnable = false;
+        QColor m_flickeringColor = Qt::yellow;
+        bool m_flickeringState = true;
+        QTimer* m_flickeringTimer = nullptr;
+        QColor m_oldContourColorUnselect;
+        QColor m_oldContourColorSelect;
+
         friend class HandleItem;
         virtual bool changeByHandle(HandlePosition handletype, int id, QPointF mousePos, QPointF delta) = 0;
     };
@@ -120,6 +163,7 @@ namespace CyDisDrawItem {
         QColor m_color = Qt::white;
 
         bool m_isResizing = false;
-        QPointF m_dragStartScenePos; // 用于 Center 手柄计算偏移
+        // Used to calculate the offset for the Center handle.
+        QPointF m_dragStartScenePos;
     };
 }

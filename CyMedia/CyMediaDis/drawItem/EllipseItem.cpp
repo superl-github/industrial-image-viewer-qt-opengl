@@ -1,4 +1,4 @@
-﻿#include "Item_Ellipse.h"
+﻿#include "EllipseItem.h"
 
 #include <QDialog>
 #include <QLabel>
@@ -30,7 +30,7 @@ namespace CyDisDrawItem {
         QPushButton* m_CancelBtn = nullptr;
     };
 
-    Item_Ellipse::Item_Ellipse(QGraphicsItem* parent /*= nullptr*/)
+    EllipseItem::EllipseItem(QGraphicsItem* parent /*= nullptr*/)
         : BaseItem(parent) {
         m_MinSize = QSize(HandleItem::handleSize() * 3, HandleItem::handleSize() * 3);
         m_localRect = QRect(0, 0, 100, 60); // 默认宽高
@@ -39,26 +39,26 @@ namespace CyDisDrawItem {
         updateHandles();
     }
 
-	QRectF Item_Ellipse::boundingRect() const {
+	QRectF EllipseItem::boundingRect() const {
         return m_localRect;
     }
 
-    QRect Item_Ellipse::boundingRectInScene() const {
+    QRect EllipseItem::boundingRectInScene() const {
         auto pos_I = pos().toPoint();
         return QRect(pos_I.x(), pos_I.y(), m_localRect.width(), m_localRect.height());
     }
 
-    QPainterPath Item_Ellipse::shape() const {
+    QPainterPath EllipseItem::shape() const {
         QPainterPath path;
         path.addEllipse(m_localRect);
         return path;
     }
 
-    QPainterPath Item_Ellipse::pathInScene() const {
+    QPainterPath EllipseItem::pathInScene() const {
         return mapToScene(shape());
     }
 
-    void Item_Ellipse::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
+    void EllipseItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
         Q_UNUSED(option);
         Q_UNUSED(widget);
         painter->setRenderHint(QPainter::Antialiasing);
@@ -71,7 +71,7 @@ namespace CyDisDrawItem {
         painter->drawEllipse(m_localRect);
     }
 
-    void Item_Ellipse::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals /*= true*/) {
+    void EllipseItem::setBoundingRectInScene(const QPoint p1, const QPoint p2, bool needSignals /*= true*/) {
         QRectF sceneRect(p1, p2);
         QRectF newRect = constrainToSceneByPos(sceneRect.toRect());
         m_localRect = QRect(0, 0, newRect.width(), newRect.height());
@@ -84,41 +84,7 @@ namespace CyDisDrawItem {
         }
     }
 
-    void Item_Ellipse::setPainterPathInScene(QPainterPath path, bool needSignals /*= true*/) {
-        QRectF sceneRect = path.boundingRect();
-        QRectF newRect = constrainToSceneByPos(sceneRect.toRect());
-        m_localRect = QRect(0, 0, newRect.width(), newRect.height());
-        setPos(newRect.topLeft());
-        updateHandles();
-        prepareGeometryChange();
-        update();
-        if (needSignals) {
-            emit geometryChanged();
-        }
-    }
-
-    bool Item_Ellipse::onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos) {
-        if (type == QEvent::MouseButtonPress) {
-            m_drawStartPos = scenePos;
-            return true;
-        }
-        else if (type == QEvent::MouseMove) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), false);
-            return true;
-        }
-        else if (type == QEvent::MouseButtonRelease) {
-            setBoundingRectInScene(m_drawStartPos.toPoint(), scenePos.toPoint(), true);
-            m_drawFinished = true;
-            return true;
-        }
-        return false;
-    }
-
-    bool Item_Ellipse::isDrawFinished() const {
-        return m_drawFinished;
-    }
-
-    QPoint Item_Ellipse::constrainToSceneByPos(const QPoint& pos) const {
+    QPoint EllipseItem::constrainToSceneByPos(const QPoint& pos) const {
         if (!scene()) return pos;
         QSize sceneSize = scene()->sceneRect().toRect().size();
         int32_t newLeft = std::clamp(pos.x(), 0, sceneSize.width() - m_localRect.width());
@@ -126,9 +92,8 @@ namespace CyDisDrawItem {
         return QPoint(newLeft, newTop);
     }
 
-	bool Item_Ellipse::changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta) {
+    bool EllipseItem::changeByHandle(CyDisDrawItem::HandlePosition handletype, QPointF mousePos, QPointF delta) {
         if (!scene()) return false;
-        Q_UNUSED(id);
         QRect sceneRect = boundingRectInScene();
         int32_t l = sceneRect.x(), t = sceneRect.y();
         int32_t r = sceneRect.x() + sceneRect.width(), b = sceneRect.y() + sceneRect.height();
@@ -176,7 +141,7 @@ namespace CyDisDrawItem {
         return true;
     }
 
-    void Item_Ellipse::createHandles() {
+    void EllipseItem::createHandles() {
         static const QList<CyDisDrawItem::HandlePosition> positions = {
             CyDisDrawItem::Top,
             CyDisDrawItem::Left,
@@ -195,8 +160,7 @@ namespace CyDisDrawItem {
         setHandlesVisible(m_handlesVisible);
     }
 
-    QPoint Item_Ellipse::getHandlePos(CyDisDrawItem::HandlePosition type, int id) {
-        Q_UNUSED(id);
+    QPoint EllipseItem::getHandlePos(CyDisDrawItem::HandlePosition type) {
         qreal l = 0, t = 0, r = m_localRect.width(), b = m_localRect.height();
         QPointF rectPoint;
         switch (type) {
@@ -215,43 +179,41 @@ namespace CyDisDrawItem {
         return projectToEllipse(rectPoint, m_localRect).toPoint();
     }
 
-    QPoint Item_Ellipse::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
-        return mapToScene(getHandlePos(type, id)).toPoint();
+    QPoint EllipseItem::getHandlePosInScene(CyDisDrawItem::HandlePosition type) {
+        return mapToScene(getHandlePos(type)).toPoint();
     }
 
-	QRect Item_Ellipse::constrainToSceneByPos(const QRect& r) const {
-		if (!scene()) return r;
-		QSize sceneSize = scene()->sceneRect().toRect().size();
-		int32_t newLeft = std::clamp(r.x(), 0, sceneSize.width() - m_MinSize.width());
-		int32_t newTop = std::clamp(r.y(), 0, sceneSize.height() - m_MinSize.height());
-		int32_t newRight = std::clamp(r.x() + r.width(), newLeft + m_MinSize.width(), sceneSize.width());
-		int32_t newBottom = std::clamp(r.y() + r.height(), newTop + m_MinSize.height(), sceneSize.height());
-		return QRect(newLeft, newTop, newRight - newLeft, newBottom - newTop);
-	}
+    void EllipseItem::onContextMenuCreate(QMenu& menu) {
+        QAction* act = menu.addAction(tr("Geometric shapes"));
+        act->setData(0);
+    }
 
-    void Item_Ellipse::onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) {
-        switch (type) {
-            case CyDisDrawItem::BaseItem::Contex_Geometric: {
-				CyMediaDisEllipseItem_Menu_geo menuW;
-				menuW.flushTrans();
-				menuW.setWindowTitle(getContextStr(type));
-				menuW.setPara(
-					boundingRectInScene(),
-					scene()->sceneRect());
-				if (menuW.exec() == QDialog::Accepted) {
-					QRect scencRect = menuW.getSetRect();
-					setBoundingRectInScene(scencRect.topLeft(), scencRect.bottomRight());
-				}
-            }break;
-
-            case CyDisDrawItem::BaseItem::Contex_Delete: {
-				this->setEnabled(false);
-				emit removeThis(m_id);
-            }break;
+    void EllipseItem::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
+        if (act && act->data().toUInt() == 0) {
+            CyMediaDisEllipseItem_Menu_geo menuW;
+            menuW.flushTrans();
+            menuW.setWindowTitle(act->text());
+            menuW.setPara(
+                boundingRectInScene(),
+                scene()->sceneRect());
+            if (menuW.exec() == QDialog::Accepted) {
+                QRect scencRect = menuW.getSetRect();
+                setBoundingRectInScene(scencRect.topLeft(), scencRect.bottomRight());
+            }
         }
     }
 
-    QPointF Item_Ellipse::projectToEllipse(const QPointF& point, const QRectF& rect) {
+    QRect EllipseItem::constrainToSceneByPos(const QRect& r) const {
+        if (!scene()) return r;
+        QSize sceneSize = scene()->sceneRect().toRect().size();
+        int32_t newLeft = std::clamp(r.x(), 0, sceneSize.width() - m_MinSize.width());
+        int32_t newTop = std::clamp(r.y(), 0, sceneSize.height() - m_MinSize.height());
+        int32_t newRight = std::clamp(r.x() + r.width(), newLeft + m_MinSize.width(), sceneSize.width());
+        int32_t newBottom = std::clamp(r.y() + r.height(), newTop + m_MinSize.height(), sceneSize.height());
+        return QRect(newLeft, newTop, newRight - newLeft, newBottom - newTop);
+    }
+
+    QPointF EllipseItem::projectToEllipse(const QPointF& point, const QRectF& rect) {
         if (rect.isEmpty()) return rect.topLeft();
 
         qreal cx = rect.x() + rect.width() / 2.0;
@@ -282,7 +244,7 @@ namespace CyDisDrawItem {
 
 
 
-    bool Item_Ellipse::isCornerHandle(CyDisDrawItem::HandlePosition type) {
+    bool EllipseItem::isCornerHandle(CyDisDrawItem::HandlePosition type) {
         return (type == CyDisDrawItem::TopLeft ||
             type == CyDisDrawItem::TopRight ||
             type == CyDisDrawItem::BottomLeft ||
@@ -359,4 +321,4 @@ namespace CyDisDrawItem {
         connect(m_CancelBtn, &QPushButton::clicked, this, &QDialog::reject);
     }
 }
-#include "Item_Ellipse.moc"
+#include "EllipseItem.moc"

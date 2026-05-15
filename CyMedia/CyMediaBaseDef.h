@@ -13,7 +13,7 @@ namespace CyMedia {
     using LogCallback = std::function<void(const std::string&, void*)>;
 
     /**
-    * @brief    支持的显示语言
+    * @brief    Supported Languages
     */
     enum eLanguage {
         CHINESE,
@@ -21,8 +21,8 @@ namespace CyMedia {
     };
 
     /**
-    * @brief    像素格式
-    * @details  单个颜色通道最大16位
+    * @brief    Pixel Format
+    * @details  Maximum 31 bits per color channel.
     */
     enum ePixType {
         MONO = 0,
@@ -40,7 +40,7 @@ namespace CyMedia {
     };
 
     /**
-     * @brief 像素数据类型
+     * @brief Pixel Data Type
      */
     enum eSpecialValueType {
         IMGVALUE_None,
@@ -49,7 +49,7 @@ namespace CyMedia {
     };
 
     /**
-     * @brief   支持的存图格式
+     * @brief   Supported Image Formats
     */
     enum eSaveImageFormat {
         ImageFormat_BMP,
@@ -57,7 +57,7 @@ namespace CyMedia {
     };
 
     /**
-     * @brief 图像运算类型
+     * @brief Image Operation Types
     */
     enum ImageMath {
         Image1AddImage2,
@@ -90,15 +90,15 @@ namespace CyMedia {
 
 #pragma pack(push,1)
     /**
-     * @brief   单帧数据结构体
+     * @brief   Single-Frame Data Structure
      */
     struct ImageShowInfo {
-        int32_t width = 0;       ///< 图像一行的像素个数
-        int32_t height = 0;      ///< 图像一列的像素个数
-        int8_t  bit = 8;         ///< 单个颜色通道的位宽
-        ePixType format = MONO;   ///< 图像格式
+        int32_t width = 0;       ///< The number of pixels in a single row of the image
+        int32_t height = 0;      ///< The number of pixels in a column of the image
+        int8_t  bit = 8;         ///< Bit depth of a single color channel
+        ePixType format = MONO;   ///< Image Format
         eSpecialValueType special_value = IMGVALUE_None;
-        uint32_t length = 0;  ///< 数据长度(字节)
+        uint32_t length = 0;  ///< Data Length (Bytes)
 
         ImageShowInfo(int w, int h, int b, ePixType f, uint32_t l = 0, eSpecialValueType sv = IMGVALUE_None)
             : width(w), height(h), bit(static_cast<int8_t>(b)), format(f), special_value(sv) {

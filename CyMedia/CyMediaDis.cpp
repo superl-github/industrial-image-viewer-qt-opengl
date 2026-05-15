@@ -1,4 +1,4 @@
-#include "CyMediaDis.h"
+﻿#include "CyMediaDis.h"
 
 #include "CyMediaDis/CyMediaDisView.h"
 #include "CyMediaDis/CyDMediaDisScen.h"
@@ -85,6 +85,7 @@ namespace CyMedia {
 
         void stopImageOpeThread();
 
+        CyDisDrawItem::ItemType drawMode();
         void setDrawMode(CyDisDrawItem::ItemType mode);
 
     private:
@@ -159,6 +160,8 @@ namespace CyMedia {
         bool bZoomScrollBarIsShow = false;
 
         QElapsedTimer m_ThumbnailUpTimer;
+        bool m_AutoThumbnail = true;
+        QSize m_AutoThumbnailSize = QSize(2000, 2000);
 
         CyMediaRecTimeW* mRetimeItem = nullptr;
         CyMediaDisGrayStretch* mStretchWidget = nullptr;
@@ -429,15 +432,15 @@ namespace CyMedia {
             return;
 
         if (d->upDataIsSlow()) {
-            d->imageItem->setPos(0, 0);
             d->view->zoomAuto();
         }
         else {
-            QTimer::singleShot(0, this, [this]() {
-                d->imageItem->setPos(0, 0);
-                d->view->zoomAuto();
-                });
+            QTimer::singleShot(0, d->view, &CyMediaDisView::zoomAuto);
         }
+	}
+
+	CyDisDrawItem::ItemType CyMediaDis::drawMode() {
+        return d->drawMode();
 	}
 
 	void CyMediaDis::setDrawMode(CyDisDrawItem::ItemType mode) {
@@ -458,11 +461,30 @@ namespace CyMedia {
         return d->drawmanager->addItemByTypeWidthPath(itemType, path);
 	}
 
+	void CyMediaDis::removeItme(QUuid id) {
+        d->drawmanager->removeItem(id, true);
+	}
+
+	int CyMediaDis::itemCount() {
+        return d->drawmanager->itemCount();
+	}
+
+	QList<CyDisDrawItem::BaseItem*>& CyMediaDis::items() {
+        return d->drawmanager->items();
+	}
+
 	CyDisDrawItem::BaseItem* CyMediaDis::getItem(QUuid& id) {
         return d->drawmanager->getItem(id);
     }
 
-    void CyMediaDis::clearItem() {
+	void CyMediaDis::setItemSelected(QUuid id) {
+        auto item = getItem(id);
+        if (item) {
+            item->setSelected(true);
+        }
+	}
+
+	void CyMediaDis::clearItem() {
         d->drawmanager->clearAll();
     }
 
@@ -472,6 +494,10 @@ namespace CyMedia {
 
     void CyMediaDis::setSingleItemMode(bool flag){
         d->drawingTool->setReplaceMode(flag);
+        //清除当前item
+		/*if (flag) {
+			d->drawmanager->clearAll();
+		}*/
     }
 
     QUuid CyMediaDis::getLaseItem() {
@@ -514,6 +540,37 @@ namespace CyMedia {
         }
         d->bZoomScrollBarIsShow = show;
     }
+
+	bool CyMediaDis::thumbnailEnable() {
+        return d->view->thumbnailEnable();
+	}
+
+	void CyMediaDis::setThumbnailEnable(bool enable) {
+        if (d->m_AutoThumbnail) return;
+        d->view->setThumbnailEnable(enable);
+	}
+
+	bool CyMediaDis::thumbnailAutoEnable() {
+        return d->m_AutoThumbnail;
+	}
+
+	void CyMediaDis::setThumbnailAutoEnable(bool enable) {
+        d->m_AutoThumbnail = enable;
+		if (d->upDataIsSlow()) {
+			d->addOneGrayData(true);
+		}
+	}
+
+	QSize CyMediaDis::thumbnailAutoEnableSize() {
+        return d->m_AutoThumbnailSize;
+	}
+
+	void CyMediaDis::setThumbnailAutoEnableSize(QSize size) {
+        d->m_AutoThumbnailSize = size;
+		if (d->upDataIsSlow()) {
+			d->addOneGrayData(true);
+		}
+	}
 
 	bool CyMediaDis::recTimeVisible() {
         return d->mRetimeItem->isVisible();
@@ -958,7 +1015,6 @@ namespace CyMedia {
                 imageInfoChange = true;
             //ImageItem->upImageInfo(Imageinfo);
             memcpy(&m_imageinfo, &src_info, sizeof(CyMedia::ImageShowInfo));
-            m_bFistUpImage = false;
         }
         // 鼠标位置颜色
         if (calcolorTimer.isValid()) {
@@ -1242,6 +1298,9 @@ namespace CyMedia {
         drawmanager = new CyDisDrawItem::ItemManager(scene, m_parent);
         connect(drawmanager, &CyDisDrawItem::ItemManager::itemAdded, this, &CyMediaDis::privateData::onAddItem);
         connect(drawmanager, &CyDisDrawItem::ItemManager::itemRemoved, this, &CyMediaDis::privateData::onRemoveItem);
+        connect(drawmanager, &CyDisDrawItem::ItemManager::itemSelectionChanged, this, [this](QUuid id, bool selected) {
+            if (selected) m_parent->emit itemSelected(id);
+            });
 
         //绘制工具
         drawingTool = new CyDisDrawItem::DrawItemTool(drawmanager, view, m_parent);
@@ -1315,6 +1374,16 @@ namespace CyMedia {
             view->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         }
 
+        //自动缩略图
+        if (m_AutoThumbnail) {
+            view->setThumbnailEnable(info.width > m_AutoThumbnailSize.width() || info.height > m_AutoThumbnailSize.height());
+        }
+
+        if (m_bFistUpImage) {
+            m_bFistUpImage = false;
+            m_parent->zoomAuto();
+        }
+
         scene->update();
         view->update();
         m_parent->update();
@@ -1334,20 +1403,27 @@ namespace CyMedia {
         if (mGrayTestWidget->isVisible()) {
             mGrayTestWidget->Itemdraw(item);
         }
-        m_parent->emit itemDrawed(item);
+        m_parent->emit itemDrawed(id);
     }
+
+	CyDisDrawItem::ItemType CyMediaDis::privateData::drawMode() {
+        return drawingTool->draMode();
+	}
 
     void CyMediaDis::privateData::setDrawMode(CyDisDrawItem::ItemType mode) {
         drawingTool->setDrawMode(CyDisDrawItem::ItemType(mode));
         view->setDrawMode(mode != CyDisDrawItem::Invalid);
+        m_parent->emit drawModeChange(mode);
     }
 
     void CyMediaDis::privateData::onRemoveItem(QUuid id) {
         if (mGrayTestWidget->isVisible()) {
             mGrayTestWidget->ItemRemoved(id);
         }
+        m_parent->emit itemRemoved(id);
     }
 
+	
 
 
 

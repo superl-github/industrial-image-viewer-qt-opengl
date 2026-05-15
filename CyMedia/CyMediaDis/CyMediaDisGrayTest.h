@@ -131,9 +131,9 @@ private:
         }
 
         void addData(double value) {
-            mBuffer[mHead] = value;          // 覆盖最早数据（淘汰）
-            mHead = (mHead + 1) % mPosHisMax;   // 移动指针（循环）
-            if (mCount < mPosHisMax) mCount++;  // 初始填充时计数
+            mBuffer[mHead] = value;          // Overwrite oldest data (Eviction)
+            mHead = (mHead + 1) % mPosHisMax;   // Move pointer (Loop)
+            if (mCount < mPosHisMax) mCount++;  // Count during initial population
         }
 
         void getLinearData(std::vector<double>& output) {
@@ -146,7 +146,6 @@ private:
                 output.resize(mCount);
             }
             double* pOut = output.data();
-            // 关键修复：计算正确起始位置
             int start = (mHead - mCount + mPosHisMax) % mPosHisMax;
 
             if (start + mCount <= mPosHisMax) {
@@ -160,9 +159,9 @@ private:
 
         int count() const { return mCount; };
     private:
-        int mCount = 0;           // 当前有效数据量
-        double mBuffer[mPosHisMax];      // 单一数组
-        int mHead = 0;            // 指向最早数据
+        int mCount = 0;           // Current Volume of Valid Data
+        double mBuffer[mPosHisMax];      // Single Array
+        int mHead = 0;            // Points to the earliest data
     };
 
     QString getPosToolTip_XStr(bool Mono);

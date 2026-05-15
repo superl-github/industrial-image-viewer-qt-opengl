@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "BaseItem.h"
 #include <QList>
 namespace CyDisDrawItem {
@@ -29,8 +29,8 @@ namespace CyDisDrawItem {
         bool changeByHandle(CyDisDrawItem::HandlePosition handletype, int id, QPointF mousePos, QPointF delta)override;
         QPoint getHandlePos(CyDisDrawItem::HandlePosition type, int id = 0) override;
         QPoint getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id = 0)override;
-        void onContextMenuCreate(QMenu& menu) override;
-        void onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) override;
+		//右键菜单
+        void onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) override;
         QRect constrainToSceneByPos(const QRect& r) const;
     private:
         QList<QPointF> m_points;          // 本地坐标顶点列表

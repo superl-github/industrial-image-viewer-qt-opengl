@@ -1,4 +1,4 @@
-#include "Item_Polygon.h"
+﻿#include "Item_Polygon.h"
 #include <QPen>
 #include <QBrush>
 #include <QDialog>
@@ -283,39 +283,39 @@ namespace CyDisDrawItem {
     QPoint Item_Polygon::getHandlePosInScene(CyDisDrawItem::HandlePosition type, int id) {
         return mapToScene(getHandlePos(type, id)).toPoint();
     }
-    void Item_Polygon::onContextMenuCreate(QMenu& menu) {
-        QAction* act = menu.addAction(tr("Geometric shapes"));
-        act->setData(0);
-    }
-    void Item_Polygon::onContexMenu(QAction* act, QGraphicsSceneContextMenuEvent* event) {
-        if (!act || event) return;
-        switch (act->data().toUInt()) {
-        case 0: {
-            CyMediaDisPolygonItem_Menu_geo menuW;
-            menuW.flushTrans();
-            menuW.setWindowTitle(act->text());
-            menuW.setPara(
-                boundingRectInScene(),
-                { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
-            auto sel = menuW.exec();
-            if (sel == menuW.Accepted) {
-                auto setRect = menuW.getSetRect();
-                QRect oldRect = boundingRectInScene();
-                // 缩放整个多边形到新的矩形
-                qreal sx = (qreal)setRect.width() / oldRect.width();
-                qreal sy = (qreal)setRect.height() / oldRect.height();
-                for (auto& p : m_points) {
-                    p.setX(p.x() * sx);
-                    p.setY(p.y() * sy);
-                }
-                setPos(setRect.topLeft());
-                updateHandles();
-                prepareGeometryChange();
-                update();
-            }
-        }break;
-        default: break;
-        }
+
+	void Item_Polygon::onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) {
+		switch (type) {
+            case CyDisDrawItem::BaseItem::Contex_Geometric: {
+                CyMediaDisPolygonItem_Menu_geo menuW;
+                menuW.flushTrans();
+                menuW.setWindowTitle(getContextStr(type));
+                menuW.setPara(
+                    boundingRectInScene(),
+                    { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
+                auto sel = menuW.exec();
+                if (sel == menuW.Accepted) {
+                    auto setRect = menuW.getSetRect();
+                    QRect oldRect = boundingRectInScene();
+                    // 缩放整个多边形到新的矩形
+                    qreal sx = (qreal)setRect.width() / oldRect.width();
+                    qreal sy = (qreal)setRect.height() / oldRect.height();
+                    for (auto& p : m_points) {
+                        p.setX(p.x() * sx);
+                        p.setY(p.y() * sy);
+                    }
+                    setPos(setRect.topLeft());
+                    updateHandles();
+                    prepareGeometryChange();
+					update();
+				}
+            }break;
+
+            case CyDisDrawItem::BaseItem::Contex_Delete: {
+				this->setEnabled(false);
+				emit removeThis(m_id);
+            }break;
+		}
     }
     QRect Item_Polygon::constrainToSceneByPos(const QRect& r) const {
         if (!scene())
