@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "CyMediaDisView.h"
+#include <QVector>
 
 struct VertexData {
     QVector3D position;
@@ -76,6 +77,14 @@ public:
     qint32 m_ColorMapData_Width = 0;
     qint32 m_ColorMapData_Height = 0;
     bool bColorMapChange = false;
+
+    //温度计算
+    bool useTempeMeasure = false;
+    std::vector<double> m_tempeMeasure_poly;
+    int m_tempeMeasure_poly_degree = 0;
+    int m_tempeMeasure_MaxTemp = 100;
+    int m_tempeMeasure_MinTemp = 0;
+    bool m_tempeMeasureParaChange = false;
 
     // 状态标记
     bool bIsFirstUpData = true;
@@ -513,6 +522,39 @@ bool CyDMediaDisBack::setColorMap(const QString& mapName)
     return setColorMap(index);
 }
 
+bool CyDMediaDisBack::enableTempeMeasure() {
+    return d->useTempeMeasure;
+}
+
+void CyDMediaDisBack::setUseTempeMeasure(bool use) {
+    if (d->useTempeMeasure == use) return;
+    d->useTempeMeasure = use;
+}
+
+void CyDMediaDisBack::getTempMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe) {
+    poly = d->m_tempeMeasure_poly;
+    maxTempe = d->m_tempeMeasure_MaxTemp;
+    minTempe = d->m_tempeMeasure_MinTemp;
+}
+
+void CyDMediaDisBack::setTempMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe) {
+    bool setParaChange = maxTempe != d->m_tempeMeasure_MaxTemp || minTempe != d->m_tempeMeasure_MinTemp;
+    int comparaSize = std::min(int(poly.size()), 10);
+    if (false == setParaChange) {
+        setParaChange = std::equal(poly.begin(), poly.begin() + comparaSize, d->m_tempeMeasure_poly.begin());
+    }
+    if (setParaChange == false) return;
+
+	d->m_tempeMeasure_MaxTemp = maxTempe;
+	d->m_tempeMeasure_MinTemp = minTempe;
+
+    d->m_tempeMeasure_poly.assign(10, 0.0);
+    std::copy_n(poly.begin(), comparaSize, d->m_tempeMeasure_poly.begin());
+    d->m_tempeMeasure_poly_degree = comparaSize;
+
+    d->m_tempeMeasureParaChange = true;
+}
+
 QRectF CyDMediaDisBack::boundingRect() const
 {
     return QRectF(0, 0, d->imageDataInfo.width, d->imageDataInfo.height);
@@ -605,6 +647,20 @@ void CyDMediaDisBack::setupShaderUniforms(QOpenGLFunctions* f, QMatrix4x4 mat)
     d->shaderProgram->setUniformValue("nWidth", d->imageDataInfo.width);
     d->shaderProgram->setUniformValue("nHeight", d->imageDataInfo.height);
     d->shaderProgram->setUniformValue("pixrange", d->maxBitlColor);
+
+    // 温度计算
+	d->shaderProgram->setUniformValue("useTempeMeasure", d->useTempeMeasure ? 1 : 0);
+	if (d->useTempeMeasure && d->m_tempeMeasureParaChange) {
+		d->m_tempeMeasureParaChange = false;
+		d->shaderProgram->setUniformValue("tempeMeasure_MaxTempe", float(d->m_tempeMeasure_MaxTemp));
+		d->shaderProgram->setUniformValue("tempeMeasure_MinTempe", float(d->m_tempeMeasure_MinTemp));
+		GLint loc = f->glGetUniformLocation(program, "tempeMeasure_Poly");
+		if (loc != -1) {
+			std::vector<float> temp(d->m_tempeMeasure_poly.begin(), d->m_tempeMeasure_poly.end());
+			f->glUniform1fv(loc, temp.size(), temp.data());
+		}
+        d->shaderProgram->setUniformValue("tempeMeasure_Poly_degree", d->m_tempeMeasure_poly_degree);
+	}
 
     // 设置颜色类型
     CyMedia::ePixType colorType = d->bShowBayerSource ?

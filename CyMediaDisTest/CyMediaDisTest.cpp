@@ -13,6 +13,15 @@ CyMediaDisTest::CyMediaDisTest(QWidget *parent)
     m_view = new CyMedia::CyMediaDis(this);
     m_view->setGrayStretchVisible(true);
     m_view->setGrayTestVisible(true);
+    connect(m_view, &CyMedia::CyMediaDis::itemDrawed, this, [this](QUuid id) {
+		auto item = m_view->getItem(id);
+		if (item) {
+			item->setFlickeringEnable(true);
+		}
+        });
+    connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, [this](qint32 x, qint32 y, double r, double g, double b, bool signlR) {
+        printf("upPosPix -> (%d,%d)=>(%llf,%llf,%llf)(%d)\n", x, y, r, g, b, signlR);
+        });
 
     QGridLayout* mainLayout = new QGridLayout(this->centralWidget());
     mainLayout->setContentsMargins(0, 0, 0, 0);

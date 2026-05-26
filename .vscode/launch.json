@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug CyMedia Qt",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/OutFile/Win32/Debug/CyMediaDisTest.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "symbolSearchPath": "${workspaceFolder}/OutFile/Win32/Debug"
+        }
+    ]
+}

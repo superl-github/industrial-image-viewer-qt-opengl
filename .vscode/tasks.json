@@ -1,0 +1,55 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "【1】编译 Win32 Debug",
+            "type": "shell",
+            "command": "cmd /c \"\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\Tools\\VsDevCmd.bat\" && msbuild CyMedia.sln /p:Configuration=Debug /p:Platform=Win32\"",
+            "options": {
+                "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+            },
+            "problemMatcher": ["$msCompile"],
+            "group": { "kind": "build" }
+        },
+        {
+            "label": "【2】编译 Win32 Release",
+            "type": "shell",
+            "command": "cmd /c \"\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\Tools\\VsDevCmd.bat\" && msbuild CyMedia.sln /p:Configuration=Release /p:Platform=Win32\"",
+            "options": {
+                "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+            },
+            "problemMatcher": ["$msCompile"],
+            "group": { "kind": "build" }
+        },
+        {
+            "label": "【3】编译 x64 Debug",
+            "type": "shell",
+            "command": "cmd /c \"\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\Tools\\VsDevCmd.bat\" && msbuild CyMedia.sln /p:Configuration=Debug /p:Platform=x64\"",
+            "options": {
+                "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+            },
+            "problemMatcher": ["$msCompile"],
+            "group": { "kind": "build" }
+        },
+        {
+            "label": "【4】编译 x64 Release",
+            "type": "shell",
+            "command": "cmd /c \"\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\Tools\\VsDevCmd.bat\" && msbuild CyMedia.sln /p:Configuration=Release /p:Platform=x64\"",
+            "options": {
+                "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+            },
+            "problemMatcher": ["$msCompile"],
+            "group": { "kind": "build" }
+        },
+        {
+            "label": "【5】一次性编译所有环境（Win32+x64 + Debug+Release）",
+            "type": "shell",
+            "command": "cmd /c \"\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\Tools\\VsDevCmd.bat\" && msbuild CyMedia.sln /p:Configuration=Debug /p:Platform=Win32 && msbuild CyMedia.sln /p:Configuration=Release /p:Platform=Win32 && msbuild CyMedia.sln /p:Configuration=Debug /p:Platform=x64 && msbuild CyMedia.sln /p:Configuration=Release /p:Platform=x64\"",
+            "options": {
+                "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+            },
+            "problemMatcher": ["$msCompile"],
+            "group": { "kind": "build" }
+        }
+    ]
+}

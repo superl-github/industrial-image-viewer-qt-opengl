@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CyDisDrawItem.h"
 
 namespace CyDisDrawItem {
@@ -119,7 +119,7 @@ namespace CyDisDrawItem {
     private:
         // Blink-related members
         bool m_flickeringEnable = false;
-        QColor m_flickeringColor = Qt::yellow;
+        QColor m_flickeringColor = Qt::red;
         bool m_flickeringState = true;
         QTimer* m_flickeringTimer = nullptr;
         QColor m_oldContourColorUnselect;

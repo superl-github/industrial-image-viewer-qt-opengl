@@ -110,7 +110,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
             currentCtrIndex = 1;
         }
     }
-    debug_msg("切换界面 耗时：%lldms\n", eTimer.elapsed());
+    //debug_msg("切换界面 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     d->mImageBit = info.bit;
@@ -123,7 +123,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
         calcHisMaxX = 120;
         stretchMax = 100;
     }
-    debug_msg("计算直方图 耗时：%lldms\n", eTimer.elapsed());
+    //debug_msg("计算直方图 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //更新拉伸边界范围
@@ -131,7 +131,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
         d->mSelect_max = stretchMax;
         emit upEditRange();
     }
-    debug_msg("更新拉伸边界范围 耗时：%lldms\n", eTimer.elapsed());
+    //debug_msg("更新拉伸边界范围 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //更新直方图
@@ -164,7 +164,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
 
         d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
-    debug_msg("更新直方图 耗时：%lldms\n", eTimer.elapsed());
+    //debug_msg("更新直方图 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //更新显示范围
@@ -172,7 +172,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
     size_t idx97 = static_cast<size_t>(d->mHisData.size() * 0.97);
     calcHisMaxY = d->mHisData[idx97];
     emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(calcHisMaxY));
-    debug_msg("更新显示范围 耗时：%lldms\n", eTimer.elapsed());
+    //debug_msg("更新显示范围 耗时：%lldms\n", eTimer.elapsed());
 
     return true;
 }
@@ -571,17 +571,17 @@ void CyMediaDisGrayStretch::initGUI() {
     grayCtrLayout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     grayCtrLayout->addWidget(d->mAutoStretchLab);
     grayCtrLayout->addWidget(d->mAutoStretchBtn);
-    grayCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QWidget* rgbCtrW = new QWidget(this);
     QHBoxLayout* rgbCtrLyout = new QHBoxLayout(rgbCtrW);
     rgbCtrLyout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     rgbCtrLyout->addWidget(d->mRGBStretchTypeLab);
     rgbCtrLyout->addWidget(d->mRGBStretchTypeBox);
-    rgbCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     d->mControlTab->clear();
     d->mControlTab->addTab(grayCtrW, "");
     d->mControlTab->addTab(rgbCtrW, "");
+    grayCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    rgbCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QGridLayout* mainLayou = new QGridLayout(this);
     mainLayou->addWidget(d->mCustomPlot, 0, 0, 1, 3);
@@ -657,6 +657,7 @@ void CyMediaDisGrayStretch::onUpHisRange(int minX, int maxX, int maxY) {
         d->mCustomPlot->xAxis->setRange(d->mXrangeMin, d->mXRange);
     }
 
+    if (maxY <= 0) return;
     float yChange = abs(d->mYRange - maxY) / d->mYRange;
     if (yChange > 0.2) {
         d->mYRange = maxY;

@@ -1,0 +1,4 @@
+﻿能不能帮我给BaseItem实现以下接口：
+setFlickeringEnable(bool enable);
+setFlickeringColor(QColor color);
+让BaseItem实现color与灰色交替实现，以达到闪烁效果，是不是要重写qitaitem的painter或者只实现BaseItem的painter，在其他派生类中先调用BaseItem::painter

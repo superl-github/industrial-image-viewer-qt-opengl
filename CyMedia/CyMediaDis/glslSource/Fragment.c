@@ -1,4 +1,4 @@
-#version 330 core
+﻿#version 330 core
 
 //======uniform======
 uniform sampler2D texture;
@@ -12,6 +12,11 @@ uniform float pixrange;
 uniform int stretchType;
 uniform vec2 stretchPara;
 uniform float zoomValue;
+uniform int useTempeMeasure;
+uniform float tempeMeasure_MaxTempe;
+uniform float tempeMeasure_MinTempe;
+uniform float tempeMeasure_Poly[10];
+uniform int tempeMeasure_Poly_degree;
 
 //======in======
 in vec2 TexCoord;
@@ -23,6 +28,8 @@ out vec4 fragColor;
 // value: Input pixel color (typically RGBA, but only RGB part matters for conversion)
 // para: vec2 containing (K, C) for the stretching operation (new_value = K * old_value + C)
 vec4 stretchPixel(int type, vec4 value, vec2 para);
+
+float dnToTempe(const float poly[10], int degree, float dn, float maxVal, float minVal);
 
 void main() {
     
@@ -36,9 +43,13 @@ void main() {
     //===== 计算像素值 =====
     float maxPixelValue = pixrange - 1.0;
     if (colorType == 0) {//Moon
+        //温度计算
+        if (useTempeMeasure > 0) {
+            rgba.r = dnToTempe(tempeMeasure_Poly, tempeMeasure_Poly_degree, rgba.r, tempeMeasure_MaxTempe, tempeMeasure_MinTempe);
+        }
         rgba.g = rgba.r;
-            rgba.b = rgba.r;
-            rgba.a = 1.0;
+		rgba.b = rgba.r;
+		rgba.a = 1.0;
     }
     else if (colorType == 11) {//MONO_OVERSIZE
         int monoIndex = intTexCoord.y * texSize.x + intTexCoord.x;
@@ -46,6 +57,10 @@ void main() {
         int RGBA_Y = intTexCoord.y / 2;
         int RGBA_C = monoIndex % 4;
         rgba.r = texelFetch(texture, ivec2(RGBA_X, RGBA_Y), 0)[RGBA_C];
+        //温度计算
+		if (useTempeMeasure > 0) {
+			rgba.r = dnToTempe(tempeMeasure_Poly, tempeMeasure_Poly_degree, rgba.r, tempeMeasure_MaxTempe, tempeMeasure_MinTempe);
+		}
         rgba.g = rgba.r;
         rgba.b = rgba.r;
         rgba.a = 1.0;
@@ -260,4 +275,50 @@ vec4 stretchPixel(int type, vec4 value, vec2 para) {
         tempRGB.rgb = clampRGB(stretched_rgb);
     }
     return tempRGB;
+}
+
+float polyEval(const float poly[10], int degree, float x) {
+    float calcV = 0.0;
+    for (int i = 0; i <= degree; i++) {
+        calcV = calcV * x + poly[i];
+    }
+    return calcV;
+}
+float polyEval_deriv(const float poly[10], int degree, float x) {
+    float y = 0.0;
+    for (int i = 0; i < degree; i++) {
+        y = y * x + float(degree - i) * poly[i];
+    }
+    return y;
+}
+float polySolve(const float poly[10], int degree, float v, float maxVal, float minVal) {
+    if (degree < 0) return 0.0 / 0.0;
+    float left = min(maxVal, minVal);
+    float right = max(maxVal, minVal);
+    float eps = max(1e-5, (right - left) * 1e-8);
+
+    const int maxIter = 100;
+    float x = maxVal;
+
+    for (int i = 0; i < maxIter; i++) {
+        float fx = polyEval(poly, degree, x) - v;
+        float dfx = polyEval_deriv(poly, degree, x);
+
+        if (abs(dfx) < 1e-12) return 0.0 / 0.0;
+
+        float xNew = x - fx / dfx;
+        if (abs(xNew - x) < eps) return xNew;
+        x = xNew;
+    }
+
+    return 0.0 / 0.0;
+}
+float remap(float value, float inMin, float inMax, float outMin, float outMax) {
+    return (value - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
+}
+float dnToTempe(const float poly[10], int degree, float dn, float maxVal, float minVal) {
+    float Tempe = polySolve(poly, degree, dn, maxVal, minVal);
+    if (isnan(Tempe)) Tempe = minVal;
+
+    return remap(Tempe, minVal, maxVal, 0.0, 1.0);
 }

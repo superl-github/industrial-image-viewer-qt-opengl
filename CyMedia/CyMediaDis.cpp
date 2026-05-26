@@ -427,6 +427,14 @@ namespace CyMedia {
         return true;
     }
 
+	void CyMediaDis::zoomIn() {
+        d->view->zoomIn();
+	}
+
+	void CyMediaDis::zoomOut() {
+        d->view->zoomOut();
+	}
+
 	void CyMediaDis::zoomAuto() {
         if (false == d->bHaveData)
             return;
@@ -437,6 +445,26 @@ namespace CyMedia {
         else {
             QTimer::singleShot(0, d->view, &CyMediaDisView::zoomAuto);
         }
+	}
+
+	void CyMediaDis::zoomraw(bool reset) {
+        d->view->zoomRaw(reset);
+	}
+
+	bool CyMediaDis::tempeMeasureEnable() {
+        return d->imageItem->enableTempeMeasure();
+	}
+
+	void CyMediaDis::setTempeMeasureEnable(bool enable) {
+        d->imageItem->setUseTempeMeasure(enable);
+	}
+
+	void CyMediaDis::getTempeMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe) {
+        d->imageItem->getTempMeasurePara(poly, maxTempe, minTempe);
+	}
+
+	void CyMediaDis::setTempeMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe) {
+        d->imageItem->setTempMeasurePara(poly, maxTempe, minTempe);
 	}
 
 	CyDisDrawItem::ItemType CyMediaDis::drawMode() {
@@ -1129,6 +1157,7 @@ namespace CyMedia {
         //视图
         view = new CyMediaDisView();
         QOpenGLWidget* OpenGlwidget = new QOpenGLWidget(m_parent);
+        OpenGlwidget->setMouseTracking(true);
         ////指定opengl版本
         //QSurfaceFormat format;
         //format.setVersion(3, 3);

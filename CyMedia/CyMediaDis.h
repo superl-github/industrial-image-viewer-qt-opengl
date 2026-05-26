@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CyMediaBaseDef.h"
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
@@ -28,7 +28,7 @@ namespace CyMedia {
         void PressOnView();
         void DoubleClickOnView();
 
-        void upPosPix(int32_t x, int32_t y, double r, double g, double b, bool signlR);
+        void upPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR);
         void zoomValueChange(double value);
         void pressOnView();
 
@@ -74,7 +74,16 @@ namespace CyMedia {
         bool setColorMap(quint32 index);
         bool setColorMap(const QString& mapName);
 
+        void zoomIn();
+        void zoomOut();
         void zoomAuto();
+        void zoomraw(bool reset);
+
+        bool tempeMeasureEnable();
+        void setTempeMeasureEnable(bool enable);
+
+        void getTempeMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe);
+        void setTempeMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe);
 
         //Tools/UI
         CyDisDrawItem::ItemType drawMode();
