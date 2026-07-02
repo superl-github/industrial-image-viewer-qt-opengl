@@ -29,7 +29,7 @@ private:signals:
     void transImageType(int index);
     void upStretchRange(int start, int end);
     void upHisRange(int minX, int maxX, int maxY);
-    void upEditRange();
+    void upEditRange(bool bitChange = false);
 
 public:
     void flushTrans();
@@ -80,7 +80,7 @@ private:
     void onTransImageType(int index);
     void onUpStretchRange(int start, int end);
     void onUpHisRange(int minX, int maxX, int maxY);
-    void onUpEditRange();
+    void onUpEditRange(bool bitChange = false);
 
 private:
     struct PrivateData;

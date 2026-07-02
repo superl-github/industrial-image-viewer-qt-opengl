@@ -1,4 +1,4 @@
-#include "CyMediaCalc.h"
+﻿#include "CyMediaCalc.h"
 #include "CyMdiaCalc_Mono.h"
 #include "CyMdiaCalc_Bayer.h"
 #include "CyMdiaCalc_Rgb.h"
@@ -139,7 +139,7 @@ namespace CyMedia {
         double hisAve = 0.0;
         uint32_t t_StretchSFlag = 0, t_StretchEFlag = 0;
         start = 0;
-        end = 0;
+        end = histogram.size() - 1;
         for (auto& oneValue : histogram) {
             hisAve += oneValue;
         }
@@ -164,7 +164,7 @@ namespace CyMedia {
         if (start >= histogram.size())
             end = histogram.size();
         if (end <= start)
-            end = start + 1;
+            end = start + 10;
     }
 
     void computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity) {

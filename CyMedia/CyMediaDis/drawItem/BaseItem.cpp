@@ -1,4 +1,4 @@
-#include "BaseItem.h"
+﻿#include "BaseItem.h"
 #include <QTimer>
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======

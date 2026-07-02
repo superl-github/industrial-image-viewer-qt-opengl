@@ -246,7 +246,7 @@ namespace CyMedia {
             return false;
         }
 
-        return !((mainV > 3) || ((mainV == 3) && subV >= 3));
+        return ((mainV > 3) || ((mainV == 3) && subV >= 3));
     }
 
 	QString CyMediaDis::pixelFormatStr(CyMedia::ePixType format) {
@@ -427,6 +427,14 @@ namespace CyMedia {
         return true;
     }
 
+	void CyMediaDis::zoomIn() {
+        d->view->zoomIn();
+	}
+
+	void CyMediaDis::zoomOut() {
+        d->view->zoomOut();
+	}
+
 	void CyMediaDis::zoomAuto() {
         if (false == d->bHaveData)
             return;
@@ -437,6 +445,26 @@ namespace CyMedia {
         else {
             QTimer::singleShot(0, d->view, &CyMediaDisView::zoomAuto);
         }
+	}
+
+	void CyMediaDis::zoomraw(bool reset) {
+        d->view->zoomRaw(reset);
+	}
+
+	bool CyMediaDis::tempeMeasureEnable() {
+        return d->imageItem->enableTempeMeasure();
+	}
+
+	void CyMediaDis::setTempeMeasureEnable(bool enable) {
+        d->imageItem->setUseTempeMeasure(enable);
+	}
+
+	void CyMediaDis::getTempeMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe, double& backGroundColor, double& enteremissivity, double& AtmosphericTransmittance) {
+        d->imageItem->getTempMeasurePara(poly, maxTempe, minTempe, backGroundColor, enteremissivity, AtmosphericTransmittance);
+	}
+
+	void CyMediaDis::setTempeMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe, double backGroundColor/* = 0*/, double enteremissivity/* = 1.0*/, double AtmosphericTransmittance/* = 1.0*/) {
+        d->imageItem->setTempMeasurePara(poly, maxTempe, minTempe, backGroundColor, enteremissivity, AtmosphericTransmittance);
 	}
 
 	CyDisDrawItem::ItemType CyMediaDis::drawMode() {
@@ -733,7 +761,7 @@ namespace CyMedia {
         //重置状态
         t_pBuffer->bIsSource = true;
         t_pBuffer->bUpImage = upImage;
-        t_pBuffer->bUpStretch = mStretchWidget->stretchtype() != lastUpStretchType;
+        t_pBuffer->bUpStretch = mStretchWidget->stretchtype() != lastUpStretchType || mStretchWidget->isAutoStretch();
         t_pBuffer->bIsAddFps = false;
 
         t_pBuffer->bisUpData = true;
@@ -886,15 +914,13 @@ namespace CyMedia {
 
         //图像处理
         eTimer.restart();
-        if (mStretchWidget->isVisible() && img.bUpStretch) {
+        if (img.bUpStretch) {
             mStretchWidget->upImageData(Imageinfo, Imagedata, imageItem->Demosaic());
             lastUpStretchType = mStretchWidget->stretchtype();
         }
         //log_printf("更新灰度拉伸 耗时：%lldms\n", eTimer.elapsed());
         eTimer.restart();
-        if (mGrayTestWidget->isVisible()) {
-            mGrayTestWidget->upImageData(Imageinfo, Imagedata);
-        }
+        mGrayTestWidget->upImageData(Imageinfo, Imagedata);
         //log_printf("更新灰度统计 耗时：%lldms\n", eTimer.elapsed());
         //缩略图
         if (false == img.bIsSource) {
@@ -1129,6 +1155,7 @@ namespace CyMedia {
         //视图
         view = new CyMediaDisView();
         QOpenGLWidget* OpenGlwidget = new QOpenGLWidget(m_parent);
+        OpenGlwidget->setMouseTracking(true);
         ////指定opengl版本
         //QSurfaceFormat format;
         //format.setVersion(3, 3);

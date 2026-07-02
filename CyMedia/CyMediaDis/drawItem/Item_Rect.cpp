@@ -330,7 +330,7 @@ namespace CyDisDrawItem {
 
     void CyMediaDisRectItem_Menu_geo::flushTrans() {
         m_Xlabel->setText("x");
-        m_Ylabel->setText("x");
+        m_Ylabel->setText("y");
         m_Wlabel->setText(tr("width"));
         m_Hlabel->setText(tr("height"));
 

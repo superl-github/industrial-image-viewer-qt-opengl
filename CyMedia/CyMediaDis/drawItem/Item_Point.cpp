@@ -220,7 +220,7 @@ namespace CyDisDrawItem {
 
     void CyMediaDisPointItem_Menu_geo::flushTrans() {
         m_Xlabel->setText("x");
-        m_Ylabel->setText("x");
+        m_Ylabel->setText("y");
 
         m_OkBtn->setText(tr("confirm"));
         m_CancelBtn->setText(tr("cancel"));

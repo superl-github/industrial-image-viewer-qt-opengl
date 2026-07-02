@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "CyMediaDisView.h"
+#include <QVector>
 
 struct VertexData {
     QVector3D position;
@@ -77,6 +78,17 @@ public:
     qint32 m_ColorMapData_Height = 0;
     bool bColorMapChange = false;
 
+    //温度计算
+    bool useTempeMeasure = false;
+    std::vector<double> m_tempeMeasure_poly;
+    int m_tempeMeasure_poly_degree = 0;
+    int m_tempeMeasure_MaxTemp = 100;
+    int m_tempeMeasure_MinTemp = 0;
+    double m_tempeMeasure_BackGray = 0;
+    double m_tempeMeasure_enteremissivity = 0.0;
+    double m_tempeMeasure_AtmosphericTransmittance = 0.0;
+    bool m_tempeMeasureParaChange = false;
+
     // 状态标记
     bool bIsFirstUpData = true;
     bool m_shaderInitalize = false;
@@ -84,9 +96,9 @@ public:
     bool bImageDataChange = false;
 
     // 纹理相关
-    GLenum textureInternalFormat = GL_LUMINANCE8;
-    GLenum textureFormat = GL_RED;
-    GLenum textureType = GL_UNSIGNED_BYTE;
+    GLenum textureInternalFormat = GL_LUMINANCE8;   // 纹理内部存储格式
+    GLenum textureFormat = GL_RED;                  // 纹理传入数据的图像格式
+    GLenum textureType = GL_UNSIGNED_BYTE;          // 纹理传入数据纹理格式
     float textureWidthMultiplier;
     float textureHeightMultiplier;
 
@@ -290,7 +302,7 @@ void CyDMediaDisBack::updateTextureFormat()
                 d->textureFormat = GL_RGBA;
                 d->textureType = GL_UNSIGNED_SHORT;
             }
-            else if (d->imageDataInfo.bit <= 31) {
+            else if (d->imageDataInfo.bit < 32) {
                 d->textureInternalFormat = GL_R32F;
                 d->textureFormat = GL_RED;
                 d->textureType = GL_UNSIGNED_INT;
@@ -307,19 +319,19 @@ void CyDMediaDisBack::updateTextureFormat()
         case CyMedia::MONO12P:
         case CyMedia::MONO12P_GVSP: {
             if (d->imageDataInfo.bit <= 8) {
-                d->textureInternalFormat = GL_LUMINANCE8;
-                d->textureFormat = GL_LUMINANCE;
+                d->textureInternalFormat = GL_R8;
+                d->textureFormat = GL_RED;
                 d->textureType = GL_UNSIGNED_BYTE;
             }
             else if (d->imageDataInfo.bit <= 16) {
-                d->textureInternalFormat = GL_LUMINANCE16;
-                d->textureFormat = GL_LUMINANCE;
+                d->textureInternalFormat = GL_R16;
+                d->textureFormat = GL_RED;
                 d->textureType = GL_UNSIGNED_SHORT;
             }
             else {
-                d->textureInternalFormat = GL_RGBA;
-                d->textureFormat = GL_RGBA;
-                d->textureType = GL_UNSIGNED_BYTE;
+                d->textureInternalFormat = GL_R32F;
+                d->textureFormat = GL_RED;
+                d->textureType = GL_UNSIGNED_INT;
             }
         }break;
 
@@ -341,23 +353,23 @@ void CyDMediaDisBack::updateTextureFormat()
             }
         }break;
 
-		case CyMedia::RGBA: {
-			if (d->imageDataInfo.bit <= 8) {
-				d->textureInternalFormat = GL_RGBA;
-				d->textureFormat = GL_RGBA;
-				d->textureType = GL_UNSIGNED_BYTE;
-			}
-			else if (d->imageDataInfo.bit <= 16) {
-				d->textureInternalFormat = GL_RGBA;
-				d->textureFormat = GL_RGBA;
-				d->textureType = GL_UNSIGNED_SHORT;
-			}
-			else {
-				d->textureInternalFormat = GL_RGBA;
-				d->textureFormat = GL_RGBA;
-				d->textureType = GL_UNSIGNED_INT;
-			}
-		}break;
+        case CyMedia::RGBA: {
+            if (d->imageDataInfo.bit <= 8) {
+                d->textureInternalFormat = GL_RGBA;
+                d->textureFormat = GL_RGBA;
+                d->textureType = GL_UNSIGNED_BYTE;
+            }
+            else if (d->imageDataInfo.bit <= 16) {
+                d->textureInternalFormat = GL_RGBA;
+                d->textureFormat = GL_RGBA;
+                d->textureType = GL_UNSIGNED_SHORT;
+            }
+            else {
+                d->textureInternalFormat = GL_RGBA;
+                d->textureFormat = GL_RGBA;
+                d->textureType = GL_UNSIGNED_INT;
+            }
+        }break;
     }
 }
 
@@ -372,6 +384,11 @@ bool CyDMediaDisBack::upImageData(CyMedia::ImageShowInfo info, uint8_t* image)
     }
 
     QMutexLocker locker(&d->dataLock);
+    // 分配缓冲区
+    allocateBuffers(info.length);
+    //拷贝数据
+    memcpy(d->imageData.data(), image, d->imageData.size());
+
     // 检查图像信息是否变化
     if (memcmp(&d->imageDataInfo, &info, sizeof(info))) {
         prepareGeometryChange();
@@ -385,11 +402,6 @@ bool CyDMediaDisBack::upImageData(CyMedia::ImageShowInfo info, uint8_t* image)
 
         d->bTextureInitialize = false;
     }
-    
-    // 分配缓冲区
-    allocateBuffers(info.length);
-    //拷贝数据
-    memcpy(d->imageData.data(), image, d->imageData.size());
 
     // 标记数据已改变
     d->bImageDataChange = true;
@@ -428,8 +440,7 @@ void CyDMediaDisBack::setStretchType(CyMedia::StretchType type) {
     d->upStretchValue = true;
 }
 
-void CyDMediaDisBack::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/, uint32_t max/* = 0*/)
-{
+void CyDMediaDisBack::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/, uint32_t max/* = 0*/) {
     if (d->stretchpara_start == start && 
         d->stretchpara_end == end &&
         d->stretchpara_max == max)
@@ -511,6 +522,52 @@ bool CyDMediaDisBack::setColorMap(const QString& mapName)
     if (index == -1)
         return false;
     return setColorMap(index);
+}
+
+bool CyDMediaDisBack::enableTempeMeasure() {
+    return d->useTempeMeasure;
+}
+
+void CyDMediaDisBack::setUseTempeMeasure(bool use) {
+    if (d->useTempeMeasure == use) return;
+    d->useTempeMeasure = use;
+}
+
+void CyDMediaDisBack::getTempMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe, double& backGroundColor, double& enteremissivity, double& AtmosphericTransmittance) {
+    poly = d->m_tempeMeasure_poly;
+    maxTempe = d->m_tempeMeasure_MaxTemp;
+    minTempe = d->m_tempeMeasure_MinTemp;
+    backGroundColor = d->m_tempeMeasure_BackGray;
+
+    enteremissivity = d->m_tempeMeasure_enteremissivity;
+    AtmosphericTransmittance = d->m_tempeMeasure_AtmosphericTransmittance;
+}
+
+void CyDMediaDisBack::setTempMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe, double backGroundColor/* = 0*/, double enteremissivity/* = 1.0*/, double AtmosphericTransmittance/* = 1.0*/) {
+    bool setParaChange = 
+        (maxTempe != d->m_tempeMeasure_MaxTemp) || 
+        (minTempe != d->m_tempeMeasure_MinTemp) || 
+        (backGroundColor != d->m_tempeMeasure_BackGray) ||
+        (enteremissivity != d->m_tempeMeasure_enteremissivity) ||
+        (AtmosphericTransmittance != d->m_tempeMeasure_AtmosphericTransmittance);
+    int comparaSize = std::min(int(poly.size()), 10);
+    if (false == setParaChange) {
+        setParaChange = !std::equal(poly.begin(), poly.begin() + comparaSize, d->m_tempeMeasure_poly.begin());
+    }
+    if (setParaChange == false) return;
+
+    d->m_tempeMeasure_MaxTemp = maxTempe;
+    d->m_tempeMeasure_MinTemp = minTempe;
+    d->m_tempeMeasure_BackGray = backGroundColor;
+
+    d->m_tempeMeasure_enteremissivity = enteremissivity;
+    d->m_tempeMeasure_AtmosphericTransmittance = AtmosphericTransmittance;
+
+    d->m_tempeMeasure_poly.assign(10, 0.0);
+    std::copy_n(poly.begin(), comparaSize, d->m_tempeMeasure_poly.begin());
+    d->m_tempeMeasure_poly_degree = comparaSize - 1;
+
+    d->m_tempeMeasureParaChange = true;
 }
 
 QRectF CyDMediaDisBack::boundingRect() const
@@ -605,6 +662,24 @@ void CyDMediaDisBack::setupShaderUniforms(QOpenGLFunctions* f, QMatrix4x4 mat)
     d->shaderProgram->setUniformValue("nWidth", d->imageDataInfo.width);
     d->shaderProgram->setUniformValue("nHeight", d->imageDataInfo.height);
     d->shaderProgram->setUniformValue("pixrange", d->maxBitlColor);
+
+    // 温度计算
+    d->shaderProgram->setUniformValue("useTempeMeasure", d->useTempeMeasure ? 1 : 0);
+    if (d->useTempeMeasure && d->m_tempeMeasureParaChange) {
+        d->m_tempeMeasureParaChange = false;
+        d->shaderProgram->setUniformValue("tempeMeasure_MaxTempe", float(d->m_tempeMeasure_MaxTemp));
+        d->shaderProgram->setUniformValue("tempeMeasure_MinTempe", float(d->m_tempeMeasure_MinTemp));
+        d->shaderProgram->setUniformValue("tempeMeasure_background", float(d->m_tempeMeasure_BackGray));
+
+        d->shaderProgram->setUniformValue("tempeMeasure_enteremissivity", float(d->m_tempeMeasure_enteremissivity));
+        d->shaderProgram->setUniformValue("tempeMeasure_AtmosphericTransmittance", float(d->m_tempeMeasure_AtmosphericTransmittance));
+        GLint loc = f->glGetUniformLocation(program, "tempeMeasure_Poly");
+        if (loc != -1) {
+            std::vector<float> temp(d->m_tempeMeasure_poly.begin(), d->m_tempeMeasure_poly.end());
+            f->glUniform1fv(loc, temp.size(), temp.data());
+        }
+        d->shaderProgram->setUniformValue("tempeMeasure_Poly_degree", d->m_tempeMeasure_poly_degree);
+    }
 
     // 设置颜色类型
     CyMedia::ePixType colorType = d->bShowBayerSource ?

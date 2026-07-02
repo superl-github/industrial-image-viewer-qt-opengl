@@ -131,10 +131,10 @@ CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
 }
 
 bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
-    if (false == d->m_parentDis->isSingleItemMode())
-        return false;
-    if (d->m_parentDis->isDrawing() && !getCurrentItem())
-        return false;
+    if (false == this->isVisible()) return false;
+
+    if (false == d->m_parentDis->isSingleItemMode()) return false;
+    if (d->m_parentDis->isDrawing() && !getCurrentItem()) return false;
 
     //切换
     if (d->mIsGray != info.isMono() ||
@@ -215,9 +215,15 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
 
             if (false == d->mMaskIsfullzero) {
+                double maxY_threshold = 0.97;
                 std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
-                size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * 0.97);
-                calcHisMaxY = d->mHistogramData[hisI_Gray][idx97];
+                size_t idx_maxY = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * maxY_threshold);
+                calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
+				while (calcHisMaxY <= 0.0) {
+					idx_maxY++;
+					if (idx_maxY >= d->mHistogramData[hisI_Gray].size()) break;
+                    calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
+				}
             }
         }
         //计算参数
@@ -310,6 +316,18 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
     emit upTestData();
     emit flushHis();
     return true;
+}
+
+bool CyMediaDisGrayTest::currentTestDataIsGray() {
+    return d->mIsGray;
+}
+
+CyMediaDisGrayTest::oneChannelTestInfo& CyMediaDisGrayTest::getGrayTestData() {
+    return d->mHisTestData;
+}
+
+CyMediaDisGrayTest::threeChannelTestInfo& CyMediaDisGrayTest::getRGBTestData() {
+    return d->mRGBTestData;
 }
 
 bool CyMediaDisGrayTest::isZoomble() {

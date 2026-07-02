@@ -79,6 +79,7 @@ namespace CyDisDrawItem {
         if (!mouseEvent) {
             return QObject::eventFilter(obj, event);
         }
+        // 是否点击某个item
         QPointF scenePos = m_view->mapToScene(mouseEvent->pos());
         QGraphicsItem* item = qobject_cast<CyDMediaDisScen*>(m_manager->scene())->itemAtWithoutBack(scenePos, QTransform());
         if (item) {

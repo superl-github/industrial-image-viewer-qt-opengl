@@ -1,4 +1,4 @@
-//**********
+﻿//**********
 // Author       : llf
 // Project      : CyDisplay
 // Date / Time  : 29 January 2026
@@ -63,6 +63,12 @@ public:
     quint32 colorMapIndex() const;
     bool setColorMap(quint32 index);
     bool setColorMap(const QString& mapName);
+
+    //温度计算
+    bool enableTempeMeasure();
+    void setUseTempeMeasure(bool use);
+    void getTempMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe, double& backGroundColor, double& enteremissivity, double& AtmosphericTransmittance);
+    void setTempMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe, double backGroundColor = 0, double enteremissivity = 1.0, double AtmosphericTransmittance = 1.0);
 
 private:
     QRectF boundingRect() const override;
