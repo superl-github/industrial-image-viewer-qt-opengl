@@ -3,8 +3,43 @@
 #include <algorithm>
 #include <cstdint>
 
+#if defined _MSC_VER
+#include <ppl.h>
+#include <thread>
+#elif defined _OPENMP
+#   include <omp.h>
+#endif
+
 namespace CyMedia {
-    //辅助函数
+    // 获取自适应并行阈值
+    // @param coreCount       CPU 逻辑核心数
+    // @param func            转换类型，用于调整复杂度权重
+    // @return                建议的最小总像素数，低于此值应使用串行
+    inline int32_t get_parallel_threshold_bayer_conver(int32_t coreCount, DemosaicingMethod func) {
+        // 基准：每个核心至少处理 15000 像素才值得并行
+        constexpr int32_t BASE_PIXELS_PER_CORE = 15000;
+        // 根据计算复杂度调整系数
+        double complexityFactor = 1.0;
+        switch (func) {
+        case CyMedia::DEMOSAIC_NONE:
+        case CyMedia::DEMOSAIC_BILINEAR:
+            complexityFactor = 1.2;   // 简单计算，阈值稍高
+            break;
+        case CyMedia::DEMOSAIC_MALVA:
+            complexityFactor = 0.9;   // 中等复杂度
+        case CyMedia::DEMOSAIC_AHD:
+            complexityFactor = 0.5;   // 很重，阈值降低一半
+            break;
+        }
+
+        int32_t threshold = static_cast<int32_t>(coreCount * BASE_PIXELS_PER_CORE * complexityFactor);
+
+        // 限制在合理范围内（避免极端情况）
+        constexpr int32_t MIN_THRESHOLD = 20000;   // 至少 2 万像素
+        constexpr int32_t MAX_THRESHOLD = 800000;  // 最多 80 万像素
+        return std::clamp(threshold, MIN_THRESHOLD, MAX_THRESHOLD);
+    }
+
     static RGBChannel getBayerColorType(ePixType fmt, int x, int y);
     RgbPixel getBayerPixelColor_Bilinear(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y);
     RgbPixel getBayerPixelColor_Malvar(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y);
@@ -14,26 +49,26 @@ namespace CyMedia {
     void demosaicAHD_Split(const T* data, int32_t width, int32_t height, ePixType format, std::vector<double>& R, std::vector<double>& G, std::vector<double>& B);
     bool computeHistogram_Bayer_AHD(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel);
     template<typename T>
-    bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicMethod func = BILINEAR);
+    bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicingMethod func = DEMOSAIC_BILINEAR);
     template<typename T>
-    bool Bayer2RGB_AHD(const ImageShowInfo& info, const uint8_t* data, T* outdata);
+    bool Bayer2RGB_AHD(const ImageShowInfo& info, const uint8_t* data, T* outdata, bool sertial = true);
 
 
-    CyMedia::RgbPixel calcCoordinateColor_Bayer(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y, DemosaicMethod func/* = BILINEAR*/) {
+    CyMedia::RgbPixel calcCoordinateColor_Bayer(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y, DemosaicingMethod func/* = BILINEAR*/) {
         if (!pdata || x >= info.width || y >= info.height) {
             return {};
         }
 
         switch (func) {
-            case CyMedia::BAYERSOUCE: {
+            case CyMedia::DEMOSAIC_NONE: {
                 auto color = safeAt(pdata, info.bit, info.width, info.height, x, y);
                 return RgbPixel{ color, color, color };
             }
-            case CyMedia::BILINEAR:
+            case CyMedia::DEMOSAIC_BILINEAR:
                 return getBayerPixelColor_Bilinear(info, pdata, x, y);
-            case CyMedia::MALVAR:
+            case CyMedia::DEMOSAIC_MALVA:
                 return getBayerPixelColor_Malvar(info, pdata, x, y);
-            case CyMedia::AHD:
+            case CyMedia::DEMOSAIC_AHD:
                 return getBayerPixelColor_Malvar(info, pdata, x, y);
         }
 
@@ -43,7 +78,7 @@ namespace CyMedia {
     bool computeHistogram_Bayer(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, 
         std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram,
         std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel, 
-        DemosaicMethod func/* = BILINEAR*/) {
+        DemosaicingMethod func/* = BILINEAR*/) {
         if (!data)
             return false;
         
@@ -69,9 +104,9 @@ namespace CyMedia {
         double* pAve = avePixel.data();
 
         switch (func) {
-            case CyMedia::BAYERSOUCE:
-            case CyMedia::BILINEAR:
-            case CyMedia::MALVAR: {
+            case CyMedia::DEMOSAIC_NONE:
+            case CyMedia::DEMOSAIC_BILINEAR:
+            case CyMedia::DEMOSAIC_MALVA: {
                 if (useMask && mask) {
                     for (uint32_t y = 0; y < info.height; ++y) {
                         for (uint32_t x = 0; x < info.width; ++x) {
@@ -147,14 +182,14 @@ namespace CyMedia {
                 pAve[2] /= pixelCount;
             }break;
 
-            case CyMedia::AHD: {
+            case CyMedia::DEMOSAIC_AHD: {
                 computeHistogram_Bayer_AHD(info, data, mask, useMask, Rhistogram, Ghistogram, Bhistogram, maxPixel, minPixel, avePixel);
             }break;
         }
         return true;
     }
 
-    bool Bayer2RGBConver(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, DemosaicMethod func /*= BILINEAR*/) {
+    bool Bayer2RGBConver(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, DemosaicingMethod func /*= BILINEAR*/) {
         if (info.bit <= 8)
             return Bayer2RGB(info, data, (uint8_t*)outdata, func);
         else if (info.bit <= 16)
@@ -564,30 +599,72 @@ namespace CyMedia {
     }
 
     template<typename T>
-    bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicMethod func/* = BILINEAR*/) {
+    bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicingMethod func/* = BILINEAR*/) {
         if (!data || !outdata)
             return false;
 
         if (info.width <= 0 || info.height <= 0 || info.length <= 0)
             return false;
 
+        int32_t totalPixels = info.width * info.height;
+        // 获取 CPU 核心数
+        static int32_t cpuCores = []() {
+            int32_t cores = static_cast<int32_t>(std::thread::hardware_concurrency());
+            return cores > 0 ? cores : 4;  // 若获取失败，默认 4 核
+            }();
+        //计算并行计算阈值
+        const int32_t threshold = get_parallel_threshold_bayer_conver(cpuCores, func);
+        bool bseria = totalPixels < threshold;
+
         switch (func) {
-            case CyMedia::BAYERSOUCE:
-            case CyMedia::BILINEAR:
-            case CyMedia::MALVAR: {
-                for (uint32_t y = 0; y < info.height; ++y) {
-                    for (uint32_t x = 0; x < info.width; ++x) {
-                        int32_t idx = y * info.width + x;
-                        RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
-                        outdata[idx * 3 + 0] = px.r;
-                        outdata[idx * 3 + 1] = px.g;
-                        outdata[idx * 3 + 2] = px.b;
+            case CyMedia::DEMOSAIC_NONE:
+            case CyMedia::DEMOSAIC_BILINEAR:
+            case CyMedia::DEMOSAIC_MALVA: {
+                //并行计算
+                if (false == bseria) {
+#if defined _MSC_VER
+                    // 使用 PPL parallel_for 并行外层循环 (y 维度)
+                    concurrency::parallel_for(0, static_cast<int>(info.height), [&](int y) {
+                        for (uint32_t x = 0; x < static_cast<uint32_t>(info.width); ++x) {
+                            int32_t idx = y * info.width + x;
+                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            outdata[idx * 3 + 0] = static_cast<T>(px.r);
+                            outdata[idx * 3 + 1] = static_cast<T>(px.g);
+                            outdata[idx * 3 + 2] = static_cast<T>(px.b);
+                        }
+                        });
+#elif defined _OPENMP
+#pragma omp parallel for
+                    for (int y = 0; y < info.height; ++y) {
+                        for (uint32_t x = 0; x < static_cast<uint32_t>(info.width); ++x) {
+                            int32_t idx = y * info.width + x;
+                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            outdata[idx * 3 + 0] = static_cast<T>(px.r);
+                            outdata[idx * 3 + 1] = static_cast<T>(px.g);
+                            outdata[idx * 3 + 2] = static_cast<T>(px.b);
+                        }
+                    }
+#else
+                    // 退回串行
+                    bseria = true;
+#endif
+                }
+                //串行
+                if (true == bseria) {
+                    for (uint32_t y = 0; y < static_cast<uint32_t>(info.height); ++y) {
+                        for (uint32_t x = 0; x < static_cast<uint32_t>(info.width); ++x) {
+                            int32_t idx = y * info.width + x;
+                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            outdata[idx * 3 + 0] = static_cast<T>(px.r);
+                            outdata[idx * 3 + 1] = static_cast<T>(px.g);
+                            outdata[idx * 3 + 2] = static_cast<T>(px.b);
+                        }
                     }
                 }
                 return true;
             }break;
 
-            case CyMedia::AHD: {
+            case CyMedia::DEMOSAIC_AHD: {
                 return Bayer2RGB_AHD(info, data, outdata);
             }break;
         }
@@ -596,7 +673,7 @@ namespace CyMedia {
     }
 
     template<typename T>
-    bool Bayer2RGB_AHD(const ImageShowInfo& info, const uint8_t* data, T* outdata) {
+    bool Bayer2RGB_AHD(const ImageShowInfo& info, const uint8_t* data, T* outdata, bool seria/* = true*/) {
         // 分离 R, G, B 平面（未采样位置为 0）
         std::vector<double> R(info.width * info.height, 0), G(info.width * info.height, 0), B(info.width * info.height, 0);
         if (info.bit <= 8) {
@@ -611,18 +688,46 @@ namespace CyMedia {
         else {
             return false;
         }
-
-        RgbPixel tempColor;
-        for (int32_t y = 0; y < info.height; ++y) {
-            for (int32_t x = 0; x < info.width; ++x) {
-                int32_t idx = y * info.width + x;
-                tempColor = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
-                outdata[idx * 3 + 0] = tempColor.r;
-                outdata[idx * 3 + 1] = tempColor.g;
-                outdata[idx * 3 + 2] = tempColor.b;
+        bool tSerial = seria;
+        // 并行插值并输出
+        if (false == tSerial) {
+#if defined _MSC_VER
+            concurrency::parallel_for(0, static_cast<int>(info.height), [&](int y) {
+                for (int x = 0; x < info.width; ++x) {
+                    int32_t idx = y * info.width + x;
+                    RgbPixel tempColor = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
+                    outdata[idx * 3 + 0] = static_cast<T>(tempColor.r);
+                    outdata[idx * 3 + 1] = static_cast<T>(tempColor.g);
+                    outdata[idx * 3 + 2] = static_cast<T>(tempColor.b);
+                }
+                });
+#elif defined _OPENMP
+#pragma omp parallel for
+            for (int y = 0; y < info.height; ++y) {
+                for (int x = 0; x < info.width; ++x) {
+                    int32_t idx = y * info.width + x;
+                    RgbPixel tempColor = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
+                    outdata[idx * 3 + 0] = static_cast<T>(tempColor.r);
+                    outdata[idx * 3 + 1] = static_cast<T>(tempColor.g);
+                    outdata[idx * 3 + 2] = static_cast<T>(tempColor.b);
+                }
+            }
+#else
+            tSerial = true;
+#endif
+        }
+        if (true == tSerial) {
+            for (int y = 0; y < info.height; ++y) {
+                for (int x = 0; x < info.width; ++x) {
+                    int32_t idx = y * info.width + x;
+                    RgbPixel tempColor = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
+                    outdata[idx * 3 + 0] = static_cast<T>(tempColor.r);
+                    outdata[idx * 3 + 1] = static_cast<T>(tempColor.g);
+                    outdata[idx * 3 + 2] = static_cast<T>(tempColor.b);
+                }
             }
         }
-
+        
         return true;
     }
 }

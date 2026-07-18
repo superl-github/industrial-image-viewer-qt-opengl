@@ -1,61 +1,24 @@
-﻿
+
 #include "CyMediaDisView.h"
-#include "CyDMediaDisScen.h"
-
 #include "../CyMediaCalc/CyMediaCalc.h"
+#include "CyMediaDisViewBckDraw.h"
+#include "CyMediaDisViewThumbnail.h"
 
+#include <QGraphicsScene.h>
+#include <QApplication>
 #include <QScrollBar>
 #include <QTimer>
+#include <QOpenGLWidget>
 #include <QGraphicsItem>
-static const int THUMBNAIL_MIN_SIZE = 120;      // 最小边长
-static const double THUMBNAIL_RATIO = 0.15;     // 占主视图宽高的比例
+#include <QElapsedTimer>
+#include <QThread>
+#include <QMessageBox>
 
-class CyThumbnailView : public QWidget {
-    Q_OBJECT
-public:
-    CyThumbnailView(CyMediaDisView* parentView, QWidget* parent = nullptr);
-    ~CyThumbnailView();
-
-signals:
-    void viewRectChanged(const QRectF& rect);
-
-public:
-    void setScene(QGraphicsScene* scene);
-    void setViewRect(const QRectF& rect);
-
-    bool isBeingDragged();
-
-    void setThumbnailSize(const QSize& size);
-
-    void upBackImage(CyMedia::ImageShowInfo info, uint8_t* data);
-    QImage& backImage();
-
-    void setBackgroundColor(QColor color);
-    void setSelectColor(QColor color);
-
-protected:
-    void paintEvent(QPaintEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void mouseMoveEvent(QMouseEvent* event) override;
-    void mouseReleaseEvent(QMouseEvent* event) override;
-
-private:
-    CyMediaDisView* m_parentView = nullptr; // 指向主视图
-    QGraphicsScene* m_scene = nullptr;
-    QRectF mViewRect;
-    bool mDragging = false;
-    QPointF mClickOffsetRatio; // 鼠标点击点在小窗内的相对比例 (0~1)
-    QImage mBackImage;
-
-    QColor mSelectRectColor = QColor(0x2a, 0xa3, 0xc6);
-    QColor mSelectRectColor_transparent = QColor(0x2a, 0xa3, 0xc6, 100);
-    QColor mBackGroundColor = QColor(0x2a, 0xa3, 0xc6);
-};
+static const double THUMBNAIL_RATIO = 0.30;     // 占主视图宽高的比例
 
 class CyMediaDisView::MyViewPrivateData {
 public:
     CyMediaDisView* m_view = nullptr;
-    bool bShowImage = false;
 
     //Zoom
     float scaleFactor = 1.2;            ///< 当前缩放因子
@@ -70,14 +33,12 @@ public:
     bool hIsMirror = false;
     bool vIsMirror = false;
 
-    QPointF posAnchor;				        // 当前鼠标在View中的位置，用来在mouseMove事件中计算偏移
+    QPointF posAnchor;                        // 当前鼠标在View中的位置，用来在mouseMove事件中计算偏移
     bool spaceIsPrese = false;
     bool haveTools = false;
     bool drawMode = false;
 
-    CyThumbnailView* mThumbnailView = nullptr;
     bool mThumbnailEnable = true;
-
 public:
     void zoom(double zoomValue);
 
@@ -108,13 +69,13 @@ void CyMediaDisView::MyViewPrivateData::zoom(double zoomValue) {
 }
 
 void CyMediaDisView::MyViewPrivateData::updateThumbnail() {
-    if (!mThumbnailView || !m_view->scene()) {
+    if (!m_view->m_Thumbnail || !m_view->scene()) {
         return;
     }
 
     // 检查是否需要显示缩略图
     if (!shouldShowThumbnail()) {
-        mThumbnailView->hide();
+        m_view->m_Thumbnail->hide();
         return;
     }
 
@@ -127,7 +88,7 @@ void CyMediaDisView::MyViewPrivateData::updateThumbnail() {
     QRectF viewSceneRect(topLeft, bottomRight);
 
     // 获取缩略图实际尺寸
-    QSize thumbSize = mThumbnailView->size();
+    QSize thumbSize = m_view->m_Thumbnail->size();
     // 直接计算实际坐标，避免百分比转换的精度问题
     double x = (viewSceneRect.x() - sceneRect.x()) / sceneRect.width() * thumbSize.width();
     double y = (viewSceneRect.y() - sceneRect.y()) / sceneRect.height() * thumbSize.height();
@@ -153,15 +114,15 @@ void CyMediaDisView::MyViewPrivateData::updateThumbnail() {
     h = qMax(h, 0.0);
 
     QRectF thumbnailViewRect(x, y, w, h);
-    mThumbnailView->setViewRect(thumbnailViewRect);
+    m_view->m_Thumbnail->setViewRect(thumbnailViewRect);
     upThumbanilPosition();
-    mThumbnailView->show();
-    mThumbnailView->raise();
-    mThumbnailView->update();
+    m_view->m_Thumbnail->show();
+    m_view->m_Thumbnail->raise();
+    m_view->m_Thumbnail->update();
 }
 
 bool CyMediaDisView::MyViewPrivateData::shouldShowThumbnail() const {
-    if (!m_view->scene() || !bShowImage || false == mThumbnailEnable) {
+    if (!m_view->scene() || !m_view->m_backDraw->haveImage() || false == mThumbnailEnable) {
         return false;
     }
 
@@ -185,8 +146,8 @@ void CyMediaDisView::MyViewPrivateData::onViewRectChanged(const QRectF& rect) {
 
 void CyMediaDisView::MyViewPrivateData::upThumbanilPosition() {
     static int margin = 10;
-    mThumbnailView->move(m_view->width() - mThumbnailView->width() - margin,
-        m_view->height() - mThumbnailView->height() - margin);
+    m_view->m_Thumbnail->move(m_view->width() - m_view->m_Thumbnail->width() - margin,
+        m_view->height() - m_view->m_Thumbnail->height() - margin);
 }
 
 void CyMediaDisView::MyViewPrivateData::upThumbanilSize() {
@@ -212,40 +173,45 @@ void CyMediaDisView::MyViewPrivateData::upThumbanilSize() {
         }
         w = imageSize.width() * hRadio;
     }
-    mThumbnailView->setThumbnailSize(QSize(w + 0.5, h + 0.5));
+    m_view->m_Thumbnail->setThumbnailSize(QSize(w + 0.5, h + 0.5));
 }
 
 CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
     :QGraphicsView() {
     d = new MyViewPrivateData;
     d->m_view = this;
+    m_backDraw = new CyMediaDisViewBckDraw(this);
+    m_Thumbnail = new CyMediaDisViewThumbnail(this, this);
 
+    setFrameShape(QFrame::NoFrame);
     setMouseTracking(true);
     setAcceptDrops(true);
     setRenderHints(QPainter::Antialiasing);
-
-    // 初始化缩略图窗口
-    d->mThumbnailView = new CyThumbnailView(this, this);
-    d->updateThumbnail();
-    d->upThumbanilPosition();
-    d->mThumbnailView->hide();
-
-    // 连接信号
-    connect(d->mThumbnailView, &CyThumbnailView::viewRectChanged, this, [this](const QRectF& rect) {
-        d->onViewRectChanged(rect);
-        });
-
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &CyMediaDisView::onScrollValueChanged);
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &CyMediaDisView::onScrollValueChanged);
+
+    // 初始化缩略图窗口
+    d->updateThumbnail();
+    d->upThumbanilPosition();
+    m_Thumbnail->hide();
+    // 连接信号
+    connect(m_Thumbnail, &CyMediaDisViewThumbnail::viewRectChanged, this, [this](const QRectF& rect) {
+        d->onViewRectChanged(rect);
+        });
 }
 
 CyMediaDisView::~CyMediaDisView() {
-
+    if (d) {
+        m_backDraw->clearBackGround();
+        delete[] m_backDraw;
+        delete d;
+    }
 }
 
 void CyMediaDisView::setCyScene(QGraphicsScene* scene) {
     this->setScene(scene);
-    d->mThumbnailView->setScene(scene);
+    m_Thumbnail->setScene(scene);
+    scene->setBackgroundBrush(QBrush(Qt::black, Qt::SolidPattern));
 }
 
 void CyMediaDisView::sceneRectUp(const QRectF& rect) {
@@ -289,7 +255,7 @@ float CyMediaDisView::zoomValue(void) {
 }
 
 void CyMediaDisView::zoomIn(void) {
-    if (!this->scene() || !d->bShowImage)
+    if (!this->scene() || !m_backDraw->haveImage())
         return;
 
     float value = d->xZoomValue * d->scaleFactor;
@@ -298,7 +264,7 @@ void CyMediaDisView::zoomIn(void) {
 }
 
 void CyMediaDisView::zoomOut(void) {
-    if (!this->scene() || !d->bShowImage)
+    if (!this->scene() || !m_backDraw->haveImage())
         return;
 
     float value = d->xZoomValue / d->scaleFactor;
@@ -310,7 +276,7 @@ void CyMediaDisView::zoomOut(void) {
 }
 
 void CyMediaDisView::zoomAuto(void) {
-    if (!this->scene() || !d->bShowImage)
+    if (!this->scene() || !m_backDraw->haveImage())
         return;
 
     QRect fRect = this->rect();
@@ -369,7 +335,7 @@ double CyMediaDisView::rotateValue(void) {
 }
 
 void CyMediaDisView::rotateView(double angle) {
-    if (!this->scene() || !d->bShowImage)
+    if (!this->scene() || !m_backDraw->haveImage())
         return;
 
     QTransform transform(this->transform());
@@ -381,8 +347,76 @@ void CyMediaDisView::rotateView(double angle) {
     setTransform(transform);
 }
 
-void CyMediaDisView::setImageShow(bool show) {
-    d->bShowImage = show;
+bool CyMediaDisView::sharaContext(QOpenGLContext* ctx) {
+    return m_backDraw->shareContext(ctx);
+}
+
+bool CyMediaDisView::upBackGround(CyMedia::ImageShowInfo info, uint8_t* data, QOpenGLContext* ctx, bool upThumbnaildata/* = false*/) {
+    if (m_backDraw->upBackGround(info, data, ctx)) {
+        //m_Thumbnail->upBackImage(info, data);
+        //QMetaObject::invokeMethod(m_Thumbnail, "update", Qt::QueuedConnection);
+        return true;
+    }
+    return false;
+}
+
+void CyMediaDisView::clearBackGround() {
+    m_backDraw->clearBackGround();
+    if (QThread::currentThread() == qApp->thread()) {
+        m_Thumbnail->setVisible(false);
+    }
+}
+
+int CyMediaDisView::backTextureIndex() {
+    return m_backDraw->backTextureIndex();
+}
+
+CyMedia::StretchType CyMediaDisView::stretchType() {
+    return m_backDraw->stretchType();
+}
+
+void CyMediaDisView::setStretchType(CyMedia::StretchType type) {
+    m_backDraw->setStretchType(type);
+}
+
+void CyMediaDisView::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/, uint32_t max /*= 0*/) {
+    m_backDraw->setStreaChPara(start, end, max);
+}
+
+CyMedia::DemosaicingMethod CyMediaDisView::Demosaic() {
+    return m_backDraw->Demosaic();
+}
+
+void CyMediaDisView::setDemosaic(CyMedia::DemosaicingMethod method) {
+    return m_backDraw->setDemosaic(method);
+}
+
+double CyMediaDisView::flushFps() const {
+    return m_backDraw->flushFps();
+}
+
+bool CyMediaDisView::isTrueDataFps() const {
+    return m_backDraw->isTrueDataFps();
+}
+
+void CyMediaDisView::setTrueDataFps(bool flag) {
+    m_backDraw->setTrueDataFps(flag);
+}
+
+QStringList CyMediaDisView::ColorMapList() const {
+    return m_backDraw->ColorMapList();
+}
+
+qint32 CyMediaDisView::colorMapIndex() const {
+    return m_backDraw->colorMapIndex();
+}
+
+bool CyMediaDisView::setColorMap(qint32 index) {
+    return m_backDraw->setColorMap(index);
+}
+
+bool CyMediaDisView::setColorMap(const QString& mapName) {
+    return m_backDraw->setColorMap(mapName);
 }
 
 bool CyMediaDisView::thumbnailEnable() {
@@ -394,24 +428,40 @@ void CyMediaDisView::setThumbnailEnable(bool enable) {
         return;
     d->mThumbnailEnable = enable;
     if (false == enable) {
-        d->mThumbnailView->hide();
+        m_Thumbnail->hide();
     }
 }
 
 void CyMediaDisView::upThumbnaildata(CyMedia::ImageShowInfo info, uint8_t* data) {
-    d->mThumbnailView->upBackImage(info, data);
+    m_Thumbnail->upBackImage(info, data);
 }
 
 QImage& CyMediaDisView::ThumbnailImage() {
-    return d->mThumbnailView->backImage();
+    return m_Thumbnail->backImage();
 }
 
-void CyMediaDisView::setthumbnailSelectColor(QColor color) {
-    d->mThumbnailView->setSelectColor(color);
+void CyMediaDisView::setThumbnailSelectColor(QColor color) {
+    m_Thumbnail->setSelectColor(color);
 }
 
-void CyMediaDisView::setthumbnailBackgroundColor(QColor color) {
-    d->mThumbnailView->setBackgroundColor(color);
+void CyMediaDisView::setThumbnailBackgroundColor(QColor color) {
+    m_Thumbnail->setBackgroundColor(color);
+}
+
+QColor CyMediaDisView::thumbnailBorderColor() {
+    return m_Thumbnail->borderColor();
+}
+
+void CyMediaDisView::setThumbnailBorderColor(QColor color) {
+    m_Thumbnail->setBorderColor(color);
+}
+
+bool CyMediaDisView::ThumbnailDrawBorder() {
+    return m_Thumbnail->drawBorder();
+}
+
+void CyMediaDisView::setThumbnailDrawBorder(bool draw) {
+    m_Thumbnail->setDrawBorder(draw);
 }
 
 bool CyMediaDisView::drawMode() {
@@ -427,10 +477,7 @@ void CyMediaDisView::setDrawMode(bool draw) {
 
     // 获取场景中所有项
     QList<QGraphicsItem*> allItems = scene->items();
-
     for (QGraphicsItem* item : allItems) {
-        if (item == ((CyDMediaDisScen*)scene)->BackDis())
-            continue;
         // 设置为不可选择
         item->setEnabled(draw);
 
@@ -439,6 +486,24 @@ void CyMediaDisView::setDrawMode(bool draw) {
             item->setSelected(draw);
         }
     }
+}
+
+void CyMediaDisView::drawBackground(QPainter* painter, const QRectF& rect) {
+    m_backDraw->drawBackground(painter, rect);
+}
+
+void CyMediaDisView::showEvent(QShowEvent* e) {
+    QGraphicsView::showEvent(e);
+    QOpenGLWidget* glWidget = qobject_cast<QOpenGLWidget*>(viewport());
+    if (glWidget && false == m_backDraw->glIsInit()) {
+        glWidget->makeCurrent();
+        m_backDraw->initgl(glWidget->context());
+        glWidget->doneCurrent();
+    }
+}
+
+void CyMediaDisView::closeEvent(QCloseEvent* e) {
+    QGraphicsView::closeEvent(e);
 }
 
 void CyMediaDisView::wheelEvent(QWheelEvent* event) {
@@ -529,240 +594,15 @@ void CyMediaDisView::keyReleaseEvent(QKeyEvent* event)
 void CyMediaDisView::resizeEvent(QResizeEvent* event) {
     QGraphicsView::resizeEvent(event);
 
-    if (d->mThumbnailView) {
+    if (m_Thumbnail) {
         d->upThumbanilSize();
         d->updateThumbnail();
     }
 }
 
 void CyMediaDisView::onScrollValueChanged() {
-    if (d->mThumbnailView) {
+    if (m_Thumbnail) {
         d->updateThumbnail();
     }
 }
 
-
-
-
-
-
-//**********************class CyThumbnailView**********************
-CyThumbnailView::CyThumbnailView(CyMediaDisView* parentView, QWidget* parent /*= nullptr*/)
-    : QWidget(parent)
-    , m_parentView(parentView) {
-}
-
-CyThumbnailView::~CyThumbnailView() {
-
-}
-
-void CyThumbnailView::setScene(QGraphicsScene* scene) {
-    m_scene = scene;
-}
-
-void CyThumbnailView::setViewRect(const QRectF& rect) {
-    mViewRect = rect;
-    update();
-}
-
-bool CyThumbnailView::isBeingDragged() {
-    return mDragging;
-}
-
-void CyThumbnailView::setThumbnailSize(const QSize& size) {
-    resize(size);
-}
-
-void CyThumbnailView::upBackImage(CyMedia::ImageShowInfo info, uint8_t* data) {
-    QImage image;
-    switch (info.format) {
-        case CyMedia::MONO: {
-            // 单色图像
-            if (info.bit == 8) {
-                image = QImage(data, info.width, info.height, QImage::Format_Grayscale8);
-            }
-            else if (info.bit <= 16) {
-                uint16_t* pImage = (uint16_t*)data;
-                float maxPixel = (1 << info.bit) - 1;
-                float maxPixel_16 = (1 << 16) - 1;
-                QImage temp(info.width, info.height, QImage::Format_Grayscale16);
-                for (int y = 0; y < info.height; y++) {
-                    for (int x = 0; x < info.width; x++) {
-                        temp.bits()[y * info.width + x] = (pImage[y * info.width + x] * maxPixel_16) / maxPixel;
-                    }
-                }
-            }
-            else if (info.bit < 32) {
-                uint32_t* pImage = (uint32_t*)data;
-                float maxPixel = (1 << info.bit) - 1;
-                QImage temp(info.width, info.height, QImage::Format_Grayscale8);
-                for (int y = 0; y < info.height; y++) {
-                    for (int x = 0; x < info.width; x++) {
-                        temp.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
-                    }
-                }
-            }
-        }break;
-
-        case CyMedia::RGB: {
-            // RGB图像
-            if (info.bit == 8) {
-                image = QImage(data, info.width, info.height, QImage::Format_RGB888);
-            }
-            else if (info.bit == 16) {
-                // 处理16位RGB图像
-                QImage temp(info.width, info.height, QImage::Format_RGB32);
-                memcpy(temp.bits(), data, info.width * info.height * 2);
-                image = temp;
-            }
-        }break;
-
-		case CyMedia::RGBA: {
-			// RGBA图像
-			if (info.bit == 8) {
-				image = QImage(data, info.width, info.height, QImage::Format_RGBA8888);
-			}
-			else if (info.bit == 16) {
-				// 处理16位RGB图像
-				QImage temp(info.width, info.height, QImage::Format_RGBA64);
-				memcpy(temp.bits(), data, info.width * info.height * 2);
-				image = temp;
-			}
-		}break;
-
-        case CyMedia::BAYERRG:
-        case CyMedia::BAYERGR:
-        case CyMedia::BAYERGB:
-        case CyMedia::BAYERBG: {
-            // Bayer图像，需要转换为RGB
-            // 使用CyMedia::bayer2RGBConvert函数
-            uint32_t rgbLen = info.width * info.height * 3;
-            uint8_t* rgbData = new uint8_t[rgbLen];
-            CyMedia::bayer2RGBConvert(info, data, rgbData);
-            image = QImage(rgbData, info.width, info.height, QImage::Format_RGB888);
-            delete[] rgbData;
-        }break;
-
-        default:
-            // 其他格式，尝试用默认方式
-            image = QImage(data, info.width, info.height, QImage::Format_RGB888);
-            break;
-    }
-
-    // 如果图像创建成功，设置为缩略图
-    if (!image.isNull()) {
-        mBackImage = image;
-        // 缩放到合适的大小，保持宽高比
-        int thumbSize = THUMBNAIL_MIN_SIZE; // 120
-        if (image.width() > image.height()) {
-            int newHeight = thumbSize * image.height() / image.width();
-            mBackImage = mBackImage.scaled(thumbSize, newHeight, Qt::KeepAspectRatio);
-        }
-        else {
-            int newWidth = thumbSize * image.width() / image.height();
-            mBackImage = mBackImage.scaled(newWidth, thumbSize, Qt::KeepAspectRatio);
-        }
-        //update(); // 重绘缩略图
-    }
-}
-
-QImage& CyThumbnailView::backImage() {
-    return mBackImage;
-}
-
-void CyThumbnailView::setBackgroundColor(QColor color) {
-    mBackGroundColor = color;
-}
-
-void CyThumbnailView::setSelectColor(QColor color) {
-    color.setAlpha(0xFF);
-    mSelectRectColor = color;
-
-    color.setAlpha(mSelectRectColor_transparent.alpha());
-    mSelectRectColor_transparent = color;
-}
-
-void CyThumbnailView::paintEvent(QPaintEvent* event) {
-    QWidget::paintEvent(event);
-    // 绘制场景缩略图
-    if (m_scene) {
-        //int thumbWidth = width();
-        //int thumbHeight = height();
-        //// 创建缩略图
-        //QPixmap thumbnail(thumbWidth, thumbHeight);
-        //thumbnail.fill(Qt::white);
-        //QPainter painter(&thumbnail);
-        //painter.setRenderHint(QPainter::Antialiasing);
-        //painter.setRenderHint(QPainter::SmoothPixmapTransform);
-        //// 绘制场景到缩略图
-        //m_scene->render(&painter, QRect(0, 0, thumbWidth, thumbHeight), m_scene->sceneRect());
-        //painter.end();
-        //// 绘制缩略图
-        //QPainter painter2(this);
-        //painter2.drawPixmap(0, 0, thumbnail);
-        //// 绘制视图矩形
-        //painter2.setPen(Qt::red);
-        //painter2.drawRect(mViewRect.toRect());
-
-        // 绘制背景
-        QPainter painter(this);
-        if (!mBackImage.isNull()) {
-            painter.drawImage(rect(), mBackImage);
-        }
-        else {
-            painter.setBrush(mBackGroundColor);
-            painter.setPen(Qt::transparent);
-            painter.drawRect(rect());
-        }
-
-        // 绘制视图矩形
-        painter.setBrush(mSelectRectColor_transparent);
-        painter.setPen(mSelectRectColor);
-        auto rectI = QRect(mViewRect.x(), mViewRect.y(), mViewRect.width(), mViewRect.height());
-        painter.drawRect(rectI);
-    }
-}
-
-void CyThumbnailView::mousePressEvent(QMouseEvent* event) {
-    if (event->button() == Qt::LeftButton && m_parentView) {
-        mDragging = true;
-        setCursor(Qt::ClosedHandCursor);
-        // 计算点击点在小窗内的局部比例（0=左上, 1=右下）
-        double localX = (event->x() - mViewRect.x()) / mViewRect.width();
-        double localY = (event->y() - mViewRect.y()) / mViewRect.height();
-        mClickOffsetRatio = QPointF(
-            qBound(0.0, localX, 1.0),
-            qBound(0.0, localY, 1.0)
-        );
-    }
-    QWidget::mousePressEvent(event);
-}
-
-void CyThumbnailView::mouseMoveEvent(QMouseEvent* event) {
-    if (mDragging && m_parentView && m_parentView->scene()) {
-        // 根据鼠标位置和点击偏移，反推小窗左上角应在的位置
-        double desiredCenterX = event->x() - mClickOffsetRatio.x() * mViewRect.width();
-        double desiredCenterY = event->y() - mClickOffsetRatio.y() * mViewRect.height();
-
-        // 转换为在整个缩略图中的比例 [0.0 ~ 1.0]
-        double xRatio = qBound(0.0, desiredCenterX / width(), 1.0);
-        double yRatio = qBound(0.0, desiredCenterY / height(), 1.0);
-
-        // 通知主视图更新视口
-        m_parentView->setViewFromThumbnailPos(xRatio, yRatio);
-
-        // 注意：updateThumbnail() 会在主视图滚动后被调用（通过 onScrollValueChanged）
-        // 所以这里不需要手动 update()
-    }
-    QWidget::mouseMoveEvent(event);
-}
-
-void CyThumbnailView::mouseReleaseEvent(QMouseEvent* event) {
-    if (event->button() == Qt::LeftButton) {
-        mDragging = false;
-        setCursor(Qt::ArrowCursor);
-    }
-    QWidget::mouseReleaseEvent(event);
-}
-
-#include "CyMediaDisView.moc"

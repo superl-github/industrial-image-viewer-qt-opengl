@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisGrayTest.h"
+#include "CyMediaDisGrayTest.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "cycustomwidget.h"
@@ -15,64 +15,66 @@
 
 struct CyMediaDisGrayTest::PrivateData {
 public:
-	//UI
+    //UI
     CyMedia::CyMediaDis* m_parentDis = nullptr;
-	QColor m_ThemeColor = QColor(0x2a, 0xa3, 0xc6);
-	bool mIsInit = false;
-	QCustomPlot* mCustomPlot = nullptr;
-	CyHistogram* mHistogram[4] = { nullptr };
-	CyLineChart* mLineChart[4] = { nullptr };
-	QColor mHisColor[4];
-	QWidget* nTestInfoEditWidget[4] = { nullptr };
-	QLabel* mCahnnelLabel = nullptr;
-	QCheckBox* mChannelCtlLab[4] = { nullptr };
-	QLabel* mAveageLabel[5] = { nullptr };
-	QLabel* mMaximumLabel[5] = { nullptr };
-	QLabel* mMinimumLabel[5] = { nullptr };
-	QLabel* mStdLabel[5] = { nullptr };
-	QLabel* mUniformityLabel[5] = { nullptr };
+    QColor m_ThemeColor = QColor(0x2a, 0xa3, 0xc6);
+    bool mIsInit = false;
+    QCustomPlot* mCustomPlot = nullptr;
+    CyHistogram* mHistogram[4] = { nullptr };
+    CyLineChart* mLineChart[4] = { nullptr };
+    QColor mHisColor[4];
+    QWidget* nTestInfoEditWidget[4] = { nullptr };
+    QLabel* mCahnnelLabel = nullptr;
+    QCheckBox* mChannelCtlLab[4] = { nullptr };
+    QLabel* mAveageLabel[5] = { nullptr };
+    QLabel* mMaximumLabel[5] = { nullptr };
+    QLabel* mMinimumLabel[5] = { nullptr };
+    QLabel* mStdLabel[5] = { nullptr };
+    QLabel* mUniformityLabel[5] = { nullptr };
 
-	QActionGroup* mDrawBtnGroup = nullptr;
-	QAction* mDrawAct[6];
+    QActionGroup* mDrawBtnGroup = nullptr;
+    QAction* mDrawAct[6];
 
-	QPushButton* mResetBtn = nullptr;
+    QPushButton* mResetBtn = nullptr;
 
-	//histogram
-	bool mfirstShow = true;
-	std::vector<double> mHistogramData[4];
-	QVector<QCPGraphData> mPosHistogramData[4];
-	PosHis mPosHisData[4];
-	double mPosHisMaxY = 0.0;
-	bool mZoomable = true;
+    //histogram
+    bool upYrange = true;
+    std::vector<double> mHistogramData[4];
+    QVector<QCPGraphData> mPosHistogramData[4];
+    PosHis mPosHisData[4];
+    double mPosHisMaxY = 0.0;
+    bool mZoomable = true;
 
-	int m_XRangeMax = 255;
-	int m_XRangeMin = 0;
-	int m_YRangeMax = 1;
+    int m_XRangeMax = 255;
+    int m_XRangeMin = 0;
+    int m_YRangeMax = 1;
 
-	bool mShowPlotTips = true;
-	QPoint mLastPlotTipPos;
-	int mLastPlotTopX = -1;
+    bool mShowPlotTips = true;
+    QPoint mLastPlotTipPos;
+    int mLastPlotTopX = -1;
 
-	bool mIsGray = false;
-	bool mIsPos = false;
+    bool mIsGray = false;
+    bool mIsPos = false;
 
-	//test
-	QUuid mCurrentItemID;
-	CyDisDrawItem::ItemType mDrawType = CyDisDrawItem::ItemType::Invalid;
+    //test
+    QUuid mCurrentItemID;
+    CyDisDrawItem::ItemType mDrawType = CyDisDrawItem::ItemType::Invalid;
+    QPainterPath mOldItemPath;
 
-	std::vector<uint8_t> mClacMask;
-	bool mMaskHaveData = false;
+    std::vector<uint8_t> mClacMask;
+    bool mMaskHaveData = false;
     bool mMaskIsfullzero = false;
 
-	oneChannelTestInfo mHisTestData;
-	threeChannelTestInfo mRGBTestData;
-	bool currentIsPosCalc = false;
+    oneChannelTestInfo mHisTestData;
+    threeChannelTestInfo mRGBTestData;
+    bool currentIsPosCalc = false;
 };
 
 CyMediaDisGrayTest::CyMediaDisGrayTest(QWidget* parent /*= nullptr*/)
     :QWidget(parent) {
     d = new CyMediaDisGrayTest::PrivateData;
     initGUI();
+    qRegisterMetaType<CyMediaDisGrayTest::testModeChangeType>("CyMediaDisGrayTest::testModeChangeType");
 
     connect(this, &CyMediaDisGrayTest::uphisVisible, this, &CyMediaDisGrayTest::onUphisVisible);
     connect(this, &CyMediaDisGrayTest::upTestData, this, &CyMediaDisGrayTest::onUpTestData);
@@ -101,6 +103,9 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
     }
 
     d->mCurrentItemID = item->id();
+    if (d->mDrawType != item->itemType()) {
+        d->upYrange = true;
+    }
     emit needImage();
 
     connect(item, &CyDisDrawItem::BaseItem::geometryChanged, this, 
@@ -128,6 +133,10 @@ CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
         return nullptr;
     }
     return d->m_parentDis->getItem(d->mCurrentItemID);
+}
+
+QPainterPath CyMediaDisGrayTest::oldItemPpath() {
+    return d->mOldItemPath;
 }
 
 bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
@@ -219,21 +228,18 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
                 std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
                 size_t idx_maxY = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * maxY_threshold);
                 calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
-				while (calcHisMaxY <= 0.0) {
-					idx_maxY++;
-					if (idx_maxY >= d->mHistogramData[hisI_Gray].size()) break;
+                while (calcHisMaxY <= 0.0) {
+                    idx_maxY++;
+                    if (idx_maxY >= d->mHistogramData[hisI_Gray].size()) break;
                     calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
-				}
+                }
             }
         }
         //计算参数
         CyMedia::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
             &d->mHisTestData.std, &d->mHisTestData.Uniformity);
     }
-    else if (info.isBayer()) {
-        return false;
-    }
-    else {
+    else if (info.isRGB()){
         if (d->mIsPos) {
             //计算像素点
             double tempRGB[4];
@@ -294,19 +300,98 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
                 d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
             }
+            if (false == d->mMaskIsfullzero) {
+                //计算参数
+                CyMedia::computerThreeUniformity(
+                    d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                    d->mRGBTestData.ave, d->mRGBTestData.max,
+                    d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+                //计算Y轴显示范围
+                if (d->upYrange) {
+                    for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                        if (d->mHistogram[hisI]->visible()) {
+                            calcHisMaxY = std::max(calcHisMaxY, CyMedia::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                        }
+                    }
+                }
+            }
         }
+    }
+    else if (info.isBayer()){
+        if (d->mIsPos) {
+            double tempRGB[4];
+            auto pos = getCurrentItem()->pos();
+            CyMedia::calcCoordinateColor(info, data, pos.x(), pos.y(),
+                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B]);
+            //入队
+            for (int i = hisI_R; i <= hisI_B; i++) {
+                d->mPosHisData[i].addData(tempRGB[i]);
+                d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
+            }
+            //更新数据
+            for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
+                for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                    d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
+                }
+            }
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
+            }
 
+            if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
+                d->mPosHisMaxY = tempRGB[hisI_R];
+            }
+            if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
+                d->mPosHisMaxY = tempRGB[hisI_G];
+            }
+            if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
+                d->mPosHisMaxY = tempRGB[hisI_B];
+            }
+            if (d->mRGBTestData.currentGray.size() != 3) {
+                d->mRGBTestData.currentGray.resize(3);
+            }
+            d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
+            d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
+            d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
+            calcHisMaxY = d->mPosHisMaxY;
+            calcXRangePara = mPosHisMax;
+        }
+        else {
+            if (d->mMaskIsfullzero) {
+                d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
+                d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
+                d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
+
+                d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
+                d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
+                d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
+                d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
+                d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
+            }
+            else {
+                CyMedia::computeBayerHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                    d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
+            }
+            //更新数据
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
+            }
+        }
         if (false == d->mMaskIsfullzero) {
             //计算参数
             CyMedia::computerThreeUniformity(
                 d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
                 d->mRGBTestData.ave, d->mRGBTestData.max,
                 d->mRGBTestData.std, d->mRGBTestData.Uniformity);
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                std::sort(d->mHistogramData[hisI].begin(), d->mHistogramData[hisI].end());
+            //计算Y轴显示范围
+            if (d->upYrange) {
+                for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                    if (d->mHistogram[hisI]->visible()) {
+                        calcHisMaxY = std::max(calcHisMaxY, CyMedia::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                    }
+                }
             }
-            size_t idx97 = static_cast<size_t>(d->mHistogramData[hisI_R].size() * 0.97);
-            calcHisMaxY = d->mHistogramData[hisI_R][idx97] > d->mHistogramData[hisI_G][idx97] ? std::max(d->mHistogramData[hisI_R][idx97], d->mHistogramData[hisI_B][idx97]) : std::max(d->mHistogramData[hisI_G][idx97], d->mHistogramData[hisI_B][idx97]);
         }
     }
 
@@ -372,10 +457,18 @@ bool CyMediaDisGrayTest::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void CyMediaDisGrayTest::closeEvent(QCloseEvent* event) {
+    d->upYrange = true;
     QWidget::closeEvent(event);
     if (parent()) {
         hide();
-        emit testModeChange(int(CyDisDrawItem::ItemType::Invalid));
+        auto citem = getCurrentItem();
+        if (citem) {
+            d->mOldItemPath = citem->pathInScene();
+        }
+        else {
+            d->mOldItemPath.clear();
+        }
+        emit testModeChange(int(CyDisDrawItem::ItemType::Invalid), CyMediaDisGrayTest::ModeChange_hide);
     }
     else {
         close();
@@ -383,9 +476,9 @@ void CyMediaDisGrayTest::closeEvent(QCloseEvent* event) {
 }
 
 void CyMediaDisGrayTest::showEvent(QShowEvent* event) {
-    d->mfirstShow = true;
+    d->upYrange = true;
     if (!d->m_parentDis || true == d->m_parentDis->isSingleItemMode())
-        emit testModeChange(d->mDrawType);
+        emit testModeChange(d->mDrawType, CyMediaDisGrayTest::QPainterPath_show);
     emit needImage();
     QWidget::showEvent(event);
 }
@@ -738,7 +831,7 @@ void CyMediaDisGrayTest::onResetShaft() {
 void CyMediaDisGrayTest::onDrawActTriggered(QAction* act) {
     d->mDrawType = CyDisDrawItem::ItemType(act->data().toInt());
     if (!d->m_parentDis || true == d->m_parentDis->isSingleItemMode())
-        emit testModeChange(int(d->mDrawType));
+        emit testModeChange(int(d->mDrawType), CyMediaDisGrayTest::ModeChange_normal);
 }
 
 void CyMediaDisGrayTest::flushTrans() {
@@ -868,9 +961,8 @@ void CyMediaDisGrayTest::onUpHisRange(int minX, int maxX, int maxY) {
     }
 
     float change = abs(d->m_YRangeMax - maxY) * 1.0 / d->m_YRangeMax;
-    if (change > 0.20 || d->mfirstShow) {
-        if (d->mfirstShow)
-            d->mfirstShow = false;
+    if (change > 0.20 && d->upYrange) {
+        d->upYrange = false;
         d->m_YRangeMax = maxY;
         d->mCustomPlot->yAxis->setRange(0, d->m_YRangeMax);
     }

@@ -16,34 +16,27 @@ const float THRESHOLD_F = 0.008856f;        // f(t) 函数阈值
 const float THRESHOLD_F_INV = 6.0f / 29.0f; // 逆 f(t) 函数阈值
 
 namespace CyMedia {
-    //辅助函数
-    template<typename T>
-    RgbPixel getPixelValue(const T* data, int32_t pixelI);
-    RgbPixel calcCoordinateColor_RGB(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y);
-    RgbPixel getRGBTransPixel(RgbPixel pixel, StretchType type, int32_t maxValue);
-    int32_t getRGBTransPixelOne(RgbPixel pixel, StretchType type, float maxValue);
-
     // 获取自适应并行阈值
     // @param coreCount       CPU 逻辑核心数
     // @param type            拉伸类型，用于调整复杂度权重
     // @return                建议的最小总像素数，低于此值应使用串行
-    inline int32_t getAdaptiveParallelThreshold(int32_t coreCount, StretchType type) {
+    int32_t get_parallel_threshold_stretch(int32_t coreCount, StretchType type) {
         // 基准：每个核心至少处理 15000 像素才值得并行
         constexpr int32_t BASE_PIXELS_PER_CORE = 15000;
 
         // 根据计算复杂度调整系数
         double complexityFactor = 1.0;
         switch (type) {
-            case stretch_None:
-            case stretch_Gray:
-                complexityFactor = 1.2;   // 简单计算，阈值稍高
-                break;
-            case stretch_HSV:
-                complexityFactor = 0.9;   // 中等复杂度
-                break;
-            case stretch_Lab:
-                complexityFactor = 0.5;   // 很重，阈值降低一半
-                break;
+        case stretch_None:
+        case stretch_Gray:
+            complexityFactor = 1.2;   // 简单计算，阈值稍高
+            break;
+        case stretch_HSV:
+            complexityFactor = 0.9;   // 中等复杂度
+            break;
+        case stretch_Lab:
+            complexityFactor = 0.5;   // 很重，阈值降低一半
+            break;
         }
 
         int32_t threshold = static_cast<int32_t>(coreCount * BASE_PIXELS_PER_CORE * complexityFactor);
@@ -53,6 +46,12 @@ namespace CyMedia {
         constexpr int32_t MAX_THRESHOLD = 800000;  // 最多 80 万像素
         return std::clamp(threshold, MIN_THRESHOLD, MAX_THRESHOLD);
     }
+    template<typename T>
+    RgbPixel getPixelValue(const T* data, int32_t pixelI);
+    RgbPixel calcCoordinateColor_RGB(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y);
+    RgbPixel getRGBTransPixel(RgbPixel pixel, StretchType type, int32_t maxValue);
+    int32_t getRGBTransPixelOne(RgbPixel pixel, StretchType type, float maxValue);
+
     inline float step(int32_t a, int32_t b) {
         return (b >= a) ? 1.0f : 0.0f;
     }
@@ -60,9 +59,7 @@ namespace CyMedia {
         return static_cast<int32_t>(rgb.r * 0.299f + rgb.g * 0.587f + rgb.b * 0.114f);
     }
     inline int32_t fastHSV_V(const RgbPixel& rgb, float maxV) {
-        float r = rgb.r, g = rgb.g, b = rgb.b;
-        float max_val = std::max({ r, g, b });
-        return static_cast<int32_t>((max_val / maxV) * maxV);
+        return std::max({ rgb.r, rgb.g, rgb.b });
     }
     inline int32_t fastLab_L(const RgbPixel& rgb, float maxV) {
         float r = rgb.r / maxV;
@@ -138,8 +135,169 @@ namespace CyMedia {
             return cores > 0 ? cores : 4;  // 若获取失败，默认 4 核
             }();
         //计算并行计算阈值
-        const int32_t threshold = getAdaptiveParallelThreshold(cpuCores, stretch_None);
-        if (totalPixels < threshold) {
+        const int32_t threshold = get_parallel_threshold_stretch(cpuCores, stretch_None);
+        bool bseria = totalPixels < threshold;
+        //并行计算
+        if (false == bseria) {
+#if defined(_MSC_VER)
+            // ----- PPL 并行版本 -----
+            struct LocalStat {
+                std::vector<double> rHist, gHist, bHist;
+                int32_t maxR = 0, maxG = 0, maxB = 0;
+                int32_t minR, minG, minB;
+                double sumR = 0, sumG = 0, sumB = 0;
+                int32_t count = 0;
+
+                LocalStat(int32_t size, int32_t initMin)
+                    : rHist(size, 0), gHist(size, 0), bHist(size, 0),
+                    minR(initMin), minG(initMin), minB(initMin) {
+                }
+            };
+
+            concurrency::combinable<LocalStat> localStats([histSize, maxVal]() {
+                return LocalStat(histSize, maxVal);
+                });
+
+            concurrency::parallel_for(0, totalPixels, [&](int32_t i) {
+                if (useMask && mask && !(*mask)[i]) return;
+
+                const T* pix = pData + i * 3;
+                int32_t r = static_cast<int32_t>(pix[0]);
+                int32_t g = static_cast<int32_t>(pix[1]);
+                int32_t b = static_cast<int32_t>(pix[2]);
+
+                auto& local = localStats.local();
+                local.rHist[r] += 1.0;
+                local.gHist[g] += 1.0;
+                local.bHist[b] += 1.0;
+
+                if (r > local.maxR) local.maxR = r;
+                if (g > local.maxG) local.maxG = g;
+                if (b > local.maxB) local.maxB = b;
+
+                if (r < local.minR) local.minR = r;
+                if (g < local.minG) local.minG = g;
+                if (b < local.minB) local.minB = b;
+
+                local.sumR += r;
+                local.sumG += g;
+                local.sumB += b;
+                local.count++;
+                });
+
+            int32_t finalMaxR = 0, finalMaxG = 0, finalMaxB = 0;
+            int32_t finalMinR = maxVal, finalMinG = maxVal, finalMinB = maxVal;
+            int32_t finalCount = 0;
+
+            localStats.combine_each([&](const LocalStat& local) {
+                for (size_t k = 0; k < Rhistogram.size(); ++k) {
+                    Rhistogram[k] += local.rHist[k];
+                    Ghistogram[k] += local.gHist[k];
+                    Bhistogram[k] += local.bHist[k];
+                }
+                if (local.maxR > finalMaxR) finalMaxR = local.maxR;
+                if (local.maxG > finalMaxG) finalMaxG = local.maxG;
+                if (local.maxB > finalMaxB) finalMaxB = local.maxB;
+
+                if (local.minR < finalMinR) finalMinR = local.minR;
+                if (local.minG < finalMinG) finalMinG = local.minG;
+                if (local.minB < finalMinB) finalMinB = local.minB;
+
+                finalSumR += local.sumR;
+                finalSumG += local.sumG;
+                finalSumB += local.sumB;
+                finalCount += local.count;
+                });
+
+            maxPixel[0] = finalMaxR;
+            maxPixel[1] = finalMaxG;
+            maxPixel[2] = finalMaxB;
+            minPixel[0] = finalMinR;
+            minPixel[1] = finalMinG;
+            minPixel[2] = finalMinB;
+            maskNum = finalCount;
+
+#elif defined(_OPENMP)
+            // ----- OpenMP 并行版本 -----
+            int32_t finalMaxR = 0, finalMaxG = 0, finalMaxB = 0;
+            int32_t finalMinR = maxVal, finalMinG = maxVal, finalMinB = maxVal;
+            int32_t finalCount = 0;
+
+#pragma omp parallel
+            {
+                std::vector<double> localRHist(histSize, 0);
+                std::vector<double> localGHist(histSize, 0);
+                std::vector<double> localBHist(histSize, 0);
+                int32_t localMaxR = 0, localMaxG = 0, localMaxB = 0;
+                int32_t localMinR = maxVal, localMinG = maxVal, localMinB = maxVal;
+                double localSumR = 0, localSumG = 0, localSumB = 0;
+                int32_t localCount = 0;
+
+#pragma omp for nowait
+                for (int32_t i = 0; i < totalPixels; ++i) {
+                    if (useMask && mask && !(*mask)[i]) continue;
+
+                    const T* pix = pData + i * 3;
+                    int32_t r = static_cast<int32_t>(pix[0]);
+                    int32_t g = static_cast<int32_t>(pix[1]);
+                    int32_t b = static_cast<int32_t>(pix[2]);
+
+                    localRHist[r] += 1.0;
+                    localGHist[g] += 1.0;
+                    localBHist[b] += 1.0;
+
+                    if (r > localMaxR) localMaxR = r;
+                    if (g > localMaxG) localMaxG = g;
+                    if (b > localMaxB) localMaxB = b;
+
+                    if (r < localMinR) localMinR = r;
+                    if (g < localMinG) localMinG = g;
+                    if (b < localMinB) localMinB = b;
+
+                    localSumR += r;
+                    localSumG += g;
+                    localSumB += b;
+                    localCount++;
+                }
+
+#pragma omp critical
+                {
+                    for (int32_t k = 0; k < histSize; ++k) {
+                        Rhistogram[k] += localRHist[k];
+                        Ghistogram[k] += localGHist[k];
+                        Bhistogram[k] += localBHist[k];
+                    }
+                    if (localMaxR > finalMaxR) finalMaxR = localMaxR;
+                    if (localMaxG > finalMaxG) finalMaxG = localMaxG;
+                    if (localMaxB > finalMaxB) finalMaxB = localMaxB;
+
+                    if (localMinR < finalMinR) finalMinR = localMinR;
+                    if (localMinG < finalMinG) finalMinG = localMinG;
+                    if (localMinB < finalMinB) finalMinB = localMinB;
+
+                    finalSumR += localSumR;
+                    finalSumG += localSumG;
+                    finalSumB += localSumB;
+                    finalCount += localCount;
+                }
+            }
+
+            maxPixel[0] = finalMaxR;
+            maxPixel[1] = finalMaxG;
+            maxPixel[2] = finalMaxB;
+            minPixel[0] = finalMinR;
+            minPixel[1] = finalMinG;
+            minPixel[2] = finalMinB;
+            maskNum = finalCount;
+
+#else
+            //退回串行
+            bseria = true;
+#endif
+        }
+
+        //串行
+        if (bseria) {
             int32_t maxR = 0, maxG = 0, maxB = 0;
             int32_t minR = maxVal, minG = maxVal, minB = maxVal;
 
@@ -177,197 +335,6 @@ namespace CyMedia {
             minPixel[2] = minB;
             return;
         }
-
-
-#if defined(_MSC_VER)
-        // ----- PPL 并行版本 -----
-        struct LocalStat {
-            std::vector<double> rHist, gHist, bHist;
-            int32_t maxR = 0, maxG = 0, maxB = 0;
-            int32_t minR, minG, minB;
-            double sumR = 0, sumG = 0, sumB = 0;
-            int32_t count = 0;
-
-            LocalStat(int32_t size, int32_t initMin)
-                : rHist(size, 0), gHist(size, 0), bHist(size, 0),
-                minR(initMin), minG(initMin), minB(initMin) {
-            }
-        };
-
-        concurrency::combinable<LocalStat> localStats([histSize, maxVal]() {
-            return LocalStat(histSize, maxVal);
-            });
-
-        concurrency::parallel_for(0, totalPixels, [&](int32_t i) {
-            if (useMask && mask && !(*mask)[i]) return;
-
-            const T* pix = pData + i * 3;
-            int32_t r = static_cast<int32_t>(pix[0]);
-            int32_t g = static_cast<int32_t>(pix[1]);
-            int32_t b = static_cast<int32_t>(pix[2]);
-
-            auto& local = localStats.local();
-            local.rHist[r] += 1.0;
-            local.gHist[g] += 1.0;
-            local.bHist[b] += 1.0;
-
-            if (r > local.maxR) local.maxR = r;
-            if (g > local.maxG) local.maxG = g;
-            if (b > local.maxB) local.maxB = b;
-
-            if (r < local.minR) local.minR = r;
-            if (g < local.minG) local.minG = g;
-            if (b < local.minB) local.minB = b;
-
-            local.sumR += r;
-            local.sumG += g;
-            local.sumB += b;
-            local.count++;
-            });
-
-        int32_t finalMaxR = 0, finalMaxG = 0, finalMaxB = 0;
-        int32_t finalMinR = maxVal, finalMinG = maxVal, finalMinB = maxVal;
-        int32_t finalCount = 0;
-
-        localStats.combine_each([&](const LocalStat& local) {
-            for (size_t k = 0; k < Rhistogram.size(); ++k) {
-                Rhistogram[k] += local.rHist[k];
-                Ghistogram[k] += local.gHist[k];
-                Bhistogram[k] += local.bHist[k];
-            }
-            if (local.maxR > finalMaxR) finalMaxR = local.maxR;
-            if (local.maxG > finalMaxG) finalMaxG = local.maxG;
-            if (local.maxB > finalMaxB) finalMaxB = local.maxB;
-
-            if (local.minR < finalMinR) finalMinR = local.minR;
-            if (local.minG < finalMinG) finalMinG = local.minG;
-            if (local.minB < finalMinB) finalMinB = local.minB;
-
-            finalSumR += local.sumR;
-            finalSumG += local.sumG;
-            finalSumB += local.sumB;
-            finalCount += local.count;
-            });
-
-        maxPixel[0] = finalMaxR;
-        maxPixel[1] = finalMaxG;
-        maxPixel[2] = finalMaxB;
-        minPixel[0] = finalMinR;
-        minPixel[1] = finalMinG;
-        minPixel[2] = finalMinB;
-        maskNum = finalCount;
-
-#elif defined(_OPENMP)
-        // ----- OpenMP 并行版本 -----
-        int32_t finalMaxR = 0, finalMaxG = 0, finalMaxB = 0;
-        int32_t finalMinR = maxVal, finalMinG = maxVal, finalMinB = maxVal;
-        int32_t finalCount = 0;
-
-#pragma omp parallel
-        {
-            std::vector<double> localRHist(histSize, 0);
-            std::vector<double> localGHist(histSize, 0);
-            std::vector<double> localBHist(histSize, 0);
-            int32_t localMaxR = 0, localMaxG = 0, localMaxB = 0;
-            int32_t localMinR = maxVal, localMinG = maxVal, localMinB = maxVal;
-            double localSumR = 0, localSumG = 0, localSumB = 0;
-            int32_t localCount = 0;
-
-#pragma omp for nowait
-            for (int32_t i = 0; i < totalPixels; ++i) {
-                if (useMask && mask && !(*mask)[i]) continue;
-
-                const T* pix = pData + i * 3;
-                int32_t r = static_cast<int32_t>(pix[0]);
-                int32_t g = static_cast<int32_t>(pix[1]);
-                int32_t b = static_cast<int32_t>(pix[2]);
-
-                localRHist[r] += 1.0;
-                localGHist[g] += 1.0;
-                localBHist[b] += 1.0;
-
-                if (r > localMaxR) localMaxR = r;
-                if (g > localMaxG) localMaxG = g;
-                if (b > localMaxB) localMaxB = b;
-
-                if (r < localMinR) localMinR = r;
-                if (g < localMinG) localMinG = g;
-                if (b < localMinB) localMinB = b;
-
-                localSumR += r;
-                localSumG += g;
-                localSumB += b;
-                localCount++;
-            }
-
-#pragma omp critical
-            {
-                for (int32_t k = 0; k < histSize; ++k) {
-                    Rhistogram[k] += localRHist[k];
-                    Ghistogram[k] += localGHist[k];
-                    Bhistogram[k] += localBHist[k];
-                }
-                if (localMaxR > finalMaxR) finalMaxR = localMaxR;
-                if (localMaxG > finalMaxG) finalMaxG = localMaxG;
-                if (localMaxB > finalMaxB) finalMaxB = localMaxB;
-
-                if (localMinR < finalMinR) finalMinR = localMinR;
-                if (localMinG < finalMinG) finalMinG = localMinG;
-                if (localMinB < finalMinB) finalMinB = localMinB;
-
-                finalSumR += localSumR;
-                finalSumG += localSumG;
-                finalSumB += localSumB;
-                finalCount += localCount;
-            }
-        }
-
-        maxPixel[0] = finalMaxR;
-        maxPixel[1] = finalMaxG;
-        maxPixel[2] = finalMaxB;
-        minPixel[0] = finalMinR;
-        minPixel[1] = finalMinG;
-        minPixel[2] = finalMinB;
-        maskNum = finalCount;
-
-#else
-        // ----- 串行版本 -----
-        int32_t maxR = 0, maxG = 0, maxB = 0;
-        int32_t minR = maxVal, minG = maxVal, minB = maxVal;
-
-        for (int32_t i = 0; i < totalPixels; ++i) {
-            if (useMask && mask && !(*mask)[i]) continue;
-
-            const T* pix = pData + i * 3;
-            int32_t r = static_cast<int32_t>(pix[0]);
-            int32_t g = static_cast<int32_t>(pix[1]);
-            int32_t b = static_cast<int32_t>(pix[2]);
-
-            Rhistogram[r] += 1.0;
-            Ghistogram[g] += 1.0;
-            Bhistogram[b] += 1.0;
-
-            if (r > maxR) maxR = r;
-            if (g > maxG) maxG = g;
-            if (b > maxB) maxB = b;
-
-            if (r < minR) minR = r;
-            if (g < minG) minG = g;
-            if (b < minB) minB = b;
-
-            finalSumR += r;
-            finalSumG += g;
-            finalSumB += b;
-            maskNum++;
-        }
-
-        maxPixel[0] = maxR;
-        maxPixel[1] = maxG;
-        maxPixel[2] = maxB;
-        minPixel[0] = minR;
-        minPixel[1] = minG;
-        minPixel[2] = minB;
-#endif
     }
 
     bool computeHistogram_RGB(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram,
@@ -436,7 +403,7 @@ namespace CyMedia {
             return cores > 0 ? cores : 4;  // 若获取失败，默认 4 核
             }();
         //计算并行计算阈值
-        const int32_t threshold = getAdaptiveParallelThreshold(cpuCores, type);
+        const int32_t threshold = get_parallel_threshold_stretch(cpuCores, type);
         if (totalPixels < threshold) {
             for (int32_t i = 0; i < totalPixels; ++i) {
                 if (useMask && mask && !(*mask)[i]) continue;
@@ -448,6 +415,7 @@ namespace CyMedia {
                 int index = getRGBTransPixelOneFast(rgb, type, maxValF);
                 histogram[index] += 1.0;
             }
+            return;
         }
 
 #if defined(_MSC_VER)
@@ -516,7 +484,12 @@ namespace CyMedia {
 
         const int32_t maxBitValue = (1 << info.bit);
         const float maxValF = static_cast<float>(maxBitValue - 1);
-        histogram.assign(maxBitValue, 0.0);
+        if (type == stretch_Lab) {
+            histogram.assign(100, 0.0);
+        }
+        else {
+            histogram.assign(maxBitValue, 0.0);
+        }
 
         if (info.bit <= 8) {
             computeHistogram_RGBTrans_impl<uint8_t>(info,

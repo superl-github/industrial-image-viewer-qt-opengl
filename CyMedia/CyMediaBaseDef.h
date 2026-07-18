@@ -42,10 +42,10 @@ namespace CyMedia {
     /**
      * @brief Pixel Data Type
      */
-    enum eSpecialValueType {
-        IMGVALUE_None,
-        IMGVALUE_F32,
-        IMGVALUE_F64,
+    enum ePixelValueType {
+        PIXEL_VALUE_INT = 0,
+        PIXEL_VALUE_F32,
+        PIXEL_VALUE_F64,
     };
 
     /**
@@ -74,11 +74,11 @@ namespace CyMedia {
         Ch_B,
     };
 
-    enum DemosaicMethod {
-        BAYERSOUCE,
-        BILINEAR,
-        MALVAR,
-        AHD,
+    enum DemosaicingMethod {
+        DEMOSAIC_NONE,
+        DEMOSAIC_BILINEAR,
+        DEMOSAIC_MALVA,
+        DEMOSAIC_AHD,
     };
 
     enum StretchType {
@@ -86,6 +86,20 @@ namespace CyMedia {
         stretch_Gray,
         stretch_HSV,
         stretch_Lab,
+    };
+
+    enum ImageSuffix {
+        IMAGE_SUFFIX_RAW = 0,
+        IMAGE_SUFFIX_BMP,
+        IMAGE_SUFFIX_TIFF,
+        IMAGE_SUFFIX_PNG,
+        IMAGE_SUFFIX_JPEG,
+        IMAGE_SUFFIX_INVALID
+    };
+
+    enum VideoSuffix {
+        VIDEO_SUFFIX_RAW = 0,
+        VIDEO_SUFFIX_INVALID,
     };
 
 #pragma pack(push,1)
@@ -97,11 +111,11 @@ namespace CyMedia {
         int32_t height = 0;      ///< The number of pixels in a column of the image
         int8_t  bit = 8;         ///< Bit depth of a single color channel
         ePixType format = MONO;   ///< Image Format
-        eSpecialValueType special_value = IMGVALUE_None;
+        ePixelValueType special_pixel = PIXEL_VALUE_INT;
         uint32_t length = 0;  ///< Data Length (Bytes)
 
-        ImageShowInfo(int w, int h, int b, ePixType f, uint32_t l = 0, eSpecialValueType sv = IMGVALUE_None)
-            : width(w), height(h), bit(static_cast<int8_t>(b)), format(f), special_value(sv) {
+        ImageShowInfo(int w, int h, int b, ePixType f, uint32_t l = 0, ePixelValueType sv = PIXEL_VALUE_INT)
+            : width(w), height(h), bit(static_cast<int8_t>(b)), format(f), special_pixel(sv) {
             if (l == 0) {
                 upLenth();
             }
@@ -162,16 +176,12 @@ namespace CyMedia {
 			else if (bit <= 31) {
 				pixelLen = 4;
 			}
-			switch (special_value) {
-			    case CyMedia::IMGVALUE_None: {
-				    ;
-			    }break;
-
-			    case CyMedia::IMGVALUE_F32: {
+			switch (special_pixel) {
+			    case CyMedia::PIXEL_VALUE_F32: {
 				    pixelLen = 4;
 			    }break;
 
-			    case CyMedia::IMGVALUE_F64: {
+			    case CyMedia::PIXEL_VALUE_F64: {
 				    pixelLen = 8;
 			    }break;
 			}
@@ -209,16 +219,12 @@ namespace CyMedia {
                 pixelLen = 4;
             }
 
-            switch (special_value) {
-                case CyMedia::IMGVALUE_None: {
-                    ;
-                }break;
-
-                case CyMedia::IMGVALUE_F32: {
+            switch (special_pixel) {
+                case CyMedia::PIXEL_VALUE_F32: {
                     pixelLen = 4;
                 }break;
 
-                case CyMedia::IMGVALUE_F64: {
+                case CyMedia::PIXEL_VALUE_F64: {
                     pixelLen = 8;
                 }break;
             }
@@ -243,7 +249,9 @@ namespace CyMedia {
         bool isRGB() const {
             return format == RGB;
         }
-
+        bool isRGBA() const {
+            return format == RGBA;
+        }
     };
 
     typedef struct _RawImageHeadInfo {

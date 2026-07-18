@@ -1,4 +1,4 @@
-﻿//**********
+//**********
 // Author       : llf
 // Project      : CyDisplay
 // Date / Time  : 29 January 2026
@@ -50,8 +50,8 @@ public:
     void setStreaChPara(uint32_t start = 0, uint32_t end = 0, uint32_t max = 0);
 
     // Bayer
-    CyMedia::DemosaicMethod Demosaic();
-    void setDemosaic(CyMedia::DemosaicMethod method);
+    CyMedia::DemosaicingMethod Demosaic();
+    void setDemosaic(CyMedia::DemosaicingMethod method);
 
     // FPS 相关
     double flushFps() const;

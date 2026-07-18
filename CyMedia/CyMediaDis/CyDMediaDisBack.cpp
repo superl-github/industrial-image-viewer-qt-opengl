@@ -1,4 +1,4 @@
-﻿#include "CyDMediaDisBack.h"
+#include "CyDMediaDisBack.h"
 
 #include <QMessageBox>
 #include <QFile>
@@ -57,7 +57,7 @@ public:
     CyMedia::StretchType eStretchType = CyMedia::stretch_None;
     bool upStretchValue = false;
     bool bShowBayerSource = false;
-    CyMedia::DemosaicMethod mDemosaicMethod = CyMedia::BILINEAR;
+    CyMedia::DemosaicingMethod mDemosaicMethod = CyMedia::DEMOSAIC_BILINEAR;
     bool bIsOVerSize = false;
     CyMedia::ePixType glslNcolor = CyMedia::MONO;
 
@@ -373,8 +373,7 @@ void CyDMediaDisBack::updateTextureFormat()
     }
 }
 
-bool CyDMediaDisBack::upImageData(CyMedia::ImageShowInfo info, uint8_t* image)
-{
+bool CyDMediaDisBack::upImageData(CyMedia::ImageShowInfo info, uint8_t* image) {
     if (!image) return false;
 
     // 快速检查是否有数据正在处理
@@ -401,6 +400,7 @@ bool CyDMediaDisBack::upImageData(CyMedia::ImageShowInfo info, uint8_t* image)
         updateTextureFormat();
 
         d->bTextureInitialize = false;
+        d->bIsFirstUpData = true;
     }
 
     // 标记数据已改变
@@ -458,11 +458,11 @@ void CyDMediaDisBack::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*
     d->upStretchValue = true;
 }
 
-CyMedia::DemosaicMethod CyDMediaDisBack::Demosaic() {
+CyMedia::DemosaicingMethod CyDMediaDisBack::Demosaic() {
     return d->mDemosaicMethod;
 }
 
-void CyDMediaDisBack::setDemosaic(CyMedia::DemosaicMethod method) {
+void CyDMediaDisBack::setDemosaic(CyMedia::DemosaicingMethod method) {
     if (d->mDemosaicMethod == method)
         return;
     d->mDemosaicMethod = method;
@@ -696,9 +696,8 @@ void CyDMediaDisBack::setupShaderUniforms(QOpenGLFunctions* f, QMatrix4x4 mat)
     }
 }
 
-// 新增的辅助函数：更新拉伸uniform
-void CyDMediaDisBack::updateStretchUniforms(QOpenGLFunctions* f)
-{
+// 更新拉伸uniform
+void CyDMediaDisBack::updateStretchUniforms(QOpenGLFunctions* f) {
     auto program = d->shaderProgram->programId();
 
     f->glUniform1i(f->glGetUniformLocation(program, "stretchType"), int32_t(d->eStretchType));

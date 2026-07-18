@@ -5,7 +5,7 @@
 
 namespace CyMedia {
     //计算图像坐标处像素颜色
-    void CYMEDIA_LIB calcCoordinateColor(CyMedia::ImageShowInfo& info, uint8_t* pdata, int x, int y, double* colorR, double* colorG, double* colorB, DemosaicMethod func = BILINEAR);
+    void CYMEDIA_LIB calcCoordinateColor(CyMedia::ImageShowInfo& info, uint8_t* pdata, int x, int y, double* colorR, double* colorG, double* colorB, DemosaicingMethod func = DEMOSAIC_BILINEAR);
 
     //计算图像直方图
     bool CYMEDIA_LIB computeGrayHistogram(
@@ -19,13 +19,13 @@ namespace CyMedia {
         std::vector<double>& Ghistogram,
         std::vector<double>& Bhistogram,
         std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel,
-        DemosaicMethod func = BILINEAR);
+        DemosaicingMethod func = DEMOSAIC_BILINEAR);
 
     bool CYMEDIA_LIB computeBayerHistogram(
         uint8_t* pData, CyMedia::ImageShowInfo& imageinfo,
         std::vector<double>& histogram,
         StretchType type = stretch_None,
-        DemosaicMethod func = BILINEAR);
+        DemosaicingMethod func = DEMOSAIC_BILINEAR);
 
     bool CYMEDIA_LIB computeRGBHistogram(
         uint8_t* pData, CyMedia::ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask,
@@ -38,6 +38,10 @@ namespace CyMedia {
         uint8_t* pData, CyMedia::ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask,
         std::vector<double>& histogram,
         StretchType strytchType = stretch_Gray);
+
+    double determineYAxisMax(std::vector<double>& his,
+        int max_clipped_bins = 5,
+        double outlier_factor = 1.2);
 
     //计算自动拉伸参数 RgbPixel.r->start RgbPixel.g->end
     void CYMEDIA_LIB computeGrayStretchPara(std::vector<double>& histogram, int32_t& start, int32_t& end);

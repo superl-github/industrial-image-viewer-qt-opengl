@@ -49,6 +49,21 @@
     <ClCompile Include="CyMediaDis\drawItem\DrawItemTool.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </ClCompile>
+    <ClCompile Include="CyMediaFileFunc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaDis\CyMediaDisView.cpp">
+      <Filter>CyMediaDis</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaParse\CyMediaFileParse.cpp">
+      <Filter>CyMediaParse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
@@ -96,9 +111,6 @@
     <QtMoc Include="CyMediaDis\CyMediaDisGrayTest.h">
       <Filter>CyMediaDis</Filter>
     </QtMoc>
-    <QtMoc Include="CyMediaDis\CyMediaDisView.cpp">
-      <Filter>CyMediaDis</Filter>
-    </QtMoc>
     <QtMoc Include="CyMediaDis\CyMediaDisView.h">
       <Filter>CyMediaDis</Filter>
     </QtMoc>
@@ -129,6 +141,12 @@
     <QtMoc Include="CyMediaDis\drawItem\DrawItemTool.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaDisViewThumbnail.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDis\CyMediaDisViewBckDraw.h">
+      <Filter>CyMediaDis</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CyMediaDis">
@@ -155,6 +173,9 @@
     <Filter Include="Translation Files">
       <UniqueIdentifier>{903f3fd8-33b8-4baf-920c-c43d57339838}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CyMediaParse">
+      <UniqueIdentifier>{524a4c09-a030-448c-be7a-efe4e664ba72}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CyMediaDis\drawItem\CyDisDrawItem.h">
@@ -177,6 +198,12 @@
     </ClInclude>
     <ClInclude Include="CyMediaBaseDef.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaFileFunc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaParse\CyMediaFileParse.h">
+      <Filter>CyMediaParse</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

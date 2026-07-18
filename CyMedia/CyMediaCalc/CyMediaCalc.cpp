@@ -1,4 +1,4 @@
-﻿#include "CyMediaCalc.h"
+#include "CyMediaCalc.h"
 #include "CyMdiaCalc_Mono.h"
 #include "CyMdiaCalc_Bayer.h"
 #include "CyMdiaCalc_Rgb.h"
@@ -11,7 +11,7 @@
 #endif
 
 namespace CyMedia {
-    void calcCoordinateColor(ImageShowInfo& info, uint8_t* pdata, int x, int y, double* colorR, double* colorG, double* colorB, DemosaicMethod func/* = BILINEAR*/) {
+    void calcCoordinateColor(ImageShowInfo& info, uint8_t* pdata, int x, int y, double* colorR, double* colorG, double* colorB, DemosaicingMethod func/* = BILINEAR*/) {
         unsigned int imageW = info.width;
         unsigned int imageH = info.height;
         if (x < 0 || y < 0 || x >= imageW || y >= imageH) {
@@ -19,12 +19,12 @@ namespace CyMedia {
         }
         double r = 0.0, g = 0.0, b = 0.0;
         //计算
-        if (info.special_value == IMGVALUE_F32) {
+        if (info.special_pixel == PIXEL_VALUE_F32) {
             r = ((float*)pdata)[y * info.width + x];
             g = r;
             b = r;
         }
-        else if (info.special_value == IMGVALUE_F64) {
+        else if (info.special_pixel == PIXEL_VALUE_F64) {
             r = ((double*)pdata)[y * info.width + x];
             g = r;
             b = r;
@@ -98,26 +98,49 @@ namespace CyMedia {
             maxPixel, minPixel, avePixel);
     }
 
-    bool computeBayerHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel, DemosaicMethod func /*= BILINEAR*/) {
+    bool computeBayerHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel, DemosaicingMethod func /*= BILINEAR*/) {
         if (false == imageinfo.isBayer())
             return false;
         return computeHistogram_Bayer(imageinfo, pData, calcMask, useMask, Rhistogram, Ghistogram, Bhistogram, maxPixel, minPixel, avePixel, func);
     }
 
-    bool computeBayerHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<double>& histogram, StretchType type /*= stretch_None*/, DemosaicMethod func/* = BILINEAR*/) {
+    bool computeBayerHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<double>& histogram, StretchType type /*= stretch_None*/, DemosaicingMethod func/* = BILINEAR*/) {
         if (false == imageinfo.isBayer())
             return false;
 
-        //源数据
-        if (func == BAYERSOUCE) {
+        // 不去马赛克直接处理原始单通道数据
+        if (func == DEMOSAIC_NONE) {
             double max, min, ave;
             return computeHistogram_Mono(imageinfo, pData, 0, false, histogram, &max, &min, &ave);
         }
-        //转RGB
-        
-        //统计直方图
-        
-        return false;
+
+        // 确定每个通道的像素字节数
+        int pixelSize = 0;
+        if (imageinfo.bit <= 8) pixelSize = 1;
+        else if (imageinfo.bit <= 16) pixelSize = 2;
+        else if (imageinfo.bit <= 31) pixelSize = 4;
+        else return false;
+
+        size_t totalPixels = static_cast<size_t>(imageinfo.width) * imageinfo.height;
+        size_t bufferSize = totalPixels * 3 * pixelSize;  // RGB 三通道
+        std::vector<uint8_t> rgbBuffer(bufferSize);
+
+        // 将 Bayer 转换为 RGB
+        if (!Bayer2RGBConver(imageinfo, pData, rgbBuffer.data(), func)) {
+            return false;
+        }
+
+        // 构造临时的 RGB 图像信息
+        ImageShowInfo rgbInfo;
+        rgbInfo.width = imageinfo.width;
+        rgbInfo.height = imageinfo.height;
+        rgbInfo.bit = imageinfo.bit;
+        rgbInfo.format = RGB;
+        rgbInfo.special_pixel = PIXEL_VALUE_INT;
+        rgbInfo.upLenth();
+
+        // 调用 RGB 转单通道直方图函数
+        return computeHistogram_RGBTrans(rgbInfo, rgbBuffer.data(), nullptr, false, histogram, type);
     }
 
     bool computeRGBHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel) {
@@ -132,6 +155,40 @@ namespace CyMedia {
         }
 
         return computeHistogram_RGBTrans(imageinfo, pData, calcMask, useMask, histogram, strytchType);
+    }
+
+    double determineYAxisMax(std::vector<double>& his, int max_clipped_bins /*= 5*/, double outlier_factor /*= 1.2*/) {
+        if (his.empty()) return 1.0;
+
+        // 统计非零柱子数
+        int non_zero = 0;
+        for (double v : his) {
+            if (v > 0.0) ++non_zero;
+        }
+
+        // 如果所有值都是 0，返回默认上限
+        if (non_zero == 0) return 1.0;
+
+        // 拷贝并降序排序
+        std::vector<double> sorted = his;
+        std::sort(sorted.begin(), sorted.end(), std::greater<double>());
+
+        double max_val = sorted.front();
+
+        // 非零柱子数很少时，不应截断任何柱子
+        if (non_zero <= max_clipped_bins) {
+            return max_val * 1.05;
+        }
+
+        // 此时 non_zero > max_clipped_bins，第 (max_clipped_bins+1) 大的值一定 >0
+        double candidate = sorted[max_clipped_bins]; // 索引 max_clipped_bins
+
+        if (candidate * outlier_factor >= max_val) {
+            return max_val * 1.05;
+        }
+        else {
+            return candidate;
+        }
     }
 
     void computeGrayStretchPara(std::vector<double>& histogram, int32_t& start, int32_t& end) {

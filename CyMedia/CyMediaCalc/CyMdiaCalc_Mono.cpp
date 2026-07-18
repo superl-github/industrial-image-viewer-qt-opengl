@@ -1,4 +1,4 @@
-﻿#include "CyMdiaCalc_Mono.h"
+#include "CyMdiaCalc_Mono.h"
 #if defined _MSC_VER
     #include <ppl.h>
     #include <thread>
@@ -13,10 +13,10 @@ namespace CyMedia {
     bool MonoConvert(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
 
     int32_t calcCoordinateColor_Mono(ImageShowInfo& info, uint8_t* pdata, size_t idx) {
-        if (info.special_value == IMGVALUE_F32) {
+        if (info.special_pixel == PIXEL_VALUE_F32) {
             return ((float*)pdata)[idx];
         }
-        else if (info.special_value == IMGVALUE_F64) {
+        else if (info.special_pixel == PIXEL_VALUE_F64) {
             return ((double*)pdata)[idx];
         }
 
@@ -57,7 +57,7 @@ namespace CyMedia {
 
     bool computeHistogram_Mono(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& histogram,
         double* maxPixel, double* minPixel, double* avePixel) {
-        if (info.special_value != IMGVALUE_None) {
+        if (info.special_pixel != PIXEL_VALUE_INT) {
             return false;
         }
 

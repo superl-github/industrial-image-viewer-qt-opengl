@@ -242,6 +242,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaCalc\CyMdiaCalc_Mono.cpp" />
     <ClCompile Include="CyMediaCalc\CyMdiaCalc_Rgb.cpp" />
     <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp" />
+    <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp" />
+    <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
+    <ClCompile Include="CyMediaFileFunc.cpp" />
+    <ClCompile Include="CyMediaParse\CyMediaFileParse.cpp" />
     <QtMoc Include="CyMediaDis\cycustomwidget.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
@@ -266,7 +270,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaDis\CyDMediaDisScen.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisGrayStretch.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisGrayTest.cpp" />
-    <QtMoc Include="CyMediaDis\CyMediaDisView.cpp">
+    <ClCompile Include="CyMediaDis\CyMediaDisView.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
@@ -275,7 +279,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
+    </ClCompile>
     <ClCompile Include="CyMediaDis\CyMediaRecTimeW.cpp" />
     <ClCompile Include="CyMediaDis\drawItem\BaseItem.cpp" />
     <ClCompile Include="CyMediaDis\drawItem\CyDisDrawItem.cpp" />
@@ -344,6 +348,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClInclude Include="CyMediaCalc\CyMdiaCalc_Mono.h" />
     <ClInclude Include="CyMediaCalc\CyMdiaCalc_Rgb.h" />
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
+    <ClInclude Include="CyMediaParse\CyMediaFileParse.h" />
+    <QtMoc Include="CyMediaDis\CyMediaDisViewThumbnail.h" />
+    <QtMoc Include="CyMediaDis\CyMediaDisViewBckDraw.h" />
+    <ClInclude Include="CyMediaFileFunc.h" />
     <QtMoc Include="CyMediaDis\drawItem\Item_Polygon.h" />
     <QtMoc Include="CyMediaDis.h" />
     <QtMoc Include="CyMediaDis\cycustomwidget.h" />

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "CyMediaBaseDef.h"
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
@@ -29,6 +29,7 @@ namespace CyMedia {
         void DoubleClickOnView();
 
         void upPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR);
+        void imageSizeChanged(quint32 w, quint32 h, int nbit);
         void zoomValueChange(double value);
         void pressOnView();
 
@@ -66,8 +67,8 @@ namespace CyMedia {
         void setStretchType(CyMedia::StretchType type);
         void setStreaChPara(uint32_t start = 0, uint32_t end = 0);
 
-        CyMedia::DemosaicMethod Demosaic();
-        void setDemosaic(CyMedia::DemosaicMethod method);
+        CyMedia::DemosaicingMethod Demosaic();
+        void setDemosaic(CyMedia::DemosaicingMethod method);
 
         QStringList ColorMapList() const;
         quint32 colorMapIndex() const;
@@ -78,12 +79,6 @@ namespace CyMedia {
         void zoomOut();
         void zoomAuto();
         void zoomraw(bool reset);
-
-        bool tempeMeasureEnable();
-        void setTempeMeasureEnable(bool enable);
-
-        void getTempeMeasurePara(std::vector<double>& poly, int& maxTempe, int& minTempe, double& backGroundColor, double& enteremissivity, double&AtmosphericTransmittance);
-        void setTempeMeasurePara(const std::vector<double>& poly, int maxTempe, int minTempe, double backGroundColor = 0, double enteremissivity = 1.0,  double AtmosphericTransmittance = 1.0);
 
         //Tools/UI
         CyDisDrawItem::ItemType drawMode();
@@ -150,22 +145,24 @@ namespace CyMedia {
 	class CYMEDIA_LIB CyMediaDis_GetRawInfoDialog : public QDialog {
 		Q_OBJECT
 	public:
-		explicit CyMediaDis_GetRawInfoDialog(CyMedia::eLanguage language = CyMedia::CHINESE, QWidget* parent = nullptr);
+		explicit CyMediaDis_GetRawInfoDialog(QWidget* parent = nullptr);
+
+    public:
+        void flushTrans();
 
 		QString openFileName();
 		quint32 imageWidth();
 		quint32 imageHeight();
 		quint32 imagenBit();
-		quint32 imageColorChannels();
         CyMedia::ePixType imagePixelType();
+        CyMedia::ePixelValueType specialPixe();
 		quint32 imageOffset();
 
-		void setLanguage(CyMedia::eLanguage language);
 		void setOpenFileName(QString name);
-		void setOpenInfo(quint32 w, quint32 h, quint32 bit, CyMedia::ePixType pixelType, quint32 ch, quint32 offset);
+		void setOpenInfo(quint32 w, quint32 h, quint32 bit, CyMedia::ePixType pixelType, CyMedia::ePixelValueType spv, quint32 offset);
 
 	protected:
-		void initGUI(bool first = false);
+		void initGUI();
 
 	private slots:
 		void onOkClicked();
@@ -173,6 +170,6 @@ namespace CyMedia {
 
 	private:
 		class PrivateData;
-		PrivateData* p_data;
+		PrivateData* d;
 	};
 };

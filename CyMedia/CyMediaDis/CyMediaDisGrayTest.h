@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../CyMediaBaseDef.h"
 #include "drawItem/BaseItem.h"
 
@@ -18,47 +18,52 @@ class CyMediaDisGrayTest : public QWidget {
     Q_OBJECT
 
 public:
-	enum hisIndex {
-		hisI_Gray = 0,
-		hisI_R,
-		hisI_G,
-		hisI_B,
-	};
-	struct oneChannelTestInfo {
-		double ave = 0.0;
-		double max = 0.0;
-		double min = 0.0;
-		double std = 0.0;
-		double Uniformity = 0.0;
+    enum hisIndex {
+        hisI_Gray = 0,
+        hisI_R,
+        hisI_G,
+        hisI_B,
+    };
+    enum testModeChangeType {
+        ModeChange_normal = 0,
+        ModeChange_hide = 1,
+        QPainterPath_show = 2,
+    };
+    struct oneChannelTestInfo {
+        double ave = 0.0;
+        double max = 0.0;
+        double min = 0.0;
+        double std = 0.0;
+        double Uniformity = 0.0;
 
-		int32_t currentGray = 0;
-	};
-	struct threeChannelTestInfo {
-		std::vector<double> ave = std::vector<double>(3);
-		std::vector<double> max = std::vector<double>(3);
-		std::vector<double> min = std::vector<double>(3);
-		std::vector<double> std = std::vector<double>(3);
-		std::vector<double> Uniformity = std::vector<double>(3);
+        int32_t currentGray = 0;
+    };
+    struct threeChannelTestInfo {
+        std::vector<double> ave = std::vector<double>(3);
+        std::vector<double> max = std::vector<double>(3);
+        std::vector<double> min = std::vector<double>(3);
+        std::vector<double> std = std::vector<double>(3);
+        std::vector<double> Uniformity = std::vector<double>(3);
 
-		std::vector<int32_t> currentGray = std::vector<int32_t>(3);
+        std::vector<int32_t> currentGray = std::vector<int32_t>(3);
 
-		~threeChannelTestInfo() {
-			ave.clear();
-			ave.shrink_to_fit();
+        ~threeChannelTestInfo() {
+            ave.clear();
+            ave.shrink_to_fit();
 
-			max.clear();
-			max.shrink_to_fit();
+            max.clear();
+            max.shrink_to_fit();
 
-			min.clear();
-			min.shrink_to_fit();
+            min.clear();
+            min.shrink_to_fit();
 
-			std.clear();
-			std.shrink_to_fit();
+            std.clear();
+            std.shrink_to_fit();
 
-			Uniformity.clear();
-			Uniformity.shrink_to_fit();
-		}
-	};
+            Uniformity.clear();
+            Uniformity.shrink_to_fit();
+        }
+    };
 
 public:
     CyMediaDisGrayTest(QWidget* parent = nullptr);
@@ -67,7 +72,7 @@ public:
 
 public:signals:
     void needImage();
-    void testModeChange(int drawType);
+    void testModeChange(int drawType, CyMediaDisGrayTest::testModeChangeType emitType);
 
 private:signals:
     void uphisVisible();
@@ -82,6 +87,7 @@ public:
     void Itemdraw(CyDisDrawItem::BaseItem* item);
     void ItemRemoved(QUuid id);
     CyDisDrawItem::BaseItem* getCurrentItem();
+    QPainterPath oldItemPpath();
 
 
     //histogram
@@ -177,6 +183,6 @@ private:
     void upMask(QSize imgSize);
 
 private:
-	struct PrivateData;
-	PrivateData* d = nullptr;
+    struct PrivateData;
+    PrivateData* d = nullptr;
 };

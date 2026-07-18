@@ -10,16 +10,133 @@ uniform int colorType;
 uniform int colorMapIndex;
 uniform float pixrange;
 uniform int stretchType;
+uniform int demosacFunc; // 0->None 1->BILINEAR 2->MALVA 3->AHD
 uniform vec2 stretchPara;
 uniform float zoomValue;
-uniform int useTempeMeasure;
-uniform float tempeMeasure_MaxTempe;
-uniform float tempeMeasure_MinTempe;
-uniform float tempeMeasure_background;
-uniform float tempeMeasure_enteremissivity;
-uniform float tempeMeasure_AtmosphericTransmittance;
-uniform float tempeMeasure_Poly[10];
-uniform int tempeMeasure_Poly_degree;
+
+// ===== Bayer 去马赛克辅助 =====
+#define BAYER_RGGB 0
+#define BAYER_GRBG 1
+#define BAYER_BGGR 2
+#define BAYER_GBRG 3
+float getBayerRaw(sampler2D tex, ivec2 coord, ivec2 texSize) {
+    coord = clamp(coord, ivec2(0), texSize - 1);
+    return texelFetch(tex, coord, 0).r;
+}
+int colorAt(ivec2 coord, int pattern) {
+    int r = coord.y & 1;
+    int c = coord.x & 1;
+    if (pattern == BAYER_RGGB) {
+        if (r == 0 && c == 0) return 0;
+        if (r == 0 && c == 1) return 1;
+        if (r == 1 && c == 0) return 1;
+        if (r == 1 && c == 1) return 2;
+    } else if (pattern == BAYER_GRBG) {
+        if (r == 0 && c == 0) return 1;
+        if (r == 0 && c == 1) return 0;
+        if (r == 1 && c == 0) return 2;
+        if (r == 1 && c == 1) return 1;
+    } else if (pattern == BAYER_BGGR) {
+        if (r == 0 && c == 0) return 2;
+        if (r == 0 && c == 1) return 1;
+        if (r == 1 && c == 0) return 1;
+        if (r == 1 && c == 1) return 0;
+    } else { // GBRG
+        if (r == 0 && c == 0) return 1;
+        if (r == 0 && c == 1) return 2;
+        if (r == 1 && c == 0) return 0;
+        if (r == 1 && c == 1) return 1;
+    }
+    return 1;
+}
+
+vec3 bilinearDemosaic(sampler2D tex, ivec2 coord, int pattern, ivec2 texSize) {
+    ivec2 l = coord + ivec2(-1, 0), r = coord + ivec2(1, 0);
+    ivec2 u = coord + ivec2(0, -1), d = coord + ivec2(0, 1);
+    ivec2 ul = coord + ivec2(-1, -1), ur = coord + ivec2(1, -1);
+    ivec2 dl = coord + ivec2(-1, 1), dr = coord + ivec2(1, 1);
+
+    int cur = colorAt(coord, pattern);
+    float R, G, B;
+
+    if (cur == 0) {
+        R = getBayerRaw(tex, coord, texSize);
+        G = (getBayerRaw(tex, u, texSize) + getBayerRaw(tex, d, texSize) +
+             getBayerRaw(tex, l, texSize) + getBayerRaw(tex, r, texSize)) / 4.0;
+        B = (getBayerRaw(tex, ul, texSize) + getBayerRaw(tex, ur, texSize) +
+             getBayerRaw(tex, dl, texSize) + getBayerRaw(tex, dr, texSize)) / 4.0;
+    } else if (cur == 2) {
+        B = getBayerRaw(tex, coord, texSize);
+        G = (getBayerRaw(tex, u, texSize) + getBayerRaw(tex, d, texSize) +
+             getBayerRaw(tex, l, texSize) + getBayerRaw(tex, r, texSize)) / 4.0;
+        R = (getBayerRaw(tex, ul, texSize) + getBayerRaw(tex, ur, texSize) +
+             getBayerRaw(tex, dl, texSize) + getBayerRaw(tex, dr, texSize)) / 4.0;
+    } else { // G 位置
+        G = getBayerRaw(tex, coord, texSize);
+        float Rsum = 0.0, Bsum = 0.0;
+        int Rcnt = 0, Bcnt = 0;
+        // 手动处理四个邻居
+        int c;
+        float val;
+        c = colorAt(l, pattern); val = getBayerRaw(tex, l, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        c = colorAt(r, pattern); val = getBayerRaw(tex, r, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        c = colorAt(u, pattern); val = getBayerRaw(tex, u, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        c = colorAt(d, pattern); val = getBayerRaw(tex, d, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        R = (Rcnt > 0) ? Rsum / float(Rcnt) : 0.0;
+        B = (Bcnt > 0) ? Bsum / float(Bcnt) : 0.0;
+    }
+    return vec3(R, G, B);
+}
+
+vec3 malvaDemosaic(sampler2D tex, ivec2 coord, int pattern, ivec2 texSize) {
+    ivec2 l = coord + ivec2(-1, 0), r = coord + ivec2(1, 0);
+    ivec2 u = coord + ivec2(0, -1), d = coord + ivec2(0, 1);
+    ivec2 ul = coord + ivec2(-1, -1), ur = coord + ivec2(1, -1);
+    ivec2 dl = coord + ivec2(-1, 1), dr = coord + ivec2(1, 1);
+
+    int cur = colorAt(coord, pattern);
+    float R, G, B;
+
+    if (cur == 1) {
+        G = getBayerRaw(tex, coord, texSize);
+        float Rsum = 0.0, Bsum = 0.0;
+        int Rcnt = 0, Bcnt = 0;
+        int c;
+        float val;
+        c = colorAt(l, pattern); val = getBayerRaw(tex, l, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        c = colorAt(r, pattern); val = getBayerRaw(tex, r, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        c = colorAt(u, pattern); val = getBayerRaw(tex, u, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        c = colorAt(d, pattern); val = getBayerRaw(tex, d, texSize);
+        if (c == 0) { Rsum += val; Rcnt++; } else if (c == 2) { Bsum += val; Bcnt++; }
+        R = (Rcnt > 0) ? Rsum / float(Rcnt) : 0.0;
+        B = (Bcnt > 0) ? Bsum / float(Bcnt) : 0.0;
+    } else {
+        float G_h = (getBayerRaw(tex, l, texSize) + getBayerRaw(tex, r, texSize)) * 0.5;
+        float G_v = (getBayerRaw(tex, u, texSize) + getBayerRaw(tex, d, texSize)) * 0.5;
+        float grad_h = abs(getBayerRaw(tex, l, texSize) - getBayerRaw(tex, r, texSize));
+        float grad_v = abs(getBayerRaw(tex, u, texSize) - getBayerRaw(tex, d, texSize));
+        G = (grad_h < grad_v) ? G_h : G_v;
+
+        if (cur == 0) {
+            R = getBayerRaw(tex, coord, texSize);
+            B = (getBayerRaw(tex, ul, texSize) + getBayerRaw(tex, ur, texSize) +
+                 getBayerRaw(tex, dl, texSize) + getBayerRaw(tex, dr, texSize)) * 0.25;
+        } else { // cur == 2
+            B = getBayerRaw(tex, coord, texSize);
+            R = (getBayerRaw(tex, ul, texSize) + getBayerRaw(tex, ur, texSize) +
+                 getBayerRaw(tex, dl, texSize) + getBayerRaw(tex, dr, texSize)) * 0.25;
+        }
+    }
+    return vec3(R, G, B);
+}
+
 
 //======in======
 in vec2 TexCoord;
@@ -32,10 +149,7 @@ out vec4 fragColor;
 // para: vec2 containing (K, C) for the stretching operation (new_value = K * old_value + C)
 vec4 stretchPixel(int type, vec4 value, vec2 para);
 
-float dnToTempe(const float poly[10], int degree, float maxVal, float minVal, float back, float entermissivity, float atmosphericTransmittance, float dn, float trueMaxDn);
-
 void main() {
-    
     //===== 计算坐标 =====
     ivec2 texSize = textureSize(texture, 0);
     ivec2 intTexCoord = clamp(ivec2(TexCoord * vec2(texSize)), ivec2(0), ivec2(texSize) - 1);
@@ -46,10 +160,6 @@ void main() {
     //===== 计算像素值 =====
     float maxPixelValue = pixrange - 1.0;
     if (colorType == 0) {//Moon
-        //温度计算
-        if (useTempeMeasure > 0 && colorMapIndex > 0) {
-            rgba.r = dnToTempe(tempeMeasure_Poly, tempeMeasure_Poly_degree, tempeMeasure_MaxTempe, tempeMeasure_MinTempe, tempeMeasure_background, tempeMeasure_enteremissivity, tempeMeasure_AtmosphericTransmittance, rgba.r, maxPixelValue);
-        }
         rgba.g = rgba.r;
         rgba.b = rgba.r;
 		rgba.a = 1.0;
@@ -60,24 +170,26 @@ void main() {
         int RGBA_Y = intTexCoord.y / 2;
         int RGBA_C = monoIndex % 4;
         rgba.r = texelFetch(texture, ivec2(RGBA_X, RGBA_Y), 0)[RGBA_C];
-        //温度计算
-		if (useTempeMeasure > 0 && colorMapIndex > 0) {
-			rgba.r = dnToTempe(tempeMeasure_Poly, tempeMeasure_Poly_degree, tempeMeasure_MaxTempe, tempeMeasure_MinTempe, tempeMeasure_background, tempeMeasure_enteremissivity, tempeMeasure_AtmosphericTransmittance, rgba.r, maxPixelValue);
-		}
         rgba.g = rgba.r;
         rgba.b = rgba.r;
         rgba.a = 1.0;
     }
-    else if (colorType == 1) {//BAYERRG
-        rgba.a = 1.0;
-    }
-    else if (colorType == 2) {//BAYERGR
-        rgba.a = 1.0;
-    }
-    else if (colorType == 3) {//BAYERBG
-        rgba.a = 1.0;
-    }
-    else if (colorType == 4) {//BAYERGB
+    else if (colorType >= 1 && colorType <= 4) {
+        int pattern = colorType - 1; // 1->RGGB, 2->GRBG, 3->BGGR, 4->GBRG
+        vec3 rgb;
+        if (demosacFunc == 1) {
+            rgb = bilinearDemosaic(texture, intTexCoord, pattern, texSize);
+        } else if (demosacFunc == 2) {
+            rgb = malvaDemosaic(texture, intTexCoord, pattern, texSize);
+        } else if (demosacFunc == 3) {
+            // AHD 未实现，回退双线性
+            rgb = bilinearDemosaic(texture, intTexCoord, pattern, texSize);
+        } else {
+            // 无插值，直接取 R 通道作为灰度
+            float v = texelFetch(texture, intTexCoord, 0).r;
+            rgb = vec3(v);
+        }
+        rgba.rgb = rgb;
         rgba.a = 1.0;
     }
     
@@ -278,50 +390,6 @@ vec4 stretchPixel(int type, vec4 value, vec2 para) {
     return tempRGB;
 }
 
-float polyEval(const float poly[10], int degree, float x) {
-    float calcV = 0.0;
-    for (int i = 0; i <= degree; i++) {
-        calcV = calcV * x + poly[i];
-    }
-    return calcV;
-}
-float polyEval_deriv(const float poly[10], int degree, float x) {
-    float y = 0.0;
-    for (int i = 0; i < degree; i++) {
-        y = y * x + float(degree - i) * poly[i];
-    }
-    return y;
-}
-float polySolve(const float poly[10], int degree, float v, float maxVal, float minVal) {
-    if (degree < 0) return 0.0 / 0.0;
-    float left = min(maxVal, minVal);
-    float right = max(maxVal, minVal);
-    float eps = max(1e-5, (right - left) * 1e-8);
-
-    const int maxIter = 100;
-    float x = maxVal;
-
-    for (int i = 0; i < maxIter; i++) {
-        float fx = polyEval(poly, degree, x) - v;
-        float dfx = polyEval_deriv(poly, degree, x);
-
-        if (abs(dfx) < 1e-12) return 0.0 / 0.0;
-
-        float xNew = x - fx / dfx;
-        if (abs(xNew - x) < eps) return xNew;
-        x = xNew;
-    }
-
-    return 0.0 / 0.0;
-}
 float remap(float value, float inMin, float inMax, float outMin, float outMax) {
     return (value - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
-}
-float dnToTempe(const float poly[10], int degree, float maxVal, float minVal, float back, float entermissivity, float atmosphericTransmittance, float dn, float trueMaxDn) {
-    float correctionDn = (dn * trueMaxDn - back) / entermissivity / atmosphericTransmittance;
-    correctionDn = correctionDn <= 0.0 ? 0.0 : correctionDn;
-    float Tempe = polySolve(poly, degree, correctionDn, maxVal, minVal);
-    if (isnan(Tempe)) Tempe = minVal;
-
-    return remap(Tempe, minVal, maxVal, 0.0, 1.0);
 }

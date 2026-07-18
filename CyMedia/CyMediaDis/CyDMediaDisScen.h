@@ -18,15 +18,6 @@ public:
     bool acceptDrops();
     void setAcceptDrops(bool accept);
 
-    bool tipTextVisible();
-    void setTipTextVisible(bool visi);
-
-    void setBackDis(QGraphicsItem* back);
-    QGraphicsItem* BackDis();
-    QGraphicsItem* itemAtWithoutBack(const QPointF& pos, const QTransform& deviceTransform);
-
-    QImage backToQImage() const;
-
 public:
     void drawBackground(QPainter* painter, const QRectF& rect)override;
 
