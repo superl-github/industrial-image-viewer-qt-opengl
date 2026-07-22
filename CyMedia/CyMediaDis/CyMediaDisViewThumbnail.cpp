@@ -32,99 +32,97 @@ void CyMediaDisViewThumbnail::setThumbnailSize(const QSize& size) {
 
 void CyMediaDisViewThumbnail::upBackImage(CyMedia::ImageShowInfo info, uint8_t* data) {
     QImage image;
-    switch (info.format) {
-        case CyMedia::MONO: {
-            // 单色图像
-            if (info.bit == 8) {
-                image = QImage(data, info.width, info.height, QImage::Format_Grayscale8);
-            }
-            else if (info.bit <= 16) {
-                uint16_t* pImage = (uint16_t*)data;
-                float maxPixel = (1 << info.bit) - 1;
-                image = QImage(info.width, info.height, QImage::Format_Grayscale8);
-                for (int y = 0; y < info.height; y++) {
-                    for (int x = 0; x < info.width; x++) {
-                        image.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
-                    }
-                }
-            }
-            else if (info.bit < 32) {
-                uint32_t* pImage = (uint32_t*)data;
-                float maxPixel = (1 << info.bit) - 1;
-                image = QImage(info.width, info.height, QImage::Format_Grayscale8);
-                for (int y = 0; y < info.height; y++) {
-                    for (int x = 0; x < info.width; x++) {
-                        image.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
-                    }
-                }
-            }
-        }break;
+    if (info.isBayer()) {
+        uint32_t rgbLen = info.width * info.height * 3;
+        if (info.bit > 8 && info.bit <= 16) {
+            rgbLen *= 2;
+        }
+        uint8_t* rgbData = new uint8_t[rgbLen];
+        CyMedia::bayer2RGB(info, data, rgbData);
+        image = QImage(info.width, info.height, QImage::Format_RGB888);
+        auto pImage = image.bits();
 
-        case CyMedia::RGB: {
-            // RGB图像
-            if (info.bit == 8) {
-                image = QImage(data, info.width, info.height, QImage::Format_RGB888);
+        if (info.bit <= 8) {
+            memcpy(pImage, rgbData, rgbLen);
+        }
+        else if (info.bit <= 16) {
+            float maxPixel = (1 << info.bit) - 1;
+            for (int y = 0; y < info.height; y++) {
+                for (int x = 0; x < info.width; x++) {
+                    for (int p = 0; p < 3; p++) {
+                        pImage[(y * info.width + x) * 3 + p] = (rgbData[(y * info.width + x) * 3 + p] * 255) / maxPixel;
+                    }
+                }
             }
-            else if (info.bit == 16) {
-                // 处理16位RGB图像
-                uint16_t* pImage = (uint16_t*)data;
-                float maxPixel = (1 << info.bit) - 1;
-                image = QImage(info.width, info.height, QImage::Format_RGB888);
-                for (int y = 0; y < info.height; y++) {
-                    for (int x = 0; x < info.width; x++) {
-                        for (int p = 0; p < 3; p++) {
-                            image.bits()[(y * info.width + x) * 3 + p] = (pImage[(y * info.width + x) * 3 + p] * 255) / maxPixel;
+        }
+    }
+    else if (info.isYUV()) {
+        uint32_t rgbLen = info.width * info.height * 3;
+        uint8_t* rgbData = new uint8_t[rgbLen];
+        CyMedia::YUV2RGB(info, data, rgbData);
+        image = QImage(info.width, info.height, QImage::Format_RGB888);
+        auto pImage = image.bits();
+        memcpy(pImage, rgbData, rgbLen);
+    }
+    else {
+        switch (info.format) {
+            case CyMedia::MONO: {
+                // 单色图像
+                if (info.bit == 8) {
+                    image = QImage(data, info.width, info.height, QImage::Format_Grayscale8);
+                }
+                else if (info.bit <= 16) {
+                    uint16_t* pImage = (uint16_t*)data;
+                    float maxPixel = (1 << info.bit) - 1;
+                    image = QImage(info.width, info.height, QImage::Format_Grayscale8);
+                    for (int y = 0; y < info.height; y++) {
+                        for (int x = 0; x < info.width; x++) {
+                            image.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
                         }
                     }
                 }
-            }
-        }break;
-
-        case CyMedia::RGBA: {
-            // RGBA图像
-            if (info.bit == 8) {
-                image = QImage(data, info.width, info.height, QImage::Format_RGBA8888);
-            }
-            else if (info.bit == 16) {
-                // 处理16位RGB图像
-                image = QImage(info.width, info.height, QImage::Format_RGBA64);
-                memcpy(image.bits(), data, info.width * info.height * 2);
-            }
-        }break;
-
-        case CyMedia::BAYERRG:
-        case CyMedia::BAYERGR:
-        case CyMedia::BAYERGB:
-        case CyMedia::BAYERBG: {
-            // Bayer图像，需要转换为RGB
-            // 使用CyMedia::bayer2RGBConvert函数
-            uint32_t rgbLen = info.width * info.height * 3;
-            if (info.bit > 8 && info.bit <= 16) {
-                rgbLen *= 2;
-            }
-            uint8_t* rgbData = new uint8_t[rgbLen];
-            CyMedia::bayer2RGBConvert(info, data, rgbData);
-            image = QImage(info.width, info.height, QImage::Format_RGB888);
-            auto pImage = image.bits();
-
-            if (info.bit <= 8) {
-                memcpy(pImage, rgbData, rgbLen);
-            }
-            else if (info.bit <= 16) {
-                float maxPixel = (1 << info.bit) - 1;
-                for (int y = 0; y < info.height; y++) {
-                    for (int x = 0; x < info.width; x++) {
-                        for (int p = 0; p < 3; p++) {
-                            pImage[(y * info.width + x) * 3 + p] = (rgbData[(y * info.width + x) * 3 + p] * 255) / maxPixel;
+                else if (info.bit < 32) {
+                    uint32_t* pImage = (uint32_t*)data;
+                    float maxPixel = (1 << info.bit) - 1;
+                    image = QImage(info.width, info.height, QImage::Format_Grayscale8);
+                    for (int y = 0; y < info.height; y++) {
+                        for (int x = 0; x < info.width; x++) {
+                            image.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
                         }
                     }
                 }
-            }
-        }break;
-
-        default: {
-            image = QImage(data, info.width, info.height, QImage::Format_RGB888);
-        }break;
+            }break;
+            case CyMedia::RGB: {
+                // RGB图像
+                if (info.bit == 8) {
+                    image = QImage(data, info.width, info.height, QImage::Format_RGB888);
+                }
+                else if (info.bit == 16) {
+                    // 处理16位RGB图像
+                    uint16_t* pImage = (uint16_t*)data;
+                    float maxPixel = (1 << info.bit) - 1;
+                    image = QImage(info.width, info.height, QImage::Format_RGB888);
+                    for (int y = 0; y < info.height; y++) {
+                        for (int x = 0; x < info.width; x++) {
+                            for (int p = 0; p < 3; p++) {
+                                image.bits()[(y * info.width + x) * 3 + p] = (pImage[(y * info.width + x) * 3 + p] * 255) / maxPixel;
+                            }
+                        }
+                    }
+                }
+            }break;
+            case CyMedia::RGBA: {
+                // RGBA图像
+                if (info.bit == 8) {
+                    image = QImage(data, info.width, info.height, QImage::Format_RGBA8888);
+                }
+                else if (info.bit == 16) {
+                    // 处理16位RGB图像
+                    image = QImage(info.width, info.height, QImage::Format_RGBA64);
+                    memcpy(image.bits(), data, info.width * info.height * 2);
+                }
+            }break;
+        }
     }
 
     // 如果图像创建成功，设置为缩略图

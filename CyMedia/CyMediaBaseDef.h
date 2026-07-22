@@ -26,17 +26,31 @@ namespace CyMedia {
     */
     enum ePixType {
         MONO = 0,
-        BAYERRG,
-        BAYERGR,
-        BAYERBG,
-        BAYERGB,
-        RGB,
-        RGBA,
+
         MONO10P,
         MONO10P_GVSP,
         MONO12P,
         MONO12P_GVSP,
+
         MONO_OVERSIZE,
+
+        RGB,
+        RGBA,
+
+        BAYERRG,
+        BAYERGR,
+        BAYERBG,
+        BAYERGB,
+
+        //YUV_fourcc
+        FOURCC_YUY2, //YUYV422
+        FOURCC_YVYU, //YVYU422
+        FOURCC_I422, //YUV422P
+        FOURCC_YV16, //YVU422P
+        FOURCC_I420, //YUV420P
+        FOURCC_YV12, //YVU420P
+        FOURCC_NV12, //YUV420SP
+        FOURCC_NV21, //YVU420SP
     };
 
     /**
@@ -79,6 +93,11 @@ namespace CyMedia {
         DEMOSAIC_BILINEAR,
         DEMOSAIC_MALVA,
         DEMOSAIC_AHD,
+    };
+
+    enum YUVTransMethod {
+        YUVTRANS_NORMAL = 0,
+        YUVTRANS_Y,
     };
 
     enum StretchType {
@@ -211,6 +230,9 @@ namespace CyMedia {
             int pixelLen = 0;
             if (bit <= 8) {
                 pixelLen = 1;
+                if (isYUV()) {
+                    pixelLen = 2;
+                }
             }
             else if (bit <= 16) {
                 pixelLen = 2;
@@ -233,24 +255,19 @@ namespace CyMedia {
         }
 
         bool isMono() const{
-            return format == MONO ||
-                format == MONO10P ||
-                format == MONO10P_GVSP ||
-                format == MONO12P ||
-                format == MONO12P_GVSP ||
-                format == MONO_OVERSIZE;
-        }
-        bool isBayer() const {
-            return format == BAYERRG ||
-                format == BAYERGR ||
-                format == BAYERBG ||
-                format == BAYERGB;
+            return format >= MONO && format <= MONO_OVERSIZE;
         }
         bool isRGB() const {
             return format == RGB;
         }
         bool isRGBA() const {
             return format == RGBA;
+        }
+        bool isBayer() const {
+            return format >= BAYERRG && format <= BAYERGB;
+        }
+        bool isYUV() const {
+            return format >= FOURCC_YUY2 && format <= FOURCC_NV21;
         }
     };
 
@@ -301,7 +318,7 @@ namespace CyMedia {
         if (bit <= 8)
             return ((uint8_t*)data)[y * w + x];
         else if (bit <= 16)
-            return ((uint8_t*)data)[y * w + x];
+            return ((uint16_t*)data)[y * w + x];
         else if (bit <= 31)
             return ((uint32_t*)data)[y * w + x];
         return 0;

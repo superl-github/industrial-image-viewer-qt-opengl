@@ -64,6 +64,9 @@
     <ClCompile Include="CyMediaParse\CyMediaFileParse.cpp">
       <Filter>CyMediaParse</Filter>
     </ClCompile>
+    <ClCompile Include="CyMediaCalc\CyMdiaCalc_YUV.cpp">
+      <Filter>CyMediaCalc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
@@ -205,6 +208,9 @@
     <ClInclude Include="CyMediaParse\CyMediaFileParse.h">
       <Filter>CyMediaParse</Filter>
     </ClInclude>
+    <ClInclude Include="CyMediaCalc\CyMdiaCalc_YUV.h">
+      <Filter>CyMediaCalc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="CyMediaDis\CyMediaDis.qrc">
@@ -218,5 +224,8 @@
     <QtTranslation Include="CyMedia_zh_CN.ts">
       <Filter>Translation Files</Filter>
     </QtTranslation>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="isYUV420" />
   </ItemGroup>
 </Project>

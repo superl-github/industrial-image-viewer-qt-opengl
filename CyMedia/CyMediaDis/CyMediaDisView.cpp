@@ -215,7 +215,7 @@ void CyMediaDisView::setCyScene(QGraphicsScene* scene) {
 }
 
 void CyMediaDisView::sceneRectUp(const QRectF& rect) {
-    setSceneRect(rect);
+    //setSceneRect(rect);
     d->updateThumbnail();
 }
 
@@ -281,9 +281,8 @@ void CyMediaDisView::zoomAuto(void) {
 
     QRect fRect = this->rect();
     QRectF sceneRect = this->scene()->sceneRect();
-    qreal sw = qreal(fRect.width() * 0.99) / sceneRect.width();
-    qreal sh = qreal(fRect.height() * 0.99) / sceneRect.height();
-    qreal s = qMin(sh, sw);
+    qreal s = qMin(viewport()->width() / sceneRect.width(),
+        viewport()->height() / sceneRect.height());
     d->zoom(s);
 }
 
@@ -391,6 +390,14 @@ void CyMediaDisView::setDemosaic(CyMedia::DemosaicingMethod method) {
     return m_backDraw->setDemosaic(method);
 }
 
+CyMedia::YUVTransMethod CyMediaDisView::yuvMethod() {
+    return m_backDraw->yuvMethod();
+}
+
+void CyMediaDisView::setYUVMethod(CyMedia::YUVTransMethod method) {
+    m_backDraw->setYUVTMethod(method);
+}
+
 double CyMediaDisView::flushFps() const {
     return m_backDraw->flushFps();
 }
@@ -430,6 +437,10 @@ void CyMediaDisView::setThumbnailEnable(bool enable) {
     if (false == enable) {
         m_Thumbnail->hide();
     }
+}
+
+bool CyMediaDisView::thumbnailVisible() {
+    return m_Thumbnail->isVisible();
 }
 
 void CyMediaDisView::upThumbnaildata(CyMedia::ImageShowInfo info, uint8_t* data) {

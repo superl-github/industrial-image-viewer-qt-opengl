@@ -2,11 +2,8 @@
 # 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
 ################################################################################
 
-/CyMedia/CyMediaDis/drawItem/AI优化.txt
+/CyMedia/CyMediaDis/colorMap_ALL
 /.vs/CyMedia
 *.user
-/Export/Export.rar
-/Export/CyMedia/CyMediaDis/CyMediaDis.qrc
-/Export/CyMedia/CyMediaDis/Histogram/qcustomplot.cpp
-/Export/CyMedia/CyMediaDis/Histogram/qcustomplot.h
+/Export
 /OutFile

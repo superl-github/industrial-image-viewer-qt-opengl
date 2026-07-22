@@ -10,6 +10,7 @@
 #include <QOpenGLTexture>
 #include <QOffscreenSurface>
 #include <QOpenGLFunctions>
+#include <QOpenGLExtraFunctions>
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QDir>
@@ -19,6 +20,9 @@ class CyMediaDisViewBckDraw : public QObject {
 public:
     CyMediaDisViewBckDraw(QGraphicsView* view);
     ~CyMediaDisViewBckDraw();
+
+signals:
+    void textureSizeOver(bool flag, QString txt);
 
 public:
     // 更新图像相关
@@ -55,6 +59,10 @@ public:
     CyMedia::DemosaicingMethod Demosaic();
     void setDemosaic(CyMedia::DemosaicingMethod method);
 
+    //YUV转换
+    CyMedia::YUVTransMethod yuvMethod();
+    void setYUVTMethod(CyMedia::YUVTransMethod method);
+
     // FPS 相关
     double flushFps() const;
     bool isTrueDataFps() const;
@@ -73,6 +81,7 @@ private:
     };
     struct oneTexturePara {
         QOpenGLTexture* glTexture = nullptr;
+        GLsync syncFence = nullptr;
 
         CyMedia::ImageShowInfo showInfo; //图像信息
         
@@ -94,6 +103,7 @@ private:
 
     //QpenGL
     QMessageBox* m_message_glslError = nullptr;
+    QMessageBox* m_message_overSize = nullptr;
     VerticesAndTextureCoord m_verticesArray[4];
     GLushort m_indicesArray[6] = { 0, 1, 2, 3, 2, 1 };
 
@@ -106,13 +116,18 @@ private:
 
     QOpenGLContext* m_ctx_main = nullptr;
     QOffscreenSurface* m_offscreenSurface = nullptr;
+    int m_gl_max_texture_size = 16384;
+    bool bIsOVerSize = false;
 
     // 图像信息
     oneTexturePara m_textureInfo[2];
 
     // bayer处理
+    bool m_fisrt_up_image = true;
     CyMedia::DemosaicingMethod mDemosaicMethod = CyMedia::DEMOSAIC_BILINEAR;
-    bool bIsOVerSize = false;
+    
+    // YUV处理
+    CyMedia::YUVTransMethod m_yuv_trans_method = CyMedia::YUVTRANS_NORMAL;
 
     //拉伸参数
     CyMedia::StretchType eStretchType = CyMedia::stretch_None;
@@ -154,22 +169,38 @@ private:
     QString vertexShaderSource;
     QString fragmentShaderSource;
 
+    // Uniform 位置缓存
+    GLint uniform_texture = -1;
+    GLint uniform_texture_colormap = -1;
+    GLint uniform_m_matrix = -1;
+    GLint uniform_zoomValue = -1;
+    GLint uniform_colorType = -1;
+    GLint uniform_demosacFunc = -1;
+    GLint uniform_YUVMethod = -1;
+    GLint uniform_nbits = -1;
+    GLint uniform_nWidth = -1;
+    GLint uniform_nHeight = -1;
+    GLint uniform_pixrange = -1;
+    GLint uniform_colorMapIndex = -1;
+    GLint uniform_stretchType = -1;
+    GLint uniform_stretchPara = -1;
+
 private:
     void initColorMap(QString path);
 
-    bool initglsl(QOpenGLFunctions* f);
-    void initVertex(QOpenGLFunctions* f, const CyMedia::ImageShowInfo& info);
-    void initTexture(QOpenGLFunctions* f);
+    bool initglsl(QOpenGLExtraFunctions* f);
+    void initVertex(QOpenGLExtraFunctions* f, const CyMedia::ImageShowInfo& info);
+    void initTexture(QOpenGLExtraFunctions* f);
     void clearGL();
 
     bool makeOffSurface(QOpenGLContext* ctx);
-    void upVertex(QOpenGLFunctions* f, const CyMedia::ImageShowInfo& info);
+    void upVertex(QOpenGLExtraFunctions* f, const CyMedia::ImageShowInfo& info);
     void updateTextureFormat(const CyMedia::ImageShowInfo& info, int idx);
 
-    void setupShaderUniforms(QOpenGLFunctions* f, QMatrix4x4 mat, int colortype);
-    void updateStretchUniforms(QOpenGLFunctions* f);
+    void setupShaderUniforms(QOpenGLExtraFunctions* f, QMatrix4x4 mat, int colortype);
+    void updateStretchUniforms(QOpenGLExtraFunctions* f);
 
-    void showGlslErro(QString tiltle, QString  txt);
-
-
+    void showGlslError(QString tiltle, QString  txt);
+    void showOverSizeError(QString Text);
+    void hideOverSizeError();
 };

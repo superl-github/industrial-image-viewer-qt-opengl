@@ -2,6 +2,7 @@
 #include "CyMdiaCalc_Mono.h"
 #include "CyMdiaCalc_Bayer.h"
 #include "CyMdiaCalc_Rgb.h"
+#include "CyMdiaCalc_YUV.h"
 
 #include <cstdlib>
 
@@ -255,8 +256,12 @@ namespace CyMedia {
         return false;
     }
 
-    bool bayer2RGBConvert(ImageShowInfo& info, uint8_t* data, uint8_t* out_data) {
-        return Bayer2RGBConver(info, data, out_data);
+    bool bayer2RGB(ImageShowInfo& info, uint8_t* data, uint8_t* out_data, DemosaicingMethod func/* = DEMOSAIC_BILINEAR*/) {
+        return Bayer2RGBConver(info, data, out_data, func);
+    }
+
+    bool CYMEDIA_LIB YUV2RGB(ImageShowInfo& info, uint8_t* data, uint8_t* out_data, YUVTransMethod func /*= YUVTRANS_NORMAL*/) {
+        return YUV2RGBConver(info, data, out_data, func);
     }
 
     void copyAlignImage(void* pSrc, void* pAlign, int srcWidth, int srcHeight, int AlignWidth, int AlignHeight, int pixelSize) {

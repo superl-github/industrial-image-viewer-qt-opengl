@@ -34,8 +34,7 @@ void CyDMediaDisScen::drawBackground(QPainter* painter, const QRectF& rect) {
     QGraphicsScene::drawBackground(painter, rect);
 }
 
-void CyDMediaDisScen::mousePressEvent(QGraphicsSceneMouseEvent* event)
-{
+void CyDMediaDisScen::mousePressEvent(QGraphicsSceneMouseEvent* event) {
     return QGraphicsScene::mousePressEvent(event);
 }
 

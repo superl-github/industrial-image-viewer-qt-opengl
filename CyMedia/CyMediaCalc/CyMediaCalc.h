@@ -57,7 +57,9 @@ namespace CyMedia {
     //图像转换
     bool CYMEDIA_LIB monoUnPack(CyMedia::ImageShowInfo& info, uint8_t* data, uint8_t* out_data);
 
-    bool CYMEDIA_LIB bayer2RGBConvert(CyMedia::ImageShowInfo& info, uint8_t* data, uint8_t* out_data);
+    bool CYMEDIA_LIB bayer2RGB(CyMedia::ImageShowInfo& info, uint8_t* data, uint8_t* out_data, DemosaicingMethod func = DEMOSAIC_BILINEAR);
+
+    bool CYMEDIA_LIB YUV2RGB(CyMedia::ImageShowInfo& info, uint8_t* data, uint8_t* out_data, YUVTransMethod func = YUVTRANS_NORMAL);
 
     void CYMEDIA_LIB copyAlignImage(void* pSrc, void* pAlign, int srcWidth, int srcHeight, int AlignWidth, int AlignHeight, int pixelSize);
 }

@@ -18,6 +18,7 @@
 #include <QApplication>
 #include <QThread>
 #include <QOpenGLWidget>
+#include <QListView>
 
 #define ImageStackMaxSize 3
 
@@ -47,7 +48,8 @@ namespace CyMedia {
             uint8_t* pAlignImage = 0;
             CyMedia::ImageShowInfo pAlignImage_info;
 
-            bool openglOpeBayer = false;
+            bool BayerTrans = true;
+            bool YUVTrans = false;
 
             void init() {
                 dataFpsTimer.invalidate();
@@ -62,7 +64,8 @@ namespace CyMedia {
                 }
                 pAlignImage_info.length = 0;
 
-                openglOpeBayer = false;
+                BayerTrans = true;
+                YUVTrans = true;
             }
         }_opeFrameThreadPara;
 
@@ -71,7 +74,8 @@ namespace CyMedia {
         ~privateData();
 
     public:signals:
-        void ImageDataDone(bool InfoChange, CyMedia::ImageShowInfo info);
+        void ImageInfoChange(CyMedia::ImageShowInfo info);
+        void ImageDataDone(CyMedia::ImageShowInfo info);
         void startDataFpsTimer();
 
     public:
@@ -98,7 +102,8 @@ namespace CyMedia {
         void Thread_ImageData_Tools(CyMedia::ImageShowInfo& info, uint8_t* data, bool isSource, bool upStretch);
         void Thread_ImageData_SpecialOpe(CyMedia::ImageShowInfo& srcInfo, uint8_t** srcData, opeFrameThreadPara& opePara);
         void Thread_ImageData_UpDis(CyMedia::ImageShowInfo& info, uint8_t* data, opeFrameThreadPara& opePara, QOpenGLContext* ctx, bool isSource);
-        void ImageDataDoneReceive(bool InfoChange, CyMedia::ImageShowInfo info);
+        void ImageInfoChangeReceiver(CyMedia::ImageShowInfo info);
+        void ImageDataDoneReceive(CyMedia::ImageShowInfo info);
 
         void onAddItem(QUuid id);
         void onRemoveItem(QUuid id);
@@ -161,7 +166,7 @@ namespace CyMedia {
         QPushButton* zoomFitButton = 0;     ///< 适应窗口按钮
         QPushButton* flipHButton = 0;       ///< 水平翻转按钮
         QPushButton* flipVButton = 0;       ///< 垂直翻转按钮
-        bool bZoomScrollBarIsShow = false;
+        bool bZoomScrollBarIsShow = true;
 
         QElapsedTimer m_ToolWUpTimer;
         bool m_AutoThumbnail = true;
@@ -255,32 +260,32 @@ namespace CyMedia {
 
     QString CyMediaDis::pixelFormatStr(CyMedia::ePixType format) {
         switch (format) {
-            case CyMedia::MONO:
-                return QString("MONO");
-            case CyMedia::BAYERGR:
-                return QString("BAYER GRBG");
-            case CyMedia::BAYERBG:
-                return QString("BAYER BGGR");
-            case CyMedia::BAYERGB:
-                return QString("BAYER GBRG");
-            case CyMedia::BAYERRG:
-                return QString("BAYER RGGB");
-            case CyMedia::RGB:
-                return QString("RGB");
-            case CyMedia::RGBA:
-                return QString("RGBA");
-            case CyMedia::MONO10P:
-                return QString("MONO10P");
-            case CyMedia::MONO10P_GVSP:
-                return QString("MONO10P_GVSP");
-            case CyMedia::MONO12P:
-                return QString("MONO12P");
-            case CyMedia::MONO12P_GVSP:
-                return QString("MONO12P_GVSP");
-            case CyMedia::MONO_OVERSIZE:
-                return QString("CMONO_OVERSIZE");
-            default:
-                return QString("UNKNOW");
+            case CyMedia::MONO: return QString("MONO");
+
+            case CyMedia::MONO10P: return QString("MONO10P"); return QString("MONO10P_GVSP");
+            case CyMedia::MONO12P: return QString("MONO12P");
+            case CyMedia::MONO12P_GVSP: return QString("MONO12P_GVSP");
+
+            case CyMedia::MONO_OVERSIZE: return QString("CMONO_OVERSIZE");
+
+            case CyMedia::RGB: return QString("RGB");
+            case CyMedia::RGBA: return QString("RGBA");
+
+            case CyMedia::BAYERGR: return QString("BAYER GRBG");
+            case CyMedia::BAYERBG: return QString("BAYER BGGR");
+            case CyMedia::BAYERGB: return QString("BAYER GBRG");
+            case CyMedia::BAYERRG: return QString("BAYER RGGB");
+
+            case CyMedia::FOURCC_YUY2: return QString("YUYV422");
+            case CyMedia::FOURCC_YVYU: return QString("YVYU422");
+            case CyMedia::FOURCC_I422: return QString("YUV422P");
+            case CyMedia::FOURCC_YV16: return QString("YVU422P");
+            case CyMedia::FOURCC_I420: return QString("YUV420P");
+            case CyMedia::FOURCC_YV12: return QString("YVU420P");
+            case CyMedia::FOURCC_NV21: return QString("YUV420SP");
+            case CyMedia::FOURCC_NV12: return QString("YVU420SP");
+            
+            default: return QString("UNKNOW");
         }
     }
 
@@ -631,6 +636,7 @@ namespace CyMedia {
         pImageDataThread = new QThread(this);
         connect(pImageDataThread, &QThread::started, this, &CyMediaDis::privateData::Thread_ImageData, Qt::DirectConnection);
 
+        connect(this, &privateData::ImageInfoChange, this, &privateData::ImageInfoChangeReceiver);
         connect(this, &privateData::ImageDataDone, this, &privateData::ImageDataDoneReceive);
         connect(this, &privateData::startDataFpsTimer, this, [this]() {
                 if (calcolorTimer.isValid()) {
@@ -827,6 +833,19 @@ namespace CyMedia {
                 tFrame.pdata = m_rawImageData;
                 tFrame.info = m_rawInfo;
             }
+            //实时判断要不要在CPU统一处理特殊转换(Bayer/YUV)，目标：尽量只转换一次
+            int transNum = 0;
+            if (view->thumbnailVisible()) transNum++;
+            if (transNum > 1) {
+                opePara.BayerTrans = true;
+                opePara.YUVTrans = true;
+            }
+            else {
+                opePara.BayerTrans = false;
+                opePara.YUVTrans = false;
+            }
+            opePara.YUVTrans = true;//TODO OPenGL暂不支持
+            if (view->Demosaic() == DEMOSAIC_AHD) opePara.BayerTrans = true;//AHD未在OPenGL实现
             Thread_ImageData_oneFrame(tFrame, opePara, threadCtx);
             log_printf("Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
             //回收，清除状态
@@ -952,29 +971,6 @@ namespace CyMedia {
             srcInfo.format = CyMedia::MONO;
         }
         switch (srcInfo.format) {
-            case CyMedia::BAYERRG:
-            case CyMedia::BAYERGR:
-            case CyMedia::BAYERGB:
-            case CyMedia::BAYERBG: {
-                ////转RGB
-                if (view->Demosaic() == DEMOSAIC_AHD) {
-                    uint32_t RGBLen = srcInfo.length * 3;
-                    if (!opePara.pAnalyImage) {
-                        opePara.pAnalyImage = new unsigned char[RGBLen];
-                        opePara.analyImageLen = RGBLen;
-                    }
-                    else if (opePara.analyImageLen != RGBLen) {
-                        delete[]opePara.pAnalyImage;
-                        opePara.pAnalyImage = new unsigned char[RGBLen];
-                        opePara.analyImageLen = RGBLen;
-                    }
-                    CyMedia::bayer2RGBConvert(srcInfo, *srcData, opePara.pAnalyImage);
-                    srcInfo.length = opePara.analyImageLen;
-                    srcInfo.format = CyMedia::RGB;
-                    *srcData = opePara.pAnalyImage;
-                }
-            }break;
-
             case CyMedia::MONO10P_GVSP:
             case CyMedia::MONO10P:
             case CyMedia::MONO12P_GVSP:
@@ -1002,6 +998,54 @@ namespace CyMedia {
                 monoUnPack(srcInfo, *srcData, opePara.pAnalyImage);
                 memcpy(&srcInfo, &tempInfo, sizeof(CyMedia::ImageShowInfo));
                 *srcData = opePara.pAnalyImage;
+            }break;
+
+            case CyMedia::BAYERRG:
+            case CyMedia::BAYERGR:
+            case CyMedia::BAYERGB:
+            case CyMedia::BAYERBG: {
+                //转RGB
+                if (true == opePara.BayerTrans) {
+                    uint32_t RGBLen = srcInfo.length * 3;
+                    if (!opePara.pAnalyImage) {
+                        opePara.pAnalyImage = new unsigned char[RGBLen];
+                        opePara.analyImageLen = RGBLen;
+                    }
+                    else if (opePara.analyImageLen != RGBLen) {
+                        delete[]opePara.pAnalyImage;
+                        opePara.pAnalyImage = new unsigned char[RGBLen];
+                        opePara.analyImageLen = RGBLen;
+                    }
+                    CyMedia::bayer2RGB(srcInfo, *srcData, opePara.pAnalyImage, view->Demosaic());
+                    srcInfo.length = opePara.analyImageLen;
+                    srcInfo.format = CyMedia::RGB;
+                    *srcData = opePara.pAnalyImage;
+                }
+            }break;
+
+            case FOURCC_I422: 
+            case FOURCC_YV16:
+            case FOURCC_I420:
+            case FOURCC_YV12:
+            case FOURCC_NV21:
+            case FOURCC_NV12: {
+                //转RGB
+                if (true == opePara.YUVTrans) {
+                    uint32_t RGBLen = srcInfo.length * 1.5;
+                    if (!opePara.pAnalyImage) {
+                        opePara.pAnalyImage = new unsigned char[RGBLen];
+                        opePara.analyImageLen = RGBLen;
+                    }
+                    else if (opePara.analyImageLen != RGBLen) {
+                        delete[]opePara.pAnalyImage;
+                        opePara.pAnalyImage = new unsigned char[RGBLen];
+                        opePara.analyImageLen = RGBLen;
+                    }
+                    CyMedia::YUV2RGB(srcInfo, *srcData, opePara.pAnalyImage, view->yuvMethod());
+                    srcInfo.length = opePara.analyImageLen;
+                    srcInfo.format = CyMedia::RGB;
+                    *srcData = opePara.pAnalyImage;
+                }
             }break;
         }
     }
@@ -1039,6 +1083,10 @@ namespace CyMedia {
         }
         else {
             emit startDataFpsTimer();
+        }
+        if (imageInfoChange) {
+            emit ImageInfoChange(src_info);
+            QThread::msleep(1);
         }
         
         //四字节对齐处理
@@ -1083,7 +1131,7 @@ namespace CyMedia {
             view->upBackGround(src_info, src_data, ctx);
         }
 
-        emit ImageDataDone(imageInfoChange, src_info);
+        emit ImageDataDone(src_info);
     }
 
     void CyMediaDis::privateData::initGUI() {
@@ -1124,10 +1172,8 @@ namespace CyMedia {
 
     void CyMediaDis::privateData::initScene() {
         //画布
-        scene = new CyDMediaDisScen(0, 0, 1000, 1000);
+        scene = new CyDMediaDisScen(0, 0, m_imageinfo.width, m_imageinfo.height);
         scene->setItemIndexMethod(QGraphicsScene::NoIndex);
-        //scene->setBackgroundBrush(Qt::lightGray);
-        scene->setSceneRect(QRectF(0, 0, 1000, 1000));
         connect(scene, &CyDMediaDisScen::mousePosChange, this, [this](int x, int y) {
             posX = x;
             posY = y;
@@ -1143,6 +1189,7 @@ namespace CyMedia {
         //视图
         view = new CyMediaDisView(m_parent);
         QOpenGLWidget* OpenGlwidget = new QOpenGLWidget();
+        OpenGlwidget->setMouseTracking(true);
         //指定opengl版本
         QSurfaceFormat format;
         format.setVersion(3, 3);
@@ -1156,8 +1203,6 @@ namespace CyMedia {
         view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
         view->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         view->setCyScene(scene);
-        //view->setMouseTracking(true);
-        view->setSceneRect(QRectF(0, 0, m_imageinfo.width, m_imageinfo.height));
         connect(view, &CyMediaDisView::onMousePress, m_parent, [this]() {
                 m_parent->emit PressOnView();
             });
@@ -1341,20 +1386,20 @@ namespace CyMedia {
         connect(mGrayTestWidget, &CyMediaDisGrayTest::testModeChange, this, [this](int drawType, CyMediaDisGrayTest::testModeChangeType emitType) {
             setDrawMode(CyDisDrawItem::ItemType(drawType));
             switch (emitType) {
-            case CyMediaDisGrayTest::ModeChange_normal:{
-                onGrayToolNeedImage(); 
-            }break;
+                case CyMediaDisGrayTest::ModeChange_normal:{
+                    onGrayToolNeedImage(); 
+                }break;
 
-            case CyMediaDisGrayTest::ModeChange_hide: {
-                drawmanager->removeItem(mGrayTestWidget->getCurrentItem());
-            }break;
+                case CyMediaDisGrayTest::ModeChange_hide: {
+                    drawmanager->removeItem(mGrayTestWidget->getCurrentItem());
+                }break;
 
-            case CyMediaDisGrayTest::QPainterPath_show: {
-                auto path = mGrayTestWidget->oldItemPpath();
-                if (path.elementCount()) {
-                    drawmanager->addItemByTypeWidthPath(CyDisDrawItem::ItemType(drawType), path);
-                }
-            }break;
+                case CyMediaDisGrayTest::QPainterPath_show: {
+                    auto path = mGrayTestWidget->oldItemPpath();
+                    if (path.elementCount()) {
+                        drawmanager->addItemByTypeWidthPath(CyDisDrawItem::ItemType(drawType), path);
+                    }
+                }break;
             }
             });
     }
@@ -1369,12 +1414,13 @@ namespace CyMedia {
         toolWidget->setVisible(true);
     }
 
-    void CyMediaDis::privateData::ImageDataDoneReceive(bool InfoChange, CyMedia::ImageShowInfo info) {
-        if (InfoChange) {
-            scene->setSceneRect(QRect(0, 0, info.width, info.height));
-            view->sceneRectUp(QRect(0, 0, info.width, info.height));
-            m_parent->emit imageSizeChanged(info.width, info.height, info.bit);
-        }
+    void CyMediaDis::privateData::ImageInfoChangeReceiver(CyMedia::ImageShowInfo info) {
+        scene->setSceneRect(QRect(0, 0, info.width, info.height));
+        view->sceneRectUp(QRect(0, 0, info.width, info.height));
+        m_parent->emit imageSizeChanged(info.width, info.height, info.bit);
+    }
+
+    void CyMediaDis::privateData::ImageDataDoneReceive(CyMedia::ImageShowInfo info) {
         //检查线程是否退出
         if (false == bImageDataThread_flag) {
             log_printf("跳过图像(Receive)\n\r");
@@ -1438,7 +1484,6 @@ namespace CyMedia {
         }
         m_parent->emit itemRemoved(id);
     }
-
 
 
 
@@ -1554,9 +1599,10 @@ namespace CyMedia {
         d->ui_special_value_box->addItem("float64");
         d->uiPixelFormatBox = new QComboBox(this);
         int pixelTypeI = int(CyMedia::MONO);
-        for (; pixelTypeI < int(CyMedia::MONO_OVERSIZE); pixelTypeI++) {
+        for (; pixelTypeI <= int(CyMedia::FOURCC_NV12); pixelTypeI++) {
             d->uiPixelFormatBox->addItem(CyMediaDis::pixelFormatStr(CyMedia::ePixType(pixelTypeI)));
         }
+        ((QListView*)d->uiPixelFormatBox->view())->setRowHidden(int(CyMedia::MONO_OVERSIZE), true);
         /*p_data->uiPixelFormatBox->setStyleSheet(
             "QComboBox{"
             "   font-family:Microsoft YaHei UI;"

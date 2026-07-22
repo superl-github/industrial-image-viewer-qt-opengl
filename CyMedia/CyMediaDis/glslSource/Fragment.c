@@ -1,4 +1,4 @@
-﻿#version 330 core
+#version 330 core
 
 //======uniform======
 uniform sampler2D texture;
@@ -11,6 +11,7 @@ uniform int colorMapIndex;
 uniform float pixrange;
 uniform int stretchType;
 uniform int demosacFunc; // 0->None 1->BILINEAR 2->MALVA 3->AHD
+uniform int YUVMethod;  //0->Normal 1->onlyY
 uniform vec2 stretchPara;
 uniform float zoomValue;
 
@@ -150,12 +151,13 @@ out vec4 fragColor;
 vec4 stretchPixel(int type, vec4 value, vec2 para);
 
 void main() {
-    //===== 计算坐标 =====
+    //===== 计算坐标取值 =====
     ivec2 texSize = textureSize(texture, 0);
     ivec2 intTexCoord = clamp(ivec2(TexCoord * vec2(texSize)), ivec2(0), ivec2(texSize) - 1);
 
     //===== 原始像素值 =====
     vec4 rgba = texelFetch(texture, intTexCoord, 0);
+    bool bitProcessed = true;   // 是否处理位深
 
     //===== 计算像素值 =====
     float maxPixelValue = pixrange - 1.0;
@@ -164,7 +166,7 @@ void main() {
         rgba.b = rgba.r;
 		rgba.a = 1.0;
     }
-    else if (colorType == 11) {//MONO_OVERSIZE
+    else if (colorType == 5) {//MONO_OVERSIZE
         int monoIndex = intTexCoord.y * texSize.x + intTexCoord.x;
         int RGBA_X = (intTexCoord.x / 4) + (intTexCoord.y % 2 * (nWidth / 4));
         int RGBA_Y = intTexCoord.y / 2;
@@ -174,8 +176,8 @@ void main() {
         rgba.b = rgba.r;
         rgba.a = 1.0;
     }
-    else if (colorType >= 1 && colorType <= 4) {
-        int pattern = colorType - 1; // 1->RGGB, 2->GRBG, 3->BGGR, 4->GBRG
+    else if (colorType >= 8 && colorType <= 11) {
+        int pattern = colorType - 8; // 8->RGGB, 9->GRBG, 10->BGGR, 11->GBRG
         vec3 rgb;
         if (demosacFunc == 1) {
             rgb = bilinearDemosaic(texture, intTexCoord, pattern, texSize);
@@ -197,21 +199,23 @@ void main() {
     //===== 位深处理 =====
     float colorScale = 1.0;
     float trueMaxPixelValue = 1.0;
-    if (nbits > 8 && nbits < 16) {
+    if (true == bitProcessed){
+        if (nbits > 8 && nbits < 16) {
         colorScale = 65536.0 / pixrange;
         trueMaxPixelValue = pixrange / 65536.0;
         rgba.r = rgba.r * colorScale; 
         rgba.g = rgba.g * colorScale;
         rgba.b = rgba.b * colorScale;
+        }
+        else if (nbits > 16 && nbits < 32) {
+            colorScale = 4294967296.0 / pixrange;
+            trueMaxPixelValue = maxPixelValue / 4294967296.0;
+            rgba.r = rgba.r * colorScale; 
+            rgba.g = rgba.g * colorScale;
+            rgba.b = rgba.b * colorScale;
+        }
     }
-    else if (nbits > 16 && nbits < 32) {
-        colorScale = 4294967296.0 / pixrange;
-        trueMaxPixelValue = maxPixelValue / 4294967296.0;
-        rgba.r = rgba.r * colorScale; 
-        rgba.g = rgba.g * colorScale;
-        rgba.b = rgba.b * colorScale;
-    }
-
+    
     //===== 灰度拉伸 =====
     rgba = stretchPixel(stretchType, rgba, stretchPara);
 

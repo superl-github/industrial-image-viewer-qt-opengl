@@ -61,15 +61,15 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtInstall>5.14.2_msvc2017_64</QtInstall>
-    <QtModules>core;gui;widgets</QtModules>
+    <QtModules>core;opengl;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtDeploy>true</QtDeploy>
+    <QtDeploy>false</QtDeploy>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="QtSettings">
     <QtInstall>5.14.2_msvc2017</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtDeploy>true</QtDeploy>
+    <QtDeploy>false</QtDeploy>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -241,6 +241,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaCalc\CyMdiaCalc_Bayer.cpp" />
     <ClCompile Include="CyMediaCalc\CyMdiaCalc_Mono.cpp" />
     <ClCompile Include="CyMediaCalc\CyMdiaCalc_Rgb.cpp" />
+    <ClCompile Include="CyMediaCalc\CyMdiaCalc_YUV.cpp" />
     <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
@@ -347,6 +348,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClInclude Include="CyMediaCalc\CyMdiaCalc_Bayer.h" />
     <ClInclude Include="CyMediaCalc\CyMdiaCalc_Mono.h" />
     <ClInclude Include="CyMediaCalc\CyMdiaCalc_Rgb.h" />
+    <ClInclude Include="CyMediaCalc\CyMdiaCalc_YUV.h" />
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
     <ClInclude Include="CyMediaParse\CyMediaFileParse.h" />
     <QtMoc Include="CyMediaDis\CyMediaDisViewThumbnail.h" />
@@ -396,6 +398,9 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">lrelease</BuildAction>
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">lrelease</BuildAction>
     </QtTranslation>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="isYUV420" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

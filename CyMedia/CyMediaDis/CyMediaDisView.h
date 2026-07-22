@@ -57,6 +57,10 @@ public:
     CyMedia::DemosaicingMethod Demosaic();
     void setDemosaic(CyMedia::DemosaicingMethod method);
 
+    // YUV转换
+    CyMedia::YUVTransMethod yuvMethod();
+    void setYUVMethod(CyMedia::YUVTransMethod method);
+
     // FPS 相关
     double flushFps() const;
     bool isTrueDataFps() const;
@@ -71,6 +75,7 @@ public:
     //缩略图
     bool thumbnailEnable();
     void setThumbnailEnable(bool enable);
+    bool thumbnailVisible();
     void upThumbnaildata(CyMedia::ImageShowInfo info, uint8_t* data);
     QImage& ThumbnailImage();
     void setThumbnailSelectColor(QColor color);
