@@ -1,4 +1,6 @@
-#include "CyMdiaCalc_YUV.h"
+﻿#include "CyMediaCalc_YUV.h"
+#include "CyMediaCalc.h"
+
 #include <vector>
 #include <algorithm>
 #include <cmath>
@@ -10,7 +12,7 @@
 #include <omp.h>
 #endif
 
-namespace CyMedia {
+namespace CyMediaCalc_YUV {
 
     // ---------- 内部辅助函数 ----------
     // YUV 转 RGB (BT.601 全范围，Y/U/V 均为 0~255)
@@ -38,99 +40,111 @@ namespace CyMedia {
             return false;
 
         switch (info.format) {
-        case FOURCC_YUY2: {
-            int pixel_index = y * w + x;
-            int macro_index = y * w + (x / 2);
-            Y = data[pixel_index * 2];
-            U = data[macro_index * 4 + 1];
-            V = data[macro_index * 4 + 3];
-            break;
-        }
-        case FOURCC_YVYU: {
-            int pixel_index = y * w + x;
-            int macro_index = y * w + (x / 2);
-            Y = data[pixel_index * 2];
-            V = data[macro_index * 4 + 1];
-            U = data[macro_index * 4 + 3];
-            break;
-        }
-        case FOURCC_I422: {
-            int y_idx = y * w + x;
-            int uv_x = x / 2;
-            int uv_y = y;
-            int uv_off = uv_y * (w / 2) + uv_x;
-            Y = data[y_idx];
-            U = data[w * h + uv_off];
-            V = data[w * h + (w / 2) * h + uv_off];
-            break;
-        }
-        case FOURCC_YV16: {
-            int y_idx = y * w + x;
-            int uv_x = x / 2;
-            int uv_y = y;
-            int uv_off = uv_y * (w / 2) + uv_x;
-            Y = data[y_idx];
-            V = data[w * h + uv_off];
-            U = data[w * h + (w / 2) * h + uv_off];
-            break;
-        }
-        case FOURCC_I420: {
-            int y_idx = y * w + x;
-            int uv_x = x / 2;
-            int uv_y = y / 2;
-            int uv_w = w / 2;
-            int uv_h = h / 2;
-            int uv_off = uv_y * uv_w + uv_x;
-            Y = data[y_idx];
-            U = data[w * h + uv_off];
-            V = data[w * h + uv_w * uv_h + uv_off];
-            break;
-        }
-        case FOURCC_YV12: {
-            int y_idx = y * w + x;
-            int uv_x = x / 2;
-            int uv_y = y / 2;
-            int uv_w = w / 2;
-            int uv_h = h / 2;
-            int uv_off = uv_y * uv_w + uv_x;
-            Y = data[y_idx];
-            V = data[w * h + uv_off];
-            U = data[w * h + uv_w * uv_h + uv_off];
-            break;
-        }
-        case FOURCC_NV12: {
-            int y_idx = y * w + x;
-            int uv_x = x / 2;
-            int uv_y = y / 2;
-            int uv_w = w / 2;
-            int uv_off = uv_y * uv_w + uv_x;
-            Y = data[y_idx];
-            int uv_start = w * h;
-            U = data[uv_start + uv_off * 2];
-            V = data[uv_start + uv_off * 2 + 1];
-            break;
-        }
-        case FOURCC_NV21: {
-            int y_idx = y * w + x;
-            int uv_x = x / 2;
-            int uv_y = y / 2;
-            int uv_w = w / 2;
-            int uv_off = uv_y * uv_w + uv_x;
-            Y = data[y_idx];
-            int uv_start = w * h;
-            V = data[uv_start + uv_off * 2];
-            U = data[uv_start + uv_off * 2 + 1];
-            break;
-        }
-        default:
-            return false;
+            case FOURCC_YUY2: {
+                int stride = w * 2;               // 每行字节数
+                const uint8_t* row = data + y * stride;
+                int pix_byte = x * 2;
+                Y = row[pix_byte];
+                int macro = (x / 2) * 4;
+                U = row[macro + 1];
+                V = row[macro + 3];
+                break;
+            }
+            case FOURCC_YVYU: {
+                int stride = w * 2;
+                const uint8_t* row = data + y * stride;
+                int pix_byte = x * 2;
+                Y = row[pix_byte];
+                int macro = (x / 2) * 4;
+                V = row[macro + 1];
+                U = row[macro + 3];
+                break;
+            }
+            case FOURCC_I422: {
+                int y_stride = w;
+                int uv_stride = w / 2;
+                int y_off = y * y_stride + x;
+                int uv_x = x / 2;
+                int uv_off = y * uv_stride + uv_x;  // 422 中 U/V 与 Y 同高
+                Y = data[y_off];
+                U = data[w * h + uv_off];
+                V = data[w * h + (w / 2) * h + uv_off];
+                break;
+            }
+            case FOURCC_YV16: {
+                int y_stride = w;
+                int uv_stride = w / 2;
+                int y_off = y * y_stride + x;
+                int uv_x = x / 2;
+                int uv_off = y * uv_stride + uv_x;
+                Y = data[y_off];
+                V = data[w * h + uv_off];
+                U = data[w * h + (w / 2) * h + uv_off];
+                break;
+            }
+            case FOURCC_I420: {
+                int y_stride = w;
+                int uv_stride = w / 2;
+                int y_off = y * y_stride + x;
+                int uv_x = x / 2;
+                int uv_y = y / 2;
+                int uv_off = uv_y * uv_stride + uv_x;
+                Y = data[y_off];
+                int uv_start = w * h;
+                int uv_size = (w / 2) * (h / 2);
+                U = data[uv_start + uv_off];
+                V = data[uv_start + uv_size + uv_off];
+                break;
+            }
+            case FOURCC_YV12: {
+                int y_stride = w;
+                int uv_stride = w / 2;
+                int y_off = y * y_stride + x;
+                int uv_x = x / 2;
+                int uv_y = y / 2;
+                int uv_off = uv_y * uv_stride + uv_x;
+                Y = data[y_off];
+                int uv_start = w * h;
+                int uv_size = (w / 2) * (h / 2);
+                V = data[uv_start + uv_off];
+                U = data[uv_start + uv_size + uv_off];
+                break;
+            }
+            case FOURCC_NV12: {
+                int y_stride = w;
+                int uv_stride = w;          // UV 平面每行也是 w 字节（因为 U/V 交错）
+                int y_off = y * y_stride + x;
+                int uv_x = x / 2;
+                int uv_y = y / 2;
+                int uv_off = uv_y * uv_stride + uv_x * 2;  // 每个 UV 对占 2 字节
+                Y = data[y_off];
+                int uv_start = w * h;
+                U = data[uv_start + uv_off];
+                V = data[uv_start + uv_off + 1];
+                break;
+            }
+            case FOURCC_NV21: {
+                int y_stride = w;
+                int uv_stride = w;
+                int y_off = y * y_stride + x;
+                int uv_x = x / 2;
+                int uv_y = y / 2;
+                int uv_off = uv_y * uv_stride + uv_x * 2;
+                Y = data[y_off];
+                int uv_start = w * h;
+                V = data[uv_start + uv_off];
+                U = data[uv_start + uv_off + 1];
+                break;
+            }
+            default:
+                return false;
         }
         return true;
     }
 
     // ---------- 公开函数实现 ----------
 
-    RgbPixel calcCoordinateColor_YUV(const ImageShowInfo& info, const uint8_t* pdata,
+    RgbPixel calcCoordinateColor(const ImageShowInfo& info, const uint8_t* pdata,
         int32_t x, int32_t y, YUVTransMethod func) {
         RgbPixel result{ 0, 0, 0 };
         uint8_t Y, U, V;
@@ -151,7 +165,7 @@ namespace CyMedia {
         return result;
     }
 
-    bool computeHistogram_YUV(const ImageShowInfo& info, const uint8_t* data,
+    bool computeHistogram(const ImageShowInfo& info, const uint8_t* data,
         std::vector<uint8_t>* mask, bool useMask,
         std::vector<double>& Rhistogram,
         std::vector<double>& Ghistogram,
@@ -245,6 +259,43 @@ namespace CyMedia {
             avePixel.assign(3, 0.0);
         }
 
+        return true;
+    }
+
+
+    bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& Rhistogram, YUVTransMethod func /*= YUVTRANS_NORMAL*/, StretchType type /*= stretch_None*/) {
+        if (!info.isYUV() || data == nullptr)
+            return false;
+
+        int w = info.width;
+        int h = info.height;
+        int total = w * h;
+        uint32_t bitMax = 256;
+
+        // 初始化直方图 (0~255)
+        Rhistogram.assign(bitMax, 0.0);
+        // 遍历所有像素
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                uint8_t Y, U, V;
+                if (!getYUV(info, data, x, y, Y, U, V))
+                    continue;
+                RgbPixel rgb;
+                if (func == YUVTRANS_Y) {
+                    rgb.r = rgb.g = rgb.b = (Y);
+                }
+                else {
+                    uint8_t R8, G8, B8;
+                    YUVtoRGB(Y, U, V, R8, G8, B8);
+                    rgb.r = R8;
+                    rgb.g = G8;
+                    rgb.b = B8;
+                }
+
+                // 更新直方图
+                Rhistogram[CyMediaCalc::RGBT2StretchOneFast(rgb, type, bitMax)] += 1.0;
+            }
+        }
         return true;
     }
 

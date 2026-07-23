@@ -1,4 +1,4 @@
-#include "CyMdiaCalc_Mono.h"
+﻿#include "CyMediaCalc_Mono.h"
 #if defined _MSC_VER
     #include <ppl.h>
     #include <thread>
@@ -7,7 +7,7 @@
 #endif
 #include <cstdlib>
 
-namespace CyMedia {
+namespace CyMediaCalc_Mono {
     //辅助函数
     inline uint32_t getMonoPixelValue(const ImageShowInfo& info, const uint8_t* data, size_t idx);
     bool MonoConvert(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
@@ -55,7 +55,7 @@ namespace CyMedia {
         return calcCoordinateColor_Mono12P(data, idx);
     }
 
-    bool computeHistogram_Mono(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& histogram,
+    bool computeHistogram(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& histogram,
         double* maxPixel, double* minPixel, double* avePixel) {
         if (info.special_pixel != PIXEL_VALUE_INT) {
             return false;
@@ -214,7 +214,7 @@ namespace CyMedia {
         return true;
     }
 
-    void computerUniformity_Mono(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity) {
+    void computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity) {
         double pixcelCount = 0.0;
         double d = 0.0;
         double dstd = 0.0;

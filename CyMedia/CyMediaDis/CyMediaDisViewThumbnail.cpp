@@ -1,4 +1,4 @@
-#include "CyMediaDisViewThumbnail.h"
+﻿#include "CyMediaDisViewThumbnail.h"
 #include "CyMediaDisView.h"
 #include "CyMediaCalc/CyMediaCalc.h"
 
@@ -38,7 +38,7 @@ void CyMediaDisViewThumbnail::upBackImage(CyMedia::ImageShowInfo info, uint8_t* 
             rgbLen *= 2;
         }
         uint8_t* rgbData = new uint8_t[rgbLen];
-        CyMedia::bayer2RGB(info, data, rgbData);
+        CyMediaCalc::bayer2RGB(info, data, rgbData);
         image = QImage(info.width, info.height, QImage::Format_RGB888);
         auto pImage = image.bits();
 
@@ -59,7 +59,7 @@ void CyMediaDisViewThumbnail::upBackImage(CyMedia::ImageShowInfo info, uint8_t* 
     else if (info.isYUV()) {
         uint32_t rgbLen = info.width * info.height * 3;
         uint8_t* rgbData = new uint8_t[rgbLen];
-        CyMedia::YUV2RGB(info, data, rgbData);
+        CyMediaCalc::YUV2RGB(info, data, rgbData);
         image = QImage(info.width, info.height, QImage::Format_RGB888);
         auto pImage = image.bits();
         memcpy(pImage, rgbData, rgbLen);

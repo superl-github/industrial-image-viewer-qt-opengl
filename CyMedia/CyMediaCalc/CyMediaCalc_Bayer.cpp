@@ -1,4 +1,5 @@
-#include "CyMdiaCalc_Bayer.h"
+﻿#include "CyMediaCalc_Bayer.h"
+#include "CyMediaCalc.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -10,7 +11,7 @@
 #   include <omp.h>
 #endif
 
-namespace CyMedia {
+namespace CyMediaCalc_Bayer {
     // 获取自适应并行阈值
     // @param coreCount       CPU 逻辑核心数
     // @param func            转换类型，用于调整复杂度权重
@@ -48,13 +49,14 @@ namespace CyMedia {
     template<typename T>
     void demosaicAHD_Split(const T* data, int32_t width, int32_t height, ePixType format, std::vector<double>& R, std::vector<double>& G, std::vector<double>& B);
     bool computeHistogram_Bayer_AHD(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel);
+    bool computeHistogram_Bayer_AHD_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& Rhistogram, CyMedia::StretchType type);
     template<typename T>
     bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicingMethod func = DEMOSAIC_BILINEAR);
     template<typename T>
     bool Bayer2RGB_AHD(const ImageShowInfo& info, const uint8_t* data, T* outdata, bool sertial = true);
 
 
-    CyMedia::RgbPixel calcCoordinateColor_Bayer(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y, DemosaicingMethod func/* = BILINEAR*/) {
+    RgbPixel calcCoordinateColor(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y, DemosaicingMethod func/* = BILINEAR*/) {
         if (!pdata || x >= info.width || y >= info.height) {
             return {};
         }
@@ -75,29 +77,26 @@ namespace CyMedia {
         return {};
     }
 
-    bool computeHistogram_Bayer(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, 
+    bool computeHistogram(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, 
         std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram,
         std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel, 
         DemosaicingMethod func/* = BILINEAR*/) {
-        if (!data)
-            return false;
+        if (false == info.isBayer()) return false;
+        if (!data) return false;if (info.bit >= 32) return false;
         
-        int32_t maxColor = (1U << info.bit) - 1;
-        if (info.bit >= 32)
-            return false;
-
+        int32_t bitMax = (1U << info.bit) - 1;
         int32_t pixelCount = info.width * info.height;
 
         //初始化容器
-        Rhistogram.assign(maxColor, 0.0);
-        Ghistogram.assign(maxColor, 0.0);
-        Bhistogram.assign(maxColor, 0.0);
+        Rhistogram.assign(bitMax, 0.0);
+        Ghistogram.assign(bitMax, 0.0);
+        Bhistogram.assign(bitMax, 0.0);
         double* pRhi = Rhistogram.data();
         double* pGhi = Ghistogram.data();
         double* pBhi = Bhistogram.data();
 
         maxPixel.assign(3, 0.0);
-        minPixel.assign(3, maxColor);
+        minPixel.assign(3, bitMax);
         avePixel.assign(3, 0.0);
         double* pMax = maxPixel.data();
         double* pMin = minPixel.data();
@@ -111,7 +110,7 @@ namespace CyMedia {
                     for (uint32_t y = 0; y < info.height; ++y) {
                         for (uint32_t x = 0; x < info.width; ++x) {
                             if (mask->at(y * info.width + x)) {
-                                RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                                RgbPixel px = calcCoordinateColor(info, data, x, y, func);
                                 pRhi[px.r]++;
                                 pGhi[px.g]++;
                                 pBhi[px.b]++;
@@ -146,7 +145,7 @@ namespace CyMedia {
                 else {
                     for (uint32_t y = 0; y < info.height; ++y) {
                         for (uint32_t x = 0; x < info.width; ++x) {
-                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
                             pRhi[px.r]++;
                             pGhi[px.g]++;
                             pBhi[px.b]++;
@@ -189,7 +188,37 @@ namespace CyMedia {
         return true;
     }
 
-    bool Bayer2RGBConver(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, DemosaicingMethod func /*= BILINEAR*/) {
+    bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& Rhistogram, DemosaicingMethod func /*= DEMOSAIC_BILINEAR*/, CyMedia::StretchType type /*= stretch_None*/) {
+        if (false == info.isBayer()) return false;
+        if (!data) return false;if (info.bit >= 32) return false;
+
+        int32_t bitMax = (1U << info.bit) - 1;
+        int32_t pixelCount = info.width * info.height;
+        //初始化容器
+        Rhistogram.assign(bitMax, 0.0);
+        double* pRhi = Rhistogram.data();
+
+        switch (func)  {
+            case CyMedia::DEMOSAIC_NONE:
+            case CyMedia::DEMOSAIC_BILINEAR:
+            case CyMedia::DEMOSAIC_MALVA: {
+                for (uint32_t y = 0; y < info.height; ++y) {
+                    for (uint32_t x = 0; x < info.width; ++x) {
+                        RgbPixel px = calcCoordinateColor(info, data, x, y, func);
+                        // 更新直方图
+                        pRhi[CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax)] += 1.0;
+                    }
+                }
+            }break;
+
+            case CyMedia::DEMOSAIC_AHD: {
+                computeHistogram_Bayer_AHD_Stretch(info, data, Rhistogram, type);
+            }break;
+        }
+        return true;
+    }
+
+    bool bayer2RGB(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, DemosaicingMethod func /*= BILINEAR*/) {
         if (info.bit <= 8)
             return Bayer2RGB(info, data, (uint8_t*)outdata, func);
         else if (info.bit <= 16)
@@ -206,14 +235,14 @@ namespace CyMedia {
 
 
     inline RgbPixel getBayerPixelColor_Bilinear(const ImageShowInfo& info, const uint8_t* pdata, int32_t x, int32_t y) {
-        int32_t maxColor = (1U << info.bit) - 1;
+        uint32_t maxColor = (1U << info.bit) - 1;
         auto centerColor = getBayerColorType(info.format, x, y);
         int32_t centerVal = safeAt(pdata, info.bit, info.width, info.height, x, y);
 
         // 否则：双线性插值
         int cx = static_cast<int>(x), cy = static_cast<int>(y);
 
-        int32_t R = 0, G = 0, B = 0;
+        uint32_t R = 0, G = 0, B = 0;
         if (centerColor == Ch_R) {
             R = centerVal;
             // G: 上下左右平均
@@ -266,12 +295,13 @@ namespace CyMedia {
         }
     }
     inline RgbPixel getBayerPixelColor_Malvar(const ImageShowInfo& info, const uint8_t* data, int32_t x, int32_t y) {
-        int32_t maxColor = (1U << info.bit) - 1;
+        uint32_t bitMax = (1U << info.bit);
+        uint32_t colorMaX = bitMax - 1;
         int cx = static_cast<int>(x), cy = static_cast<int>(y);
         auto c = getBayerColorType(info.format, cx, cy);
         auto at = [&](int dx, int dy) { return safeAt(data, info.bit, info.width, info.height, cx + dx, cy + dy); };
 
-        int R = 0, G = 0, B = 0;
+        uint32_t R = 0, G = 0, B = 0;
         int center = at(0, 0);
 
         if (c == Ch_R) {
@@ -279,26 +309,26 @@ namespace CyMedia {
             int g_at_r = (at(-1, 0) + at(1, 0) + at(0, -1) + at(0, 1) + 2) / 4;
             int dg = (-at(-2, 0) + 4 * at(-1, 0) - 4 * at(1, 0) + at(2, 0)
                 - at(0, -2) + 4 * at(0, -1) - 4 * at(0, 1) + at(0, 2) + 4) / 8;
-            G = std::clamp(g_at_r + dg, 0, maxColor);
+            G = (g_at_r + dg) % bitMax;
 
             int b_at_r = (at(-1, -1) + at(1, -1) + at(-1, 1) + at(1, 1) + 2) / 4;
             int db = (at(-2, -2) - at(0, -2) + at(2, -2)
                 - at(-2, 0) - 2 * at(0, 0) - at(2, 0)
                 + at(-2, 2) - at(0, 2) + at(2, 2) + 4) / 8;
-            B = std::clamp(b_at_r + db, 0, maxColor);
+            B = (b_at_r + db) % bitMax;
         }
         else if (c == Ch_B) {
             B = center;
             int g_at_b = (at(-1, 0) + at(1, 0) + at(0, -1) + at(0, 1) + 2) / 4;
             int dg = (-at(-2, 0) + 4 * at(-1, 0) - 4 * at(1, 0) + at(2, 0)
                 - at(0, -2) + 4 * at(0, -1) - 4 * at(0, 1) + at(0, 2) + 4) / 8;
-            G = std::clamp(g_at_b + dg, 0, maxColor);
+            G = (g_at_b + dg) % bitMax;
 
             int r_at_b = (at(-1, -1) + at(1, -1) + at(-1, 1) + at(1, 1) + 2) / 4;
             int dr = (at(-2, -2) - at(0, -2) + at(2, -2)
                 - at(-2, 0) - 2 * at(0, 0) - at(2, 0)
                 + at(-2, 2) - at(0, 2) + at(2, 2) + 4) / 8;
-            R = std::clamp(r_at_b + dr, 0, maxColor);
+            R = (r_at_b + dr) % bitMax;
         }
         else { // 'G'
             G = center;
@@ -309,23 +339,23 @@ namespace CyMedia {
                 B = (at(0, -1) + at(0, 1) + 1) / 2;
                 int dr = (-at(-2, 0) + 3 * at(-1, 0) - 3 * at(1, 0) + at(2, 0) + 2) / 4;
                 int db = (-at(0, -2) + 3 * at(0, -1) - 3 * at(0, 1) + at(0, 2) + 2) / 4;
-                R = std::clamp(R + dr, 0, maxColor);
-                B = std::clamp(B + db, 0, maxColor);
+                R = (R + dr) % bitMax;
+                B = (B + db) % bitMax;
             }
             else {
                 B = (at(-1, 0) + at(1, 0) + 1) / 2;
                 R = (at(0, -1) + at(0, 1) + 1) / 2;
                 int db = (-at(-2, 0) + 3 * at(-1, 0) - 3 * at(1, 0) + at(2, 0) + 2) / 4;
                 int dr = (-at(0, -2) + 3 * at(0, -1) - 3 * at(0, 1) + at(0, 2) + 2) / 4;
-                B = std::clamp(B + db, 0, maxColor);
-                R = std::clamp(R + dr, 0, maxColor);
+                B = (B + db) % bitMax;
+                R = (R + dr) % bitMax;
             }
         }
 
         return {
-            std::min(R, maxColor),
-            std::min(G, maxColor),
-            std::min(B, maxColor)
+            R,
+            G,
+            B
         };
     }
 
@@ -598,6 +628,37 @@ namespace CyMedia {
         return true;
     }
 
+    bool computeHistogram_Bayer_AHD_Stretch(const ImageShowInfo& info, const uint8_t* data,
+        std::vector<double>& Rhistogram, CyMedia::StretchType type) {
+        // 分离 R, G, B 平面（未采样位置为 0）
+        std::vector<double> R(info.width * info.height, 0), G(info.width * info.height, 0), B(info.width * info.height, 0);
+        if (info.bit <= 8) {
+            demosaicAHD_Split((uint8_t*)data, info.width, info.height, info.format, R, G, B);
+        }
+        else if (info.bit <= 16) {
+            demosaicAHD_Split((uint16_t*)data, info.width, info.height, info.format, R, G, B);
+        }
+        else if (info.bit <= 31) {
+            demosaicAHD_Split((uint32_t*)data, info.width, info.height, info.format, R, G, B);
+        }
+        else {
+            return false;
+        }
+
+        uint32_t bitMax = 1 << info.bit;
+        int32_t pixelCount = info.width * info.height;
+        double* pRhi = Rhistogram.data();
+        RgbPixel px;
+        for (int32_t y = 0; y < info.height; ++y) {
+            for (int32_t x = 0; x < info.width; ++x) {
+                px = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
+                // 更新直方图
+                pRhi[CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax)] += 1.0;
+            }
+        }
+        return true;
+    }
+
     template<typename T>
     bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicingMethod func/* = BILINEAR*/) {
         if (!data || !outdata)
@@ -627,7 +688,7 @@ namespace CyMedia {
                     concurrency::parallel_for(0, static_cast<int>(info.height), [&](int y) {
                         for (uint32_t x = 0; x < static_cast<uint32_t>(info.width); ++x) {
                             int32_t idx = y * info.width + x;
-                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
                             outdata[idx * 3 + 0] = static_cast<T>(px.r);
                             outdata[idx * 3 + 1] = static_cast<T>(px.g);
                             outdata[idx * 3 + 2] = static_cast<T>(px.b);
@@ -638,7 +699,7 @@ namespace CyMedia {
                     for (int y = 0; y < info.height; ++y) {
                         for (uint32_t x = 0; x < static_cast<uint32_t>(info.width); ++x) {
                             int32_t idx = y * info.width + x;
-                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
                             outdata[idx * 3 + 0] = static_cast<T>(px.r);
                             outdata[idx * 3 + 1] = static_cast<T>(px.g);
                             outdata[idx * 3 + 2] = static_cast<T>(px.b);
@@ -654,7 +715,7 @@ namespace CyMedia {
                     for (uint32_t y = 0; y < static_cast<uint32_t>(info.height); ++y) {
                         for (uint32_t x = 0; x < static_cast<uint32_t>(info.width); ++x) {
                             int32_t idx = y * info.width + x;
-                            RgbPixel px = calcCoordinateColor_Bayer(info, data, x, y, func);
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
                             outdata[idx * 3 + 0] = static_cast<T>(px.r);
                             outdata[idx * 3 + 1] = static_cast<T>(px.g);
                             outdata[idx * 3 + 2] = static_cast<T>(px.b);

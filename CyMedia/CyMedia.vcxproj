@@ -238,10 +238,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Bayer.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Mono.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Rgb.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_YUV.cpp" />
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_Bayer.cpp" />
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_Mono.cpp" />
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_Rgb.cpp" />
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_YUV.cpp" />
     <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
@@ -345,10 +345,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CyMediaBaseDef.h" />
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Bayer.h" />
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Mono.h" />
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Rgb.h" />
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_YUV.h" />
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_Bayer.h" />
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_Mono.h" />
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_Rgb.h" />
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h" />
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
     <ClInclude Include="CyMediaParse\CyMediaFileParse.h" />
     <QtMoc Include="CyMediaDis\CyMediaDisViewThumbnail.h" />

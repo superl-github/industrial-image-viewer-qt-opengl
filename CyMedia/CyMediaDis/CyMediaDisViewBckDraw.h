@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CyMediaBaseDef.h"
 
 #include <QObject>
@@ -84,9 +84,6 @@ private:
         GLsync syncFence = nullptr;
 
         CyMedia::ImageShowInfo showInfo; //图像信息
-        
-        bool imag_sizeChange = false;  //图像尺寸变化
-        bool imag_infoChange = false;  //图像信息变化
 
         float maxBitlColor = 256;        //图像位宽最大值
 
@@ -194,7 +191,7 @@ private:
     void clearGL();
 
     bool makeOffSurface(QOpenGLContext* ctx);
-    void upVertex(QOpenGLExtraFunctions* f, const CyMedia::ImageShowInfo& info);
+    void upVertex(QOpenGLExtraFunctions* f, int width, int height);
     void updateTextureFormat(const CyMedia::ImageShowInfo& info, int idx);
 
     void setupShaderUniforms(QOpenGLExtraFunctions* f, QMatrix4x4 mat, int colortype);

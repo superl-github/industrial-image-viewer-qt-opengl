@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../CyMediaBaseDef.h"
 
 #include <QWidget>
@@ -36,7 +36,7 @@ public:
     void setThemeColor(QColor color);
 
     //histogram
-    bool upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::DemosaicingMethod Method);
+    bool upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe colorOpe);
 
     bool isZoomble();
     void setZoomble(bool zoom);

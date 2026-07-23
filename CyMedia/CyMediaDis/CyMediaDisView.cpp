@@ -1,4 +1,4 @@
-
+﻿
 #include "CyMediaDisView.h"
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "CyMediaDisViewBckDraw.h"
@@ -279,10 +279,10 @@ void CyMediaDisView::zoomAuto(void) {
     if (!this->scene() || !m_backDraw->haveImage())
         return;
 
-    QRect fRect = this->rect();
-    QRectF sceneRect = this->scene()->sceneRect();
-    qreal s = qMin(viewport()->width() / sceneRect.width(),
-        viewport()->height() / sceneRect.height());
+    QSize fRect = this->size();
+    QSizeF sceneRect = this->scene()->sceneRect().size();
+    qreal s = qMin(fRect.width() / sceneRect.width(),
+        fRect.height() / sceneRect.height());
     d->zoom(s);
 }
 

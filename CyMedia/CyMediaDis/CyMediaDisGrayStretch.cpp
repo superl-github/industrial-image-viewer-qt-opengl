@@ -1,4 +1,4 @@
-#include "CyMediaDisGrayStretch.h"
+﻿#include "CyMediaDisGrayStretch.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "Histogram/CyQCP.h"
@@ -92,7 +92,7 @@ void CyMediaDisGrayStretch::setThemeColor(QColor color) {
     d->mAutoStretchBtn->setEnableCheckColor(color);
 }
 
-bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::DemosaicingMethod Method) {
+bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe colorOpe) {
     if (false == this->isVisible()) {
         if (false == d->mAutostretch || false == info.isMono()) {
             return false;
@@ -104,7 +104,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
     
     int currentCtrIndex = d->mControlTab->currentIndex();
     //切换
-    if (info.isMono()) {
+    if (info.isMono(colorOpe)) {
         if (d->mControlTab->currentIndex() != 0) {
             emit transImageType(0);
             currentCtrIndex = 0;
@@ -145,27 +145,30 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
     double calcHisMaxY = 0;
     if (info.isMono()) {
         double maxV, minV, aveV;
-        CyMedia::computeGrayHistogram(data, info, 0, false, 
+        CyMediaCalc::computeGrayHistogram(data, info, 0, false,
             d->mHisData,
             &maxV, &minV, &aveV);
         d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
         //自动拉伸
         if (d->mAutostretch) {
             int32_t start, end;
-            CyMedia::computeGrayStretchPara(d->mHisData, start, end);
+            CyMediaCalc::computeGrayStretchPara(d->mHisData, start, end);
             emit upStretchRange(start, end);
         }
     } 
     else if (info.isBayer()) {
-        CyMedia::computeBayerHistogram(data, info,
+        CyMediaCalc::computeBayerHistogram(data, info,
             d->mHisData,
             d->mStretchType,
-            Method);
+            colorOpe.bayerFunc);
 
         d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
+    else if (info.isYUV()) {
+        CyMediaCalc::computerYUVHistogram(data, info, d->mHisData, colorOpe.stretchType, colorOpe.YUVFunc);
+    }
     else {
-        CyMedia::computeRGBHistogram(data, info, 0, false,
+        CyMediaCalc::computeRGBHistogram(data, info,
             d->mHisData,
             d->mStretchType);
 
@@ -175,7 +178,7 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
 
     eTimer.restart();
     //计算Y轴显示范围
-    calcHisMaxY = CyMedia::determineYAxisMax(d->mHisData, d->mHisData.size() * 0.02);
+    calcHisMaxY = CyMediaCalc::determineYAxisMax(d->mHisData, d->mHisData.size() * 0.02);
     emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(calcHisMaxY));
     //debug_msg("更新显示范围 耗时：%lldms\n", eTimer.elapsed());
 

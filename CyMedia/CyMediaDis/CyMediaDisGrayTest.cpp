@@ -1,4 +1,4 @@
-#include "CyMediaDisGrayTest.h"
+﻿#include "CyMediaDisGrayTest.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "cycustomwidget.h"
@@ -139,7 +139,7 @@ QPainterPath CyMediaDisGrayTest::oldItemPpath() {
     return d->mOldItemPath;
 }
 
-bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data) {
+bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
     if (false == this->isVisible()) return false;
 
     if (false == d->m_parentDis->isSingleItemMode()) return false;
@@ -194,8 +194,8 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             //计算像素点
             double temR, tempG, tempB;
             auto pos = getCurrentItem()->pos();
-            CyMedia::calcCoordinateColor(info, data, pos.x(), pos.y(),
-                &temR, &tempG, &tempB);
+            CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+                &temR, &tempG, &tempB, formatOpe);
             //入队
             d->mPosHisData[hisI_Gray].addData(temR);
             d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
@@ -216,7 +216,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
                 d->mHistogramData[hisI_Gray].assign(d->mHistogramData[hisI_Gray].size(), 0.0);
             }
             else {
-                CyMedia::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                CyMediaCalc::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
                     d->mHistogramData[hisI_Gray],
                     &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
             }
@@ -236,7 +236,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             }
         }
         //计算参数
-        CyMedia::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
+        CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
             &d->mHisTestData.std, &d->mHisTestData.Uniformity);
     }
     else if (info.isRGB()){
@@ -244,8 +244,8 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             //计算像素点
             double tempRGB[4];
             auto pos = getCurrentItem()->pos();
-            CyMedia::calcCoordinateColor(info, data, pos.x(), pos.y(),
-                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B]);
+            CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
             //入队
             for (int i = hisI_R; i <= hisI_B; i++) {
                 d->mPosHisData[i].addData(tempRGB[i]);
@@ -292,7 +292,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
                 d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
             }
             else {
-                CyMedia::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                CyMediaCalc::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
                     d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
                     d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
             }
@@ -302,7 +302,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             }
             if (false == d->mMaskIsfullzero) {
                 //计算参数
-                CyMedia::computerThreeUniformity(
+                CyMediaCalc::computerThreeUniformity(
                     d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
                     d->mRGBTestData.ave, d->mRGBTestData.max,
                     d->mRGBTestData.std, d->mRGBTestData.Uniformity);
@@ -310,7 +310,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
                 if (d->upYrange) {
                     for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
                         if (d->mHistogram[hisI]->visible()) {
-                            calcHisMaxY = std::max(calcHisMaxY, CyMedia::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                            calcHisMaxY = std::max(calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
                         }
                     }
                 }
@@ -321,8 +321,8 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
         if (d->mIsPos) {
             double tempRGB[4];
             auto pos = getCurrentItem()->pos();
-            CyMedia::calcCoordinateColor(info, data, pos.x(), pos.y(),
-                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B]);
+            CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
             //入队
             for (int i = hisI_R; i <= hisI_B; i++) {
                 d->mPosHisData[i].addData(tempRGB[i]);
@@ -369,9 +369,9 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
                 d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
             }
             else {
-                CyMedia::computeBayerHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                CyMediaCalc::computeBayerHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
                     d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
+                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave, formatOpe.bayerFunc);
             }
             //更新数据
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
@@ -380,7 +380,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
         }
         if (false == d->mMaskIsfullzero) {
             //计算参数
-            CyMedia::computerThreeUniformity(
+            CyMediaCalc::computerThreeUniformity(
                 d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
                 d->mRGBTestData.ave, d->mRGBTestData.max,
                 d->mRGBTestData.std, d->mRGBTestData.Uniformity);
@@ -388,7 +388,7 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
             if (d->upYrange) {
                 for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
                     if (d->mHistogram[hisI]->visible()) {
-                        calcHisMaxY = std::max(calcHisMaxY, CyMedia::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                        calcHisMaxY = std::max(calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
                     }
                 }
             }

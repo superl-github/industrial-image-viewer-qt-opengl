@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CyMediaBaseDef.h"
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
@@ -69,6 +69,9 @@ namespace CyMedia {
 
         CyMedia::DemosaicingMethod Demosaic();
         void setDemosaic(CyMedia::DemosaicingMethod method);
+
+        CyMedia::YUVTransMethod YUVMethod();
+        void setYUVMethod(CyMedia::YUVTransMethod method);
 
         QStringList ColorMapList() const;
         quint32 colorMapIndex() const;

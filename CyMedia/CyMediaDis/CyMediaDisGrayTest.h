@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../CyMediaBaseDef.h"
 #include "drawItem/BaseItem.h"
 
@@ -91,7 +91,7 @@ public:
 
 
     //histogram
-    bool upImageData(CyMedia::ImageShowInfo& info, uint8_t* data);
+    bool upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
     bool currentTestDataIsGray();
     CyMediaDisGrayTest::oneChannelTestInfo& getGrayTestData();
     CyMediaDisGrayTest::threeChannelTestInfo& getRGBTestData();

@@ -1,4 +1,4 @@
-#include "CyMediaDisViewBckDraw.h"
+﻿#include "CyMediaDisViewBckDraw.h"
 #include "CyMediaDisView.h"
 
 #include <QApplication>
@@ -40,6 +40,8 @@ CyMediaDisViewBckDraw::CyMediaDisViewBckDraw(QGraphicsView* view)
         pTex->showInfo.upLenth();
         updateTextureFormat(pTex->showInfo, i);
     }
+    m_vertex_current_w = pTex->showInfo.width;
+    m_vertex_current_h = pTex->showInfo.height;
 
     // 初始化颜色映射
     initColorMap(qApp->applicationDirPath() + QString("/colorMap/"));
@@ -120,28 +122,33 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
 
     painter->beginNativePainting();
 
-    oneTexturePara* pTex = &m_textureInfo[m_texture_front_Index.load()];
+    // 取得前台纹理
+    int idx = m_texture_front_Index.load();
     if (m_hasNewData.load()) {
         // 交换索引：让后台变为前台
         int oldFront = m_texture_front_Index.load();
         int newFront = 1 - oldFront;
         m_texture_front_Index.store(newFront);
         m_hasNewData.store(false);   // 标志重置，表示此新数据已被处理
-        pTex = &m_textureInfo[newFront];
+        idx = newFront;
     }
+    oneTexturePara* pTex = &m_textureInfo[idx];
 
     //绑定纹理
-    int idx = m_texture_front_Index.load();
-    oneTexturePara* pTextureInfo = &m_textureInfo[idx];
-
     f->glActiveTexture(GL_TEXTURE0);
-    f->glBindTexture(GL_TEXTURE_2D, pTextureInfo->glTexture->textureId());
+    f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
+
+    //更新顶点
+    if (pTex->showInfo.width != m_vertex_current_w || 
+        pTex->showInfo.height != m_vertex_current_h) {
+        upVertex(f, pTex->showInfo.width, pTex->showInfo.height);
+    }
     
     //更新着色器参数
     f->glUseProgram(m_shader_program->programId());
     QMatrix4x4 projectionMatrix;
     projectionMatrix.ortho(0.0f, viewRect.width(), viewRect.height(), 0.0f, -1000.0f, 1000.0f);
-    setupShaderUniforms(f, projectionMatrix * painter->worldTransform(), int(pTextureInfo->glslNcolor));
+    setupShaderUniforms(f, projectionMatrix * painter->worldTransform(), int(pTex->glslNcolor));
 
     // 绘制
     QOpenGLVertexArrayObject::Binder vaobinder(pVAO);
@@ -373,23 +380,23 @@ void CyMediaDisViewBckDraw::clearGL() {
     }
 }
 
-void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, const CyMedia::ImageShowInfo& info) {
+void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height) {
     if (!pVBO) return;
-    printf("CyMediaDisViewBckDraw::upVertex: width:%d height:%d\n", info.width, info.height);
+    printf("CyMediaDisViewBckDraw::upVertex: width:%d height:%d\n", width, height);
     if (bIsOVerSize) {
         m_verticesArray[0] = { QVector3D(0,0,0.0f),  QVector2D(0.0f, 0.0f) };  // v0
-        m_verticesArray[1] = { QVector3D(info.width,0,5.0f),  QVector2D(2.0f, 0.0f) };  // v1
-        m_verticesArray[2] = { QVector3D(0,info.width, 5.0f),  QVector2D(0.0f, 2.0f) };  // v2
-        m_verticesArray[3] = { QVector3D(info.width,  info.height, 5.0f),QVector2D(2.0f, 2.0f) };  // v3
+        m_verticesArray[1] = { QVector3D(width,0,5.0f),  QVector2D(2.0f, 0.0f) };  // v1
+        m_verticesArray[2] = { QVector3D(0,width, 5.0f),  QVector2D(0.0f, 2.0f) };  // v2
+        m_verticesArray[3] = { QVector3D(width,  height, 5.0f),QVector2D(2.0f, 2.0f) };  // v3
     }
     else {
         m_verticesArray[0] = { QVector3D(0,0,0.0f),  QVector2D(0.0f, 0.0f) };  // v0
-        m_verticesArray[1] = { QVector3D(info.width,0,5.0f),  QVector2D(1.0f, 0.0f) };  // v1
-        m_verticesArray[2] = { QVector3D(0,info.height, 5.0f),  QVector2D(0.0f, 1.0f) };  // v2
-        m_verticesArray[3] = { QVector3D(info.width,  info.height, 5.0f),QVector2D(1.0f, 1.0f) };  // v3
+        m_verticesArray[1] = { QVector3D(width,0,5.0f),  QVector2D(1.0f, 0.0f) };  // v1
+        m_verticesArray[2] = { QVector3D(0,height, 5.0f),  QVector2D(0.0f, 1.0f) };  // v2
+        m_verticesArray[3] = { QVector3D(width,  height, 5.0f),QVector2D(1.0f, 1.0f) };  // v3
     }
-    m_vertex_current_w = info.width;
-    m_vertex_current_h = info.height;
+    m_vertex_current_w = width;
+    m_vertex_current_h = height;
     QOpenGLVertexArrayObject::Binder vaobinder(pVAO);
     pVBO->bind();
     pVBO->write(0, m_verticesArray, sizeof(VerticesAndTextureCoord) * 4);
@@ -523,12 +530,10 @@ void CyMediaDisViewBckDraw::setupShaderUniforms(QOpenGLExtraFunctions* f, QMatri
     //设置图像信息
     int fontIdx = m_texture_front_Index.load();
     const auto& showInfo = m_textureInfo[fontIdx].showInfo;
-    if (m_textureInfo[fontIdx].imag_infoChange) {
-        f->glUniform1i(uniform_nbits, showInfo.bit);
-        f->glUniform1i(uniform_nWidth, showInfo.width);
-        f->glUniform1i(uniform_nHeight, showInfo.height);
-        f->glUniform1f(uniform_pixrange, m_textureInfo[fontIdx].maxBitlColor);
-    }
+    f->glUniform1i(uniform_nbits, showInfo.bit);
+    f->glUniform1i(uniform_nWidth, showInfo.width);
+    f->glUniform1i(uniform_nHeight, showInfo.height);
+    f->glUniform1f(uniform_pixrange, m_textureInfo[fontIdx].maxBitlColor);
     // 设置颜色映射
     f->glUniform1i(uniform_colorMapIndex, m_ColorMapIndex);
     // 设置拉伸参数
@@ -599,20 +604,11 @@ bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* d
     int newHeight = info.height;
 
     f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
-    // 尺寸变化 更新顶点
-    pTex->imag_sizeChange = (newWidth != pTex->showInfo.width || newHeight != pTex->showInfo.height) || m_fisrt_up_image;
     // 信息变化 更新纹理参数
-    if (pTex->imag_sizeChange) pTex->imag_infoChange = true;
-    else {
-        pTex->imag_infoChange = memcmp(&pTex->showInfo, &info, sizeof(CyMedia::ImageShowInfo)) != 0 || m_fisrt_up_image;
-    }
-    //尺寸变化更新顶点
-    if (pTex->imag_sizeChange) {
-        upVertex(f, info);
-    }
+    bool imag_infoChange = memcmp(&pTex->showInfo, &info, sizeof(CyMedia::ImageShowInfo)) != 0 || m_fisrt_up_image;
 
     //信息变化重新分配尺寸
-    if (pTex->imag_infoChange) {
+    if (imag_infoChange) {
         //纹理尺寸超限
         bIsOVerSize = newWidth > m_gl_max_texture_size || newHeight > m_gl_max_texture_size;
         bool tSizeOver = bIsOVerSize;

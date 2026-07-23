@@ -34,13 +34,13 @@
     <ClCompile Include="CyMediaDis\CyMediaRecTimeW.cpp">
       <Filter>CyMediaDis</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Bayer.cpp">
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_Bayer.cpp">
       <Filter>CyMediaCalc</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Mono.cpp">
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_Mono.cpp">
       <Filter>CyMediaCalc</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_Rgb.cpp">
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_Rgb.cpp">
       <Filter>CyMediaCalc</Filter>
     </ClCompile>
     <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp">
@@ -64,7 +64,7 @@
     <ClCompile Include="CyMediaParse\CyMediaFileParse.cpp">
       <Filter>CyMediaParse</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaCalc\CyMdiaCalc_YUV.cpp">
+    <ClCompile Include="CyMediaCalc\CyMediaCalc_YUV.cpp">
       <Filter>CyMediaCalc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -187,13 +187,13 @@
     <ClInclude Include="CyMediaDis\drawItem\ItemFactory.h">
       <Filter>CyMediaDis\drawItem</Filter>
     </ClInclude>
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Bayer.h">
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_Bayer.h">
       <Filter>CyMediaCalc</Filter>
     </ClInclude>
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Mono.h">
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_Mono.h">
       <Filter>CyMediaCalc</Filter>
     </ClInclude>
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_Rgb.h">
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_Rgb.h">
       <Filter>CyMediaCalc</Filter>
     </ClInclude>
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h">
@@ -208,7 +208,7 @@
     <ClInclude Include="CyMediaParse\CyMediaFileParse.h">
       <Filter>CyMediaParse</Filter>
     </ClInclude>
-    <ClInclude Include="CyMediaCalc\CyMdiaCalc_YUV.h">
+    <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h">
       <Filter>CyMediaCalc</Filter>
     </ClInclude>
   </ItemGroup>

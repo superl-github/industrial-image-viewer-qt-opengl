@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <stdint.h>
 #include <functional>
 #include <string>
@@ -10,6 +10,13 @@
 # endif
 
 namespace CyMedia {
+    // 颜色空间转换常量
+    const float THRESHOLD_SRGB = 0.04045f;       // sRGB 阈值
+    const float THRESHOLD_LINEAR = 0.0031308f;   // 线性 RGB 阈值
+    const float THRESHOLD_F = 0.008856f;        // f(t) 函数阈值
+    const float THRESHOLD_F_INV = 6.0f / 29.0f; // 逆 f(t) 函数阈值
+
+    //回调函数
     using LogCallback = std::function<void(const std::string&, void*)>;
 
     /**
@@ -122,6 +129,12 @@ namespace CyMedia {
     };
 
 #pragma pack(push,1)
+    struct ImageColorOpe {
+        CyMedia::DemosaicingMethod bayerFunc;
+        CyMedia::YUVTransMethod YUVFunc;
+        StretchType stretchType;
+    };
+
     /**
      * @brief   Single-Frame Data Structure
      */
@@ -257,6 +270,11 @@ namespace CyMedia {
         bool isMono() const{
             return format >= MONO && format <= MONO_OVERSIZE;
         }
+        bool isMono(const CyMedia::ImageColorOpe& colorPara) const {
+            return isMono() ||
+                (isBayer() && colorPara.bayerFunc == DEMOSAIC_NONE) ||
+                (isYUV() && colorPara.YUVFunc == YUVTRANS_Y);
+        }
         bool isRGB() const {
             return format == RGB;
         }
@@ -284,16 +302,16 @@ namespace CyMedia {
     }Pos;
 
     typedef struct _RGBPixel {
-        int32_t r = 0;
-        int32_t g = 0;
-        int32_t b = 0;
+        uint32_t r = 0;
+        uint32_t g = 0;
+        uint32_t b = 0;
     }RgbPixel;
 
     typedef struct _RGBAPixel {
-        int32_t r = 0;
-        int32_t g = 0;
-        int32_t b = 0;
-        int32_t a = 0;
+        uint32_t r = 0;
+        uint32_t g = 0;
+        uint32_t b = 0;
+        uint32_t a = 0;
     }RgbaPixel;
 
     typedef struct _RGBPixelF {
@@ -312,7 +330,7 @@ namespace CyMedia {
     
 #pragma pack(pop)
 
-    static inline int32_t safeAt(const uint8_t* data, int8_t bit, int32_t w, int32_t h, int32_t x, int32_t y) {
+    static inline uint32_t safeAt(const uint8_t* data, int8_t bit, int32_t w, int32_t h, int32_t x, int32_t y) {
         if (x < 0 || x >= w || y < 0 || y >= h)
             return 0;
         if (bit <= 8)
