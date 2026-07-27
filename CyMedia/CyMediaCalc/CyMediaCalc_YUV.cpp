@@ -1,4 +1,4 @@
-﻿#include "CyMediaCalc_YUV.h"
+#include "CyMediaCalc_YUV.h"
 #include "CyMediaCalc.h"
 
 #include <vector>
@@ -183,9 +183,11 @@ namespace CyMediaCalc_YUV {
 
         // 初始化直方图 (0~255)
         Rhistogram.assign(256, 0.0);
-        Ghistogram.assign(256, 0.0);
-        Bhistogram.assign(256, 0.0);
-
+        if (func != YUVTRANS_Y) {
+            Ghistogram.assign(256, 0.0);
+            Bhistogram.assign(256, 0.0);
+        }
+        
         // 统计变量
         double sumR = 0.0, sumG = 0.0, sumB = 0.0;
         int32_t minR = 255, maxR = 0;
@@ -209,6 +211,8 @@ namespace CyMediaCalc_YUV {
                 int32_t r, g, b;
                 if (func == YUVTRANS_Y) {
                     r = g = b = static_cast<int32_t>(Y);
+                    // 更新直方图
+                    Rhistogram[r] += 1.0;
                 }
                 else {
                     uint8_t R8, G8, B8;
@@ -216,12 +220,11 @@ namespace CyMediaCalc_YUV {
                     r = static_cast<int32_t>(R8);
                     g = static_cast<int32_t>(G8);
                     b = static_cast<int32_t>(B8);
+                    // 更新直方图
+                    Rhistogram[r] += 1.0;
+                    Ghistogram[g] += 1.0;
+                    Bhistogram[b] += 1.0;
                 }
-
-                // 更新直方图
-                Rhistogram[r] += 1.0;
-                Ghistogram[g] += 1.0;
-                Bhistogram[b] += 1.0;
 
                 // 累计统计
                 sumR += r;
@@ -264,38 +267,120 @@ namespace CyMediaCalc_YUV {
 
 
     bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& Rhistogram, YUVTransMethod func /*= YUVTRANS_NORMAL*/, StretchType type /*= stretch_None*/) {
-        if (!info.isYUV() || data == nullptr)
-            return false;
+        if (!info.isYUV() || data == nullptr) return false;
 
         int w = info.width;
         int h = info.height;
         int total = w * h;
         uint32_t bitMax = 256;
-
         // 初始化直方图 (0~255)
         Rhistogram.assign(bitMax, 0.0);
-        // 遍历所有像素
-        for (int y = 0; y < h; ++y) {
-            for (int x = 0; x < w; ++x) {
-                uint8_t Y, U, V;
-                if (!getYUV(info, data, x, y, Y, U, V))
-                    continue;
-                RgbPixel rgb;
-                if (func == YUVTRANS_Y) {
-                    rgb.r = rgb.g = rgb.b = (Y);
-                }
-                else {
-                    uint8_t R8, G8, B8;
-                    YUVtoRGB(Y, U, V, R8, G8, B8);
-                    rgb.r = R8;
-                    rgb.g = G8;
-                    rgb.b = B8;
-                }
+        double* pHis = Rhistogram.data();
+        // 获取 CPU 核心数
+        static int cpuCores = []() {
+            int cores = static_cast<int>(std::thread::hardware_concurrency());
+            return cores > 0 ? cores : 4;
+            }();
+        int totalPixels = w * h;
+        // 阈值：每个核心至少处理 20000 像素才值得并行（可调）
+        const int threshold = cpuCores * 20000;
+        bool useParallel = (totalPixels > threshold);
+        if (useParallel) {
+#if defined _MSC_VER
+            // 使用 PPL
+            concurrency::combinable<std::vector<double>> localHistComb(
+                [bitMax]() { return std::vector<double>(bitMax, 0.0); });
 
-                // 更新直方图
-                Rhistogram[CyMediaCalc::RGBT2StretchOneFast(rgb, type, bitMax)] += 1.0;
+            concurrency::parallel_for(0, h, [&](int y) {
+                auto& localHist = localHistComb.local();
+                for (int x = 0; x < w; ++x) {
+                    uint8_t Y, U, V;
+                    if (!getYUV(info, data, x, y, Y, U, V))
+                        continue;
+                    RgbPixel rgb;
+                    if (func == YUVTRANS_Y) {
+                        rgb.r = rgb.g = rgb.b = Y;
+                    }
+                    else {
+                        uint8_t R8, G8, B8;
+                        YUVtoRGB(Y, U, V, R8, G8, B8);
+                        rgb.r = R8;
+                        rgb.g = G8;
+                        rgb.b = B8;
+                    }
+                    int idx = CyMediaCalc::RGBT2StretchOneFast(rgb, type, bitMax);
+                    localHist[idx] += 1.0;
+                }
+                });
+
+            // 合并所有线程的局部直方图
+            localHistComb.combine_each([&](const std::vector<double>& local) {
+                for (int i = 0; i < bitMax; ++i) {
+                    pHis[i] += local[i];
+                }
+                });
+
+#elif defined _OPENMP
+            // 使用 OpenMP
+#pragma omp parallel
+            {
+                std::vector<double> localHist(bitMax, 0.0);
+#pragma omp for
+                for (int y = 0; y < h; ++y) {
+                    for (int x = 0; x < w; ++x) {
+                        uint8_t Y, U, V;
+                        if (!getYUV(info, data, x, y, Y, U, V))
+                            continue;
+                        RgbPixel rgb;
+                        if (func == YUVTRANS_Y) {
+                            rgb.r = rgb.g = rgb.b = Y;
+                        }
+                        else {
+                            uint8_t R8, G8, B8;
+                            YUVtoRGB(Y, U, V, R8, G8, B8);
+                            rgb.r = R8;
+                            rgb.g = G8;
+                            rgb.b = B8;
+                        }
+                        int idx = CyMediaCalc::RGBT2StretchOneFast(rgb, type, bitMax);
+                        localHist[idx] += 1.0;
+                    }
+                }
+#pragma omp critical
+                {
+                    for (int i = 0; i < bitMax; ++i) {
+                        pHis[i] += localHist[i];
+                    }
+                }
+            }
+
+#else
+            useParallel = false;
+#endif
+        }
+        if (false == useParallel) {
+            for (int y = 0; y < h; ++y) {
+                for (int x = 0; x < w; ++x) {
+                    uint8_t Y, U, V;
+                    if (!getYUV(info, data, x, y, Y, U, V))
+                        continue;
+                    RgbPixel rgb;
+                    if (func == YUVTRANS_Y) {
+                        rgb.r = rgb.g = rgb.b = Y;
+                    }
+                    else {
+                        uint8_t R8, G8, B8;
+                        YUVtoRGB(Y, U, V, R8, G8, B8);
+                        rgb.r = R8;
+                        rgb.g = G8;
+                        rgb.b = B8;
+                    }
+                    int idx = CyMediaCalc::RGBT2StretchOneFast(rgb, type, bitMax);
+                    pHis[idx] += 1.0;
+                }
             }
         }
+
         return true;
     }
 

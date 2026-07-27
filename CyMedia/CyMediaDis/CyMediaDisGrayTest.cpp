@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisGrayTest.h"
+#include "CyMediaDisGrayTest.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "cycustomwidget.h"
@@ -139,21 +139,24 @@ QPainterPath CyMediaDisGrayTest::oldItemPpath() {
     return d->mOldItemPath;
 }
 
-bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
+bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
     if (false == this->isVisible()) return false;
 
     if (false == d->m_parentDis->isSingleItemMode()) return false;
     if (d->m_parentDis->isDrawing() && !getCurrentItem()) return false;
 
     //切换
-    if (d->mIsGray != info.isMono() ||
+    bool tIsMono = info.isMono() || 
+        (info.isBayer() && formatOpe.bayerFunc == DEMOSAIC_NONE) || 
+        (info.isYUV() && formatOpe.YUVFunc == YUVTRANS_Y);
+    if (d->mIsGray != tIsMono ||
         d->mIsPos != currentItemIsPos()) {
-        d->mIsGray = info.isMono();
+        d->mIsGray = tIsMono;
         d->mIsPos = currentItemIsPos();
         emit uphisVisible();
     }
 
-    //计算直方图
+    //清空点统计
     if (d->mIsPos != d->currentIsPosCalc) {
         d->mPosHisMaxY = 0.0;
         d->currentIsPosCalc = true;
@@ -180,224 +183,33 @@ bool CyMediaDisGrayTest::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data
         d->currentIsPosCalc = false;
     }
 
+    //更新计算掩码
     upMask({info.width, info.height});
 
     //计算直方图
-    int32_t calcXRangePara = 1 << info.bit;
+    calcImageHisFlag cancHisFlag;
+    cancHisFlag.calcXRangePara = 1 << info.bit;
 
     double calcHisMinX = .0;
     double calcHisMaxX = .0;
-    double calcHisMaxY = 0.0;
+    
 
-    if (info.isMono()) {
-        if (d->mIsPos) {
-            //计算像素点
-            double temR, tempG, tempB;
-            auto pos = getCurrentItem()->pos();
-            CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
-                &temR, &tempG, &tempB, formatOpe);
-            //入队
-            d->mPosHisData[hisI_Gray].addData(temR);
-            d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
-            if (d->mPosHisMaxY <= temR) {
-                d->mPosHisMaxY = temR;
-            }
-            d->mHisTestData.currentGray = temR;
-            calcHisMaxY = d->mPosHisMaxY;
-            calcXRangePara = mPosHisMax;
-            //更新数据
-            for (int i = 0; i < d->mHistogramData[hisI_Gray].size(); i++) {
-                d->mPosHistogramData[hisI_Gray][i].value = d->mHistogramData[hisI_Gray][i];
-            }
-            d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
-        }
-        else {
-            if (d->mMaskIsfullzero) {
-                d->mHistogramData[hisI_Gray].assign(d->mHistogramData[hisI_Gray].size(), 0.0);
-            }
-            else {
-                CyMediaCalc::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
-                    d->mHistogramData[hisI_Gray],
-                    &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
-            }
-            //更新数据
-            d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
-
-            if (false == d->mMaskIsfullzero) {
-                double maxY_threshold = 0.97;
-                std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
-                size_t idx_maxY = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * maxY_threshold);
-                calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
-                while (calcHisMaxY <= 0.0) {
-                    idx_maxY++;
-                    if (idx_maxY >= d->mHistogramData[hisI_Gray].size()) break;
-                    calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
-                }
-            }
-        }
-        //计算参数
-        CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
-            &d->mHisTestData.std, &d->mHisTestData.Uniformity);
+    if (info.isMono() || tIsMono) {
+        cancHisFlag = upImage_Mono(info, data, formatOpe);
     }
     else if (info.isRGB()){
-        if (d->mIsPos) {
-            //计算像素点
-            double tempRGB[4];
-            auto pos = getCurrentItem()->pos();
-            CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
-                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
-            //入队
-            for (int i = hisI_R; i <= hisI_B; i++) {
-                d->mPosHisData[i].addData(tempRGB[i]);
-                d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
-            }
-            //更新数据
-            for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
-                for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                    d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
-                }
-            }
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
-            }
-            
-            if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
-                d->mPosHisMaxY = tempRGB[hisI_R];
-            }
-            if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
-                d->mPosHisMaxY = tempRGB[hisI_G];
-            }
-            if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
-                d->mPosHisMaxY = tempRGB[hisI_B];
-            }
-            if (d->mRGBTestData.currentGray.size() != 3) {
-                d->mRGBTestData.currentGray.resize(3);
-            }
-            d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
-            d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
-            d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
-            calcHisMaxY = d->mPosHisMaxY;
-            calcXRangePara = mPosHisMax;
-        }
-        else {
-            if (d->mMaskIsfullzero) {
-                d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
-                d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
-                d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
-
-                d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
-                d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
-                d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
-                d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
-                d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
-            }
-            else {
-                CyMediaCalc::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
-                    d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
-            }
-            //更新数据
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
-            }
-            if (false == d->mMaskIsfullzero) {
-                //计算参数
-                CyMediaCalc::computerThreeUniformity(
-                    d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                    d->mRGBTestData.ave, d->mRGBTestData.max,
-                    d->mRGBTestData.std, d->mRGBTestData.Uniformity);
-                //计算Y轴显示范围
-                if (d->upYrange) {
-                    for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                        if (d->mHistogram[hisI]->visible()) {
-                            calcHisMaxY = std::max(calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
-                        }
-                    }
-                }
-            }
-        }
+        cancHisFlag = upImage_RGB(info, data, formatOpe);
     }
     else if (info.isBayer()){
-        if (d->mIsPos) {
-            double tempRGB[4];
-            auto pos = getCurrentItem()->pos();
-            CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
-                &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
-            //入队
-            for (int i = hisI_R; i <= hisI_B; i++) {
-                d->mPosHisData[i].addData(tempRGB[i]);
-                d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
-            }
-            //更新数据
-            for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
-                for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                    d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
-                }
-            }
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
-            }
-
-            if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
-                d->mPosHisMaxY = tempRGB[hisI_R];
-            }
-            if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
-                d->mPosHisMaxY = tempRGB[hisI_G];
-            }
-            if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
-                d->mPosHisMaxY = tempRGB[hisI_B];
-            }
-            if (d->mRGBTestData.currentGray.size() != 3) {
-                d->mRGBTestData.currentGray.resize(3);
-            }
-            d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
-            d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
-            d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
-            calcHisMaxY = d->mPosHisMaxY;
-            calcXRangePara = mPosHisMax;
-        }
-        else {
-            if (d->mMaskIsfullzero) {
-                d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
-                d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
-                d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
-
-                d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
-                d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
-                d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
-                d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
-                d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
-            }
-            else {
-                CyMediaCalc::computeBayerHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
-                    d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave, formatOpe.bayerFunc);
-            }
-            //更新数据
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
-            }
-        }
-        if (false == d->mMaskIsfullzero) {
-            //计算参数
-            CyMediaCalc::computerThreeUniformity(
-                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                d->mRGBTestData.ave, d->mRGBTestData.max,
-                d->mRGBTestData.std, d->mRGBTestData.Uniformity);
-            //计算Y轴显示范围
-            if (d->upYrange) {
-                for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                    if (d->mHistogram[hisI]->visible()) {
-                        calcHisMaxY = std::max(calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
-                    }
-                }
-            }
-        }
+        cancHisFlag = upImage_Bayer(info, data, formatOpe);
+    }
+    else if (info.isYUV()) {
+        cancHisFlag = upImage_YUV(info, data, formatOpe);
     }
 
-    calcHisMinX = -(calcXRangePara * 0.05);
-    calcHisMaxX = calcXRangePara * 1.05;
-    emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(calcHisMaxY));
+    calcHisMinX = -(cancHisFlag.calcXRangePara * 0.05);
+    calcHisMaxX = cancHisFlag.calcXRangePara * 1.05;
+    emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(cancHisFlag.calcHisMaxY));
     emit upTestData();
     emit flushHis();
     return true;
@@ -832,6 +644,312 @@ void CyMediaDisGrayTest::onDrawActTriggered(QAction* act) {
     d->mDrawType = CyDisDrawItem::ItemType(act->data().toInt());
     if (!d->m_parentDis || true == d->m_parentDis->isSingleItemMode())
         emit testModeChange(int(d->mDrawType), CyMediaDisGrayTest::ModeChange_normal);
+}
+
+CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Mono(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
+    calcImageHisFlag calcRe;
+    
+    if (d->mIsPos) {
+        //计算像素点
+        double temR, tempG, tempB;
+        auto pos = getCurrentItem()->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+            &temR, &tempG, &tempB, formatOpe);
+        //入队
+        d->mPosHisData[hisI_Gray].addData(temR);
+        d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
+        if (d->mPosHisMaxY <= temR) {
+            d->mPosHisMaxY = temR;
+        }
+        d->mHisTestData.currentGray = temR;
+        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        calcRe.calcXRangePara = mPosHisMax;
+        //更新数据
+        for (int i = 0; i < d->mHistogramData[hisI_Gray].size(); i++) {
+            d->mPosHistogramData[hisI_Gray][i].value = d->mHistogramData[hisI_Gray][i];
+        }
+        d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
+    }
+    else {
+        if (d->mMaskIsfullzero) {
+            d->mHistogramData[hisI_Gray].assign(d->mHistogramData[hisI_Gray].size(), 0.0);
+        }
+        else {
+            if (info.isBayer()) {
+                CyMediaCalc::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                    d->mHistogramData[hisI_Gray],
+                    &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
+            }
+            else if (info.isYUV()) {
+                CyMediaCalc::computerYUVHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                    d->mHistogramData[hisI_Gray], d->mHistogramData[hisI_Gray], d->mHistogramData[hisI_Gray],
+                    d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave, formatOpe.YUVFunc);
+                d->mHisTestData.max = d->mRGBTestData.max[0];
+                d->mHisTestData.min = d->mRGBTestData.min[0];
+                d->mHisTestData.ave = d->mRGBTestData.ave[0];
+            }
+            else {
+                CyMediaCalc::computeGrayHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                    d->mHistogramData[hisI_Gray],
+                    &d->mHisTestData.max, &d->mHisTestData.min, &d->mHisTestData.ave);
+            }
+        }
+        //更新数据
+        d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
+
+        if (false == d->mMaskIsfullzero) {
+            double maxY_threshold = 0.97;
+            std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
+            size_t idx_maxY = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * maxY_threshold);
+            calcRe.calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
+            while (calcRe.calcHisMaxY <= 0.0) {
+                idx_maxY++;
+                if (idx_maxY >= d->mHistogramData[hisI_Gray].size()) break;
+                calcRe.calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
+            }
+        }
+    }
+    //计算参数
+    CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
+        &d->mHisTestData.std, &d->mHisTestData.Uniformity);
+
+    return calcRe;
+}
+
+CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_RGB(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
+    calcImageHisFlag calcRe;
+
+    if (d->mIsPos) {
+        //计算像素点
+        double tempRGB[4];
+        auto pos = getCurrentItem()->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+            &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
+        //入队
+        for (int i = hisI_R; i <= hisI_B; i++) {
+            d->mPosHisData[i].addData(tempRGB[i]);
+            d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
+        }
+        //更新数据
+        for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
+            }
+        }
+        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+            d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
+        }
+
+        if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
+            d->mPosHisMaxY = tempRGB[hisI_R];
+        }
+        if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
+            d->mPosHisMaxY = tempRGB[hisI_G];
+        }
+        if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
+            d->mPosHisMaxY = tempRGB[hisI_B];
+        }
+        if (d->mRGBTestData.currentGray.size() != 3) {
+            d->mRGBTestData.currentGray.resize(3);
+        }
+        d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
+        d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
+        d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
+        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        calcRe.calcXRangePara = mPosHisMax;
+    }
+    else {
+        if (d->mMaskIsfullzero) {
+            d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
+            d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
+            d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
+
+            d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
+            d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
+            d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
+            d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
+            d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
+        }
+        else {
+            CyMediaCalc::computeRGBHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave);
+        }
+        //更新数据
+        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+            d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
+        }
+        if (false == d->mMaskIsfullzero) {
+            //计算参数
+            CyMediaCalc::computerThreeUniformity(
+                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                d->mRGBTestData.ave, d->mRGBTestData.max,
+                d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+            //计算Y轴显示范围
+            if (d->upYrange) {
+                for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                    if (d->mHistogram[hisI]->visible()) {
+                        calcRe.calcHisMaxY = std::max(calcRe.calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                    }
+                }
+            }
+        }
+    }
+
+    return calcRe;
+}
+
+CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Bayer(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
+    calcImageHisFlag calcRe;
+    
+    if (d->mIsPos) {
+        double tempRGB[4];
+        auto pos = getCurrentItem()->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+            &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
+        //入队
+        for (int i = hisI_R; i <= hisI_B; i++) {
+            d->mPosHisData[i].addData(tempRGB[i]);
+            d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
+        }
+        //更新数据
+        for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
+            }
+        }
+        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+            d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
+        }
+
+        if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
+            d->mPosHisMaxY = tempRGB[hisI_R];
+        }
+        if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
+            d->mPosHisMaxY = tempRGB[hisI_G];
+        }
+        if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
+            d->mPosHisMaxY = tempRGB[hisI_B];
+        }
+        if (d->mRGBTestData.currentGray.size() != 3) {
+            d->mRGBTestData.currentGray.resize(3);
+        }
+        d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
+        d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
+        d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
+        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        calcRe.calcXRangePara = mPosHisMax;
+    }
+    else {
+        if (d->mMaskIsfullzero) {
+            d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
+            d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
+            d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
+
+            d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
+            d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
+            d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
+            d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
+            d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
+        }
+        else {
+            CyMediaCalc::computeBayerHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave, formatOpe.bayerFunc);
+        }
+        //更新数据
+        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+            d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
+        }
+    }
+    if (false == d->mMaskIsfullzero) {
+        //计算参数
+        CyMediaCalc::computerThreeUniformity(
+            d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+            d->mRGBTestData.ave, d->mRGBTestData.max,
+            d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+        //计算Y轴显示范围
+        if (d->upYrange) {
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                if (d->mHistogram[hisI]->visible()) {
+                    calcRe.calcHisMaxY = std::max(calcRe.calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                }
+            }
+        }
+    }
+
+    return calcRe;
+}
+
+CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_YUV(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
+    calcImageHisFlag calcRe;
+
+    if (d->mIsPos) {
+        //计算像素点
+        double tempRGB[4];
+        auto pos = getCurrentItem()->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+            &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
+        //入队
+        d->mPosHisData[hisI_Gray].addData(tempRGB[hisI_Gray]);
+        d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
+        //更新数据
+        for (int posI = 0; posI < d->mHistogramData[hisI_Gray].size(); posI++) {
+            d->mPosHistogramData[hisI_Gray][posI].value = d->mHistogramData[hisI_Gray][posI];
+        }
+        d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
+
+        if (d->mPosHisMaxY <= tempRGB[hisI_Gray]) {
+            d->mPosHisMaxY = tempRGB[hisI_Gray];
+        }
+        if (d->mRGBTestData.currentGray.size() != 3) {
+            d->mRGBTestData.currentGray.resize(3);
+        }
+        d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
+        d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
+        d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
+        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        calcRe.calcXRangePara = mPosHisMax;
+    }
+    else {
+        if (d->mMaskIsfullzero) {
+            d->mHistogramData[hisI_R].assign(d->mHistogramData[hisI_R].size(), 0.0);
+            d->mHistogramData[hisI_G].assign(d->mHistogramData[hisI_G].size(), 0.0);
+            d->mHistogramData[hisI_B].assign(d->mHistogramData[hisI_B].size(), 0.0);
+
+            d->mRGBTestData.ave.assign(d->mRGBTestData.ave.size(), 0.0);
+            d->mRGBTestData.max.assign(d->mRGBTestData.max.size(), 0.0);
+            d->mRGBTestData.min.assign(d->mRGBTestData.min.size(), 0.0);
+            d->mRGBTestData.std.assign(d->mRGBTestData.std.size(), 0.0);
+            d->mRGBTestData.Uniformity.assign(d->mRGBTestData.Uniformity.size(), 0.0);
+        }
+        else {
+            CyMediaCalc::computerYUVHistogram(data, info, &d->mClacMask, d->mMaskHaveData,
+                d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+                d->mRGBTestData.max, d->mRGBTestData.min, d->mRGBTestData.ave, formatOpe.YUVFunc);
+        }
+        //更新数据
+        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+            d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
+        }
+    }
+    if (false == d->mMaskIsfullzero) {
+        //计算参数
+        CyMediaCalc::computerThreeUniformity(
+            d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
+            d->mRGBTestData.ave, d->mRGBTestData.max,
+            d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+        //计算Y轴显示范围
+        if (d->upYrange) {
+            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
+                if (d->mHistogram[hisI]->visible()) {
+                    calcRe.calcHisMaxY = std::max(calcRe.calcHisMaxY, CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI], d->mHistogramData[hisI].size() * 0.02));
+                }
+            }
+        }
+    }
+
+    return calcRe;
 }
 
 void CyMediaDisGrayTest::flushTrans() {

@@ -1,6 +1,6 @@
 #version 330 core
-in vec4 apos;
-in vec2 atexcoord;
+layout(location = 0) in vec4 apos;
+layout(location = 1) in vec2 atexcoord;
 uniform mat4 m_matrix;
 out vec2 TexCoord;
 void main() {

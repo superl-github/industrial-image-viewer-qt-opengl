@@ -1,4 +1,4 @@
-﻿#include "CyMediaCalc.h"
+#include "CyMediaCalc.h"
 #include "CyMediaCalc_Mono.h"
 #include "CyMediaCalc_Bayer.h"
 #include "CyMediaCalc_Rgb.h"
@@ -128,7 +128,7 @@ namespace CyMediaCalc {
 
     bool computeGrayHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask, std::vector<double>& histogramVec,
         double* maxPixel, double* minPixel, double* avePixel) {
-        if (false == imageinfo.isMono())
+        if (false == imageinfo.isMono() && false == imageinfo.isMono())
             return false;
         return CyMediaCalc_Mono::computeHistogram(imageinfo, pData, calcMask, useMask, histogramVec,
             maxPixel, minPixel, avePixel);

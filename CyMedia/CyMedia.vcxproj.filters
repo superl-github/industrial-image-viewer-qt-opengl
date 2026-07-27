@@ -49,9 +49,6 @@
     <ClCompile Include="CyMediaDis\drawItem\DrawItemTool.cpp">
       <Filter>CyMediaDis\drawItem</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaFileFunc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp">
       <Filter>CyMediaDis</Filter>
     </ClCompile>
@@ -65,6 +62,9 @@
       <Filter>CyMediaParse</Filter>
     </ClCompile>
     <ClCompile Include="CyMediaCalc\CyMediaCalc_YUV.cpp">
+      <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaCalc\CyMediaFileFunc.cpp">
       <Filter>CyMediaCalc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -202,13 +202,13 @@
     <ClInclude Include="CyMediaBaseDef.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CyMediaFileFunc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CyMediaParse\CyMediaFileParse.h">
       <Filter>CyMediaParse</Filter>
     </ClInclude>
     <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h">
+      <Filter>CyMediaCalc</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaCalc\CyMediaFileFunc.h">
       <Filter>CyMediaCalc</Filter>
     </ClInclude>
   </ItemGroup>

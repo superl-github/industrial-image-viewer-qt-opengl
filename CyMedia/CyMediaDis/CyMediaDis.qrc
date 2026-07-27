@@ -12,8 +12,17 @@
         <file>ICONS/zoonFit-hover.png</file>
         <file>ICONS/zoonRaw.png</file>
         <file>ICONS/zoonRaw-hover.png</file>
-        <file>glslSource/Fragment.c</file>
         <file>glslSource/Vertex.c</file>
+        <file>glslSource/Fragment_Bayer_AHD.c</file>
+        <file>glslSource/Fragment_Bayer_Bilinear.c</file>
+        <file>glslSource/Fragment_Bayer_Malvar.c</file>
+        <file>glslSource/Fragment_Common.c</file>
+        <file>glslSource/Fragment_Mono.c</file>
+        <file>glslSource/Fragment_Mono_OverSize.c</file>
+        <file>glslSource/Fragment_RGB.c</file>
+        <file>glslSource/Fragment_YUV_Packed.c</file>
+        <file>glslSource/Fragment_YUV_Planar.c</file>
+        <file>glslSource/Fragment_YUV_SemiPlanar.c</file>
     </qresource>
     <qresource prefix="/ttranslations">
         <file>CyMedia_en_US.qm</file>

@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisGrayStretch.h"
+#include "CyMediaDisGrayStretch.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "Histogram/CyQCP.h"
@@ -165,7 +165,12 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
         d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
     else if (info.isYUV()) {
-        CyMediaCalc::computerYUVHistogram(data, info, d->mHisData, colorOpe.stretchType, colorOpe.YUVFunc);
+        CyMediaCalc::computerYUVHistogram(data, info, 
+            d->mHisData, 
+            colorOpe.stretchType, 
+            colorOpe.YUVFunc);
+
+        d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
     else {
         CyMediaCalc::computeRGBHistogram(data, info,

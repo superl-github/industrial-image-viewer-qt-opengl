@@ -1,3 +1,13 @@
+/*
+*  @class CyDMediaDisScen
+ * @brief QGraphicsScene 派生类，提供鼠标位置信号和文件拖放信号。
+ * @details
+ *   鼠标移动时发出 mousePosChange，接受 URL 拖放时发出 urlsDrop。
+ *   通过 setAcceptDrops 开关拖放功能。
+ * @author LLF
+ * @date   July 2026
+ * @version 1.0
+ */
 #pragma once
 
 #include <QGraphicsScene>

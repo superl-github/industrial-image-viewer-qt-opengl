@@ -1,4 +1,23 @@
-﻿#pragma once
+/**
+ * @file BaseItem.h
+ * @brief 所有可绘制图形项的抽象基类，定义核心交互与生命周期。
+ *
+ * BaseItem 继承自 QGraphicsObject，为子类提供：
+ * - 唯一标识（QUuid m_id）与选择/移动/聚焦标志。
+ * - 绘制状态管理（预览模式 m_isPreviewMode，完成状态查询 isDrawFinished）。
+ * - 鼠标事件转发接口（onDrawMouseEvent），由 DrawItemTool 调用，子类（如多边形）可在此处理多次点击。
+ * - 控制手柄（HandleItem）的统一管理（创建、更新、可见性）。
+ * - 几何变化信号（geometryChanged）与选中变化信号（selectedChanged）。
+ * - 闪烁高亮功能（setFlickeringEnable），用于提示用户。
+ * - 上下文菜单框架（支持内置的“几何编辑/删除”及外部回调扩展）。
+ *
+ * 子类必须实现纯虚函数（boundingRect、paint、setBoundingRectInScene 等），
+ * 并重写 changeByHandle 以响应手柄拖拽。HandleItem 由基类统一创建和维护。
+ *
+ * @note 该类功能较为集中，后续可考虑将手柄和闪烁抽离为组合组件，但当前为保证
+ *       子类（如 Item_Polygon）的稳定性，保留现有接口设计。
+ */
+#pragma once
 #include "CyDisDrawItem.h"
 
 namespace CyDisDrawItem {

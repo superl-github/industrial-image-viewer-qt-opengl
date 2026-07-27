@@ -1,4 +1,4 @@
-﻿#include "CyMediaDis.h"
+#include "CyMediaDis.h"
 
 #include "CyMediaDis/CyMediaDisView.h"
 #include "CyMediaDis/CyMediaDisViewBckDraw.h"
@@ -155,7 +155,7 @@ namespace CyMedia {
         int32_t posY = 0;
 
         std::atomic<bool> bHaveData = false; ///< 当前是否有图像数据
-        bool m_bFistUpImage = true;          ///< 是否首次更新图像
+        bool m_bFirstUpImage = true;          ///< 是否首次更新图像
 
         CyMedia::ImageShowInfo  m_rawInfo;        ///< 接收数据原始信息
         unsigned char* m_rawImageData = 0;        ///< 接收数据原始图像
@@ -181,8 +181,8 @@ namespace CyMedia {
         bool m_AutoThumbnail = true;
         QSize m_AutoThumbnailSize = QSize(1000, 1000);
 
-        CyMediaRecTimeW* mRetimeItem = nullptr;
-        CyMediaDisGrayStretch* mStretchWidget = nullptr;
+        CyMediaRecTimeW* m_RetimeItem = nullptr;
+        CyMediaDisGrayStretch* m_StretchWidget = nullptr;
         CyMedia::StretchType lastUpStretchType = CyMedia::stretch_None;
         CyMediaDisGrayTest* mGrayTestWidget = nullptr;
 
@@ -211,8 +211,8 @@ namespace CyMedia {
             }
             delete[] d->m_rawImageData;
 
-            d->mStretchWidget->setParent(nullptr);
-            d->mStretchWidget->close();
+            d->m_StretchWidget->setParent(nullptr);
+            d->m_StretchWidget->close();
 
             delete d->drawingTool;
             d->drawingTool = nullptr;
@@ -291,8 +291,8 @@ namespace CyMedia {
             case CyMedia::FOURCC_YV16: return QString("YVU422P");
             case CyMedia::FOURCC_I420: return QString("YUV420P");
             case CyMedia::FOURCC_YV12: return QString("YVU420P");
-            case CyMedia::FOURCC_NV21: return QString("YUV420SP");
-            case CyMedia::FOURCC_NV12: return QString("YVU420SP");
+            case CyMedia::FOURCC_NV12: return QString("YUV420SP");
+            case CyMedia::FOURCC_NV21: return QString("YVU420SP");
             
             default: return QString("UNKNOW");
         }
@@ -324,7 +324,7 @@ namespace CyMedia {
 
         if (d->m_trans->load(qmFileName)) {
             QCoreApplication::installTranslator(d->m_trans);
-            d->mStretchWidget->flushTrans();
+            d->m_StretchWidget->flushTrans();
             d->mGrayTestWidget->flushTrans();
             d->drawmanager->flushTrans();
             return true;
@@ -381,50 +381,50 @@ namespace CyMedia {
     }
 
     double CyMediaDis::displayFps(void) {
-        return d->view->flushFps();
+        return d->view->imageDraw()->flushFps();
     }
 
     CyMedia::StretchType CyMediaDis::stretchType() {
-        return d->view->stretchType();
+        return d->view->imageDraw()->stretchType();
     }
 
     void CyMediaDis::setStretchType(CyMedia::StretchType type) {
-        d->view->setStretchType(type);
+        d->view->imageDraw()->setStretchType(type);
     }
 
     void CyMediaDis::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/) {
-        d->view->setStreaChPara(start, end, (1 << d->m_rawInfo.bit) - 1 );
+        d->view->imageDraw()->setStreaChPara(start, end, (1 << d->m_rawInfo.bit) - 1 );
     }
 
     CyMedia::DemosaicingMethod CyMediaDis::Demosaic(){
-        return d->view->Demosaic();
+        return d->view->imageDraw()->Demosaic();
     }
 
     void CyMediaDis::setDemosaic(CyMedia::DemosaicingMethod method) {
-        d->view->setDemosaic(method);
+        d->view->imageDraw()->setDemosaic(method);
         if (d->upDataIsSlow()) {
             d->addOneGrayData(true);
         }
     }
 
     CyMedia::YUVTransMethod CyMediaDis::YUVMethod() {
-        return d->view->yuvMethod();
+        return d->view->imageDraw()->yuvMethod();
     }
 
     void CyMediaDis::setYUVMethod(CyMedia::YUVTransMethod method) {
-        d->view->setYUVMethod(method);
+        d->view->imageDraw()->setYUVTMethod(method);
     }
 
     QStringList CyMediaDis::ColorMapList() const {
-        return d->view->ColorMapList();
+        return d->view->imageDraw()->ColorMapList();
     }
 
     quint32 CyMediaDis::colorMapIndex() const {
-        return d->view->colorMapIndex();
+        return d->view->imageDraw()->colorMapIndex();
     }
 
     bool CyMediaDis::setColorMap(quint32 index) {
-        if (false == d->view->setColorMap(index))
+        if (false == d->view->imageDraw()->setColorMap(index))
             return false;
         /*if (d->upDataIsSlow()) {
             if (d->m_rawInfo.format >= CyMedia::MONO
@@ -439,7 +439,7 @@ namespace CyMedia {
     }
 
     bool CyMediaDis::setColorMap(const QString& mapName) {
-        if (false == d->view->setColorMap(mapName))
+        if (false == d->view->imageDraw()->setColorMap(mapName))
             return false;
         /*if (d->upDataIsSlow()) {
             if (d->m_rawInfo.format >= CyMedia::MONO
@@ -487,7 +487,7 @@ namespace CyMedia {
 
     void CyMediaDis::setThemeColor(QColor color) {
         d->mGrayTestWidget->setThemeColor(color);
-        d->mStretchWidget->setThemeColor(color);
+        d->m_StretchWidget->setThemeColor(color);
         d->drawingTool->setThemeColor(color);
     }
 
@@ -611,31 +611,31 @@ namespace CyMedia {
     }
 
     bool CyMediaDis::recTimeVisible() {
-        return d->mRetimeItem->isVisible();
+        return d->m_RetimeItem->isVisible();
     }
 
     void CyMediaDis::setRecTimeVisible(bool visi) {
-        d->mRetimeItem->setVisible(visi);
+        d->m_RetimeItem->setVisible(visi);
     }
 
     void CyMediaDis::upRecTime(uint64_t time) {
-        d->mRetimeItem->upRecTime(time);
+        d->m_RetimeItem->upRecTime(time);
     }
 
     void CyMediaDis::upRecTime(uint64_t saved, uint64_t sum) {
-        d->mRetimeItem->upRecTime(saved, sum);
+        d->m_RetimeItem->upRecTime(saved, sum);
     }
 
     void CyMediaDis::upRecTime_Timed(uint64_t saved, uint64_t sum) {
-        d->mRetimeItem->upRecTime_Timed(saved, sum);
+        d->m_RetimeItem->upRecTime_Timed(saved, sum);
     }
 
     CyMediaDisGrayStretch* CyMediaDis::stretchWidget() {
-        return d->mStretchWidget;
+        return d->m_StretchWidget;
     }
 
     void CyMediaDis::setGrayStretchVisible(bool visible) {
-        d->mStretchWidget->setVisible(visible);
+        d->m_StretchWidget->setVisible(visible);
     }
 
     CyMediaDisGrayTest* CyMediaDis::grayTestWidget() {
@@ -743,7 +743,7 @@ namespace CyMedia {
         //重置状态
         t_pBuffer->bIsSource = isSource;
         t_pBuffer->bUpImage = true;
-        t_pBuffer->bUpStretch = mStretchWidget->isVisible();
+        t_pBuffer->bUpStretch = m_StretchWidget->isVisible();
         t_pBuffer->bIsAddFps = true;
 
         t_pBuffer->bisUpData = true;
@@ -773,7 +773,7 @@ namespace CyMedia {
         //重置状态
         t_pBuffer->bIsSource = true;
         t_pBuffer->bUpImage = upImage;
-        t_pBuffer->bUpStretch = (mStretchWidget->stretchtype() != lastUpStretchType) || mStretchWidget->isAutoStretch();
+        t_pBuffer->bUpStretch = (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
         t_pBuffer->bIsAddFps = false;
 
         t_pBuffer->bisUpData = true;
@@ -789,7 +789,7 @@ namespace CyMedia {
             }
             // 清除图像
             view->clearBackGround();
-            m_bFistUpImage = true;
+            m_bFirstUpImage = true;
             // 清除图像变换
             view->zoomRaw(true);
             // 隐藏zoom滚动条
@@ -817,11 +817,8 @@ namespace CyMedia {
     }
 
     void CyMediaDis::privateData::Thread_ImageData() {
-        QOpenGLContext* threadCtx = new QOpenGLContext;
-
         static opeFrameThreadPara opePara;
         opePara.init();
-        opePara.ctx = threadCtx;
 
         QElapsedTimer eTiemr;
         eTiemr.start();
@@ -858,9 +855,9 @@ namespace CyMedia {
             //更新处理参数
             {
                 //实时判断要不要在CPU统一处理特殊转换(Bayer/YUV)，目标：尽量只转换一次
-                opePara.colorOpe.bayerFunc = view->Demosaic();
-                opePara.colorOpe.YUVFunc = view->yuvMethod();
-                opePara.colorOpe.stretchType = mStretchWidget->stretchtype();
+                opePara.colorOpe.bayerFunc = view->imageDraw()->Demosaic();
+                opePara.colorOpe.YUVFunc = view->imageDraw()->yuvMethod();
+                opePara.colorOpe.stretchType = m_StretchWidget->stretchtype();
 
                 int transNum = 0;
                 if (view->thumbnailVisible()) transNum++;
@@ -872,7 +869,7 @@ namespace CyMedia {
                     opePara.BayerTransOnCPU = false;
                     opePara.YUVTransOnCPU = false;
                 }
-                opePara.YUVTransOnCPU = true;//TODO OPenGL暂不支持
+                //opePara.YUVTransOnCPU = true;//TODO OPenGL暂不支持
                 if (opePara.colorOpe.bayerFunc == DEMOSAIC_AHD) opePara.BayerTransOnCPU = true;//AHD未在OPenGL实现
 
                 opePara.isSource = tFrame.bIsSource;
@@ -889,7 +886,7 @@ namespace CyMedia {
         ImageDataStack_currentOpe = -1;
         pImageDataThread->quit();
         bImageDataThread_flag = false;
-        delete threadCtx;
+        if (opePara.ctx) delete opePara.ctx;
         log_printf("图像处理线程退出\n\r");
     }
     void CyMediaDis::privateData::Thread_ImageData_oneFrame(const oneFrameBuffer& frame, opeFrameThreadPara& opePara) {
@@ -984,12 +981,12 @@ namespace CyMedia {
 
         //灰度拉伸
         if (opePara.upStretch && up) {
-            mStretchWidget->upImageData(Imageinfo, Imagedata, opePara.colorOpe);
+            m_StretchWidget->upImageData(Imageinfo, Imagedata, opePara.colorOpe);
             lastUpStretchType = opePara.colorOpe.stretchType;
         }
         //灰度测量
         if (up) {
-            mGrayTestWidget->upImageData(Imageinfo, Imagedata, opePara.colorOpe);
+            mGrayTestWidget->upImage(Imageinfo, Imagedata, opePara.colorOpe);
         }
         //缩略图
         if (up && false == opePara.isSource) {
@@ -1077,22 +1074,26 @@ namespace CyMedia {
     void CyMediaDis::privateData::Thread_ImageData_UpDis(CyMedia::ImageShowInfo& src_info, uint8_t* src_data, opeFrameThreadPara& opePara) {
         //创建更新图像外部上下文并设置共享
         if (false == upBackGroupShared) {
-            upBackGroupShared = view->sharaContext(opePara.ctx);
+            opePara.ctx = view->imageDraw()->createSharedContext();
+            if (opePara.ctx) upBackGroupShared = true;
+            if (false == upBackGroupShared) {
+                return;
+            }
         }
         bool imageInfoChange = false;
         double r = 0, g = 0, b = 0;
         //拉伸信息
-        if (false == mStretchWidget->isVisible()) {
-            view->setStretchType(CyMedia::stretch_None);
+        if (false == m_StretchWidget->isVisible()) {
+            view->imageDraw()->setStretchType(CyMedia::stretch_None);
         }
         else {
-            view->setStretchType(opePara.colorOpe.stretchType);
+            view->imageDraw()->setStretchType(opePara.colorOpe.stretchType);
         }
-        auto stretV = mStretchWidget->stretchValue();
-        view->setStreaChPara(stretV.start, stretV.end, stretV.max);
+        auto stretV = m_StretchWidget->stretchValue();
+        view->imageDraw()->setStreaChPara(stretV.start, stretV.end, stretV.max);
 
         //更新信息
-        if (memcmp(&m_imageinfo, &src_info, sizeof(CyMedia::ImageShowInfo)) || true == m_bFistUpImage) {
+        if (memcmp(&m_imageinfo, &src_info, sizeof(CyMedia::ImageShowInfo)) || true == m_bFirstUpImage) {
             if (false == opePara.isSource)
                 imageInfoChange = true;
             //view->upImageInfo(Imageinfo);
@@ -1100,7 +1101,7 @@ namespace CyMedia {
         }
         // 鼠标位置颜色
         if (calcolorTimer.isValid()) {
-            if (calcolorTimer.elapsed() > 200 || view->flushFps() <= 5.0) {
+            if (calcolorTimer.elapsed() > 200 || view->imageDraw()->flushFps() <= 5.0) {
                 CyMediaCalc::calcCoordinateColor(src_info, src_data, posX, posY, &r, &g, &b, opePara.colorOpe);
                 m_parent->emit upPosPix(posX, posY, r, g, b, src_info.isMono() || (src_info.isBayer() && opePara.colorOpe.bayerFunc == CyMedia::DEMOSAIC_NONE));
                 emit startDataFpsTimer();
@@ -1112,6 +1113,7 @@ namespace CyMedia {
         if (imageInfoChange) {
             emit ImageInfoChange(src_info);
             QThread::msleep(1);
+            m_bFirstUpImage = true;
         }
         
         //四字节对齐处理
@@ -1150,10 +1152,10 @@ namespace CyMedia {
             }
 
             CyMediaCalc::copyAlignImage(src_data, opePara.pAlignImage, src_info.width, src_info.height, alignWidth, alignHeight, pixelWideh * imageColorCount);
-            view->upBackGround(opePara.pAlignImage_info, opePara.pAlignImage, opePara.ctx);
+            view->imageDraw()->upBackGround(opePara.pAlignImage_info, opePara.pAlignImage, opePara.ctx);
         }
         else {
-            view->upBackGround(src_info, src_data, opePara.ctx);
+            view->imageDraw()->upBackGround(src_info, src_data, opePara.ctx);
         }
 
         emit ImageDataDone(src_info);
@@ -1204,8 +1206,8 @@ namespace CyMedia {
             posY = y;
             double r = 0, g = 0, b = 0;
             if (upDataIsSlow()) {
-                CyMediaCalc::calcCoordinateColor(m_rawInfo, m_rawImageData, x, y, &r, &g, &b, { view->Demosaic(), view->yuvMethod(), mStretchWidget->stretchtype() });
-                m_parent->emit upPosPix(x, y, r, g, b, m_rawInfo.isMono() || (m_rawInfo.isBayer() && view->Demosaic() == CyMedia::DEMOSAIC_NONE));
+                CyMediaCalc::calcCoordinateColor(m_rawInfo, m_rawImageData, x, y, &r, &g, &b, { view->imageDraw()->Demosaic(), view->imageDraw()->yuvMethod(), m_StretchWidget->stretchtype() });
+                m_parent->emit upPosPix(x, y, r, g, b, m_rawInfo.isMono() || (m_rawInfo.isBayer() && view->imageDraw()->Demosaic() == CyMedia::DEMOSAIC_NONE));
             }
             });
         connect(scene, &CyDMediaDisScen::urlsDrop, this, [this](QList<QUrl> urls) {
@@ -1213,15 +1215,6 @@ namespace CyMedia {
             });
         //视图
         view = new CyMediaDisView(m_parent);
-        QOpenGLWidget* OpenGlwidget = new QOpenGLWidget();
-        OpenGlwidget->setMouseTracking(true);
-        //指定opengl版本
-        QSurfaceFormat format;
-        format.setVersion(3, 3);
-        format.setProfile(QSurfaceFormat::CoreProfile);
-        OpenGlwidget->setFormat(format);
-        view->setViewport(OpenGlwidget);
-        
         view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
@@ -1382,22 +1375,22 @@ namespace CyMedia {
         drawingTool = new CyDisDrawItem::DrawItemTool(drawmanager, view, m_parent);
 
         //TipsWidget
-        mRetimeItem = new CyMediaRecTimeW(m_parent);
-        mRetimeItem->move(10, toolWidget->height());
-        mRetimeItem->setVisible(false);
+        m_RetimeItem = new CyMediaRecTimeW(m_parent);
+        m_RetimeItem->move(10, toolWidget->height());
+        m_RetimeItem->setVisible(false);
 
 
-        mStretchWidget = new CyMediaDisGrayStretch(m_parent);
-        mStretchWidget->setWindowFlag(Qt::Tool);
-        mStretchWidget->resize(600, 300);
-        mStretchWidget->setVisible(false);
-        connect(mStretchWidget, &CyMediaDisGrayStretch::needImage, this, &CyMediaDis::privateData::onGrayToolNeedImage);
-        connect(mStretchWidget, &CyMediaDisGrayStretch::stretchParaChange, this, [this]() {
+        m_StretchWidget = new CyMediaDisGrayStretch(m_parent);
+        m_StretchWidget->setWindowFlag(Qt::Tool);
+        m_StretchWidget->resize(600, 300);
+        m_StretchWidget->setVisible(false);
+        connect(m_StretchWidget, &CyMediaDisGrayStretch::needImage, this, &CyMediaDis::privateData::onGrayToolNeedImage);
+        connect(m_StretchWidget, &CyMediaDisGrayStretch::stretchParaChange, this, [this]() {
             if (upDataIsSlow()) {
                 QMutexLocker lock(&m_dataLock);
-                view->setStretchType(mStretchWidget->stretchtype());
-                auto strytchpata = mStretchWidget->stretchValue();
-                view->setStreaChPara(strytchpata.start, strytchpata.end, strytchpata.max);
+                view->imageDraw()->setStretchType(m_StretchWidget->stretchtype());
+                auto strytchpata = m_StretchWidget->stretchValue();
+                view->imageDraw()->setStreaChPara(strytchpata.start, strytchpata.end, strytchpata.max);
                 view->viewport()->update();
             }
             });
@@ -1463,8 +1456,8 @@ namespace CyMedia {
             view->setThumbnailEnable(info.width >= m_AutoThumbnailSize.width() || info.height >= m_AutoThumbnailSize.height());
         }
 
-        if (m_bFistUpImage) {
-            m_bFistUpImage = false;
+        if (m_bFirstUpImage) {
+            m_bFirstUpImage = false;
             m_parent->zoomAuto();
         }
 
@@ -1476,8 +1469,8 @@ namespace CyMedia {
     void CyMediaDis::privateData::onGrayToolNeedImage() {
         if (upDataIsSlow()) {
             bool upImage = false;
-            if (sender() == mStretchWidget) {
-                upImage = (mStretchWidget->stretchtype() != lastUpStretchType) || mStretchWidget->isAutoStretch();
+            if (sender() == m_StretchWidget) {
+                upImage = (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
             }
             addOneGrayData(upImage, true);
         }
@@ -1540,6 +1533,7 @@ namespace CyMedia {
         :QDialog(parent)
         , d(new CyMediaDis_GetRawInfoDialog::PrivateData) {
         initGUI();
+        adjustSize();
     }
 
     void CyMediaDis_GetRawInfoDialog::flushTrans() {
@@ -1624,7 +1618,7 @@ namespace CyMedia {
         d->ui_special_value_box->addItem("float64");
         d->uiPixelFormatBox = new QComboBox(this);
         int pixelTypeI = int(CyMedia::MONO);
-        for (; pixelTypeI <= int(CyMedia::FOURCC_NV12); pixelTypeI++) {
+        for (; pixelTypeI <= int(CyMedia::FOURCC_NV21); pixelTypeI++) {
             d->uiPixelFormatBox->addItem(CyMediaDis::pixelFormatStr(CyMedia::ePixType(pixelTypeI)));
         }
         ((QListView*)d->uiPixelFormatBox->view())->setRowHidden(int(CyMedia::MONO_OVERSIZE), true);

@@ -1,4 +1,4 @@
-﻿
+
 #include "CyMediaDisView.h"
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "CyMediaDisViewBckDraw.h"
@@ -198,6 +198,15 @@ CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
     connect(m_Thumbnail, &CyMediaDisViewThumbnail::viewRectChanged, this, [this](const QRectF& rect) {
         d->onViewRectChanged(rect);
         });
+
+    //指定opengl版本
+    QOpenGLWidget* OpenGlwidget = new QOpenGLWidget();
+    OpenGlwidget->setMouseTracking(true);
+    QSurfaceFormat format;
+    format.setVersion(3, 3);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    OpenGlwidget->setFormat(format);
+    setViewport(OpenGlwidget);
 }
 
 CyMediaDisView::~CyMediaDisView() {
@@ -346,17 +355,8 @@ void CyMediaDisView::rotateView(double angle) {
     setTransform(transform);
 }
 
-bool CyMediaDisView::sharaContext(QOpenGLContext* ctx) {
-    return m_backDraw->shareContext(ctx);
-}
-
-bool CyMediaDisView::upBackGround(CyMedia::ImageShowInfo info, uint8_t* data, QOpenGLContext* ctx, bool upThumbnaildata/* = false*/) {
-    if (m_backDraw->upBackGround(info, data, ctx)) {
-        //m_Thumbnail->upBackImage(info, data);
-        //QMetaObject::invokeMethod(m_Thumbnail, "update", Qt::QueuedConnection);
-        return true;
-    }
-    return false;
+CyMediaDisViewBckDraw* CyMediaDisView::imageDraw() const {
+    return m_backDraw;
 }
 
 void CyMediaDisView::clearBackGround() {
@@ -364,66 +364,6 @@ void CyMediaDisView::clearBackGround() {
     if (QThread::currentThread() == qApp->thread()) {
         m_Thumbnail->setVisible(false);
     }
-}
-
-int CyMediaDisView::backTextureIndex() {
-    return m_backDraw->backTextureIndex();
-}
-
-CyMedia::StretchType CyMediaDisView::stretchType() {
-    return m_backDraw->stretchType();
-}
-
-void CyMediaDisView::setStretchType(CyMedia::StretchType type) {
-    m_backDraw->setStretchType(type);
-}
-
-void CyMediaDisView::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/, uint32_t max /*= 0*/) {
-    m_backDraw->setStreaChPara(start, end, max);
-}
-
-CyMedia::DemosaicingMethod CyMediaDisView::Demosaic() {
-    return m_backDraw->Demosaic();
-}
-
-void CyMediaDisView::setDemosaic(CyMedia::DemosaicingMethod method) {
-    return m_backDraw->setDemosaic(method);
-}
-
-CyMedia::YUVTransMethod CyMediaDisView::yuvMethod() {
-    return m_backDraw->yuvMethod();
-}
-
-void CyMediaDisView::setYUVMethod(CyMedia::YUVTransMethod method) {
-    m_backDraw->setYUVTMethod(method);
-}
-
-double CyMediaDisView::flushFps() const {
-    return m_backDraw->flushFps();
-}
-
-bool CyMediaDisView::isTrueDataFps() const {
-    return m_backDraw->isTrueDataFps();
-}
-
-void CyMediaDisView::setTrueDataFps(bool flag) {
-    m_backDraw->setTrueDataFps(flag);
-}
-
-QStringList CyMediaDisView::ColorMapList() const {
-    return m_backDraw->ColorMapList();
-}
-
-qint32 CyMediaDisView::colorMapIndex() const {
-    return m_backDraw->colorMapIndex();
-}
-
-bool CyMediaDisView::setColorMap(qint32 index) {
-    return m_backDraw->setColorMap(index);
-}
-
-bool CyMediaDisView::setColorMap(const QString& mapName) {
-    return m_backDraw->setColorMap(mapName);
 }
 
 bool CyMediaDisView::thumbnailEnable() {

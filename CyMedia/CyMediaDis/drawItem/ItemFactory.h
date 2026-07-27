@@ -1,3 +1,14 @@
+/**
+ * @file ItemFactory.h
+ * @brief 图形项工厂类，负责根据类型创建具体的图形项实例。
+ *
+ * 提供静态工厂方法 createItem，根据 ItemType 构造对应的图形项对象（如 Item_Rect、Item_Polygon）。
+ * 创建后的对象为“空”状态，需由调用方（如 DrawItemTool）进一步初始化（设置位置或转发鼠标事件）。
+ *
+ * 注意：
+ * - 旧版工厂方法 createBySceneDraw 已废弃（仅用于过时的 ItemDrawTool），请统一使用 createItem。
+ * - 类型判定函数 requireDragThreshold 将在后续版本移至 BaseItem 虚函数，避免硬编码。
+ */
 #pragma once
 #include "BaseItem.h"
 #include <QString>

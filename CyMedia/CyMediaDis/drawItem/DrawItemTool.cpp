@@ -66,7 +66,7 @@ namespace CyDisDrawItem {
                 if (event->type() == QEvent::MouseButtonPress && mouseEvent->button() == Qt::RightButton) {
                     m_manager->removeItem(m_previewItem);
                     m_previewItem = nullptr;
-                    m_mode = ItemType::Invalid;
+                    //m_mode = ItemType::Invalid;
                     m_isDragging = false; // 重置拖拽状态
                 }
                 event->accept();
@@ -126,6 +126,7 @@ namespace CyDisDrawItem {
                     }
                 }
             }break;
+
             case QEvent::MouseMove: {
                 if (m_isDragging) {
                     // 检查拖拽距离是否超过阈值
@@ -150,6 +151,7 @@ namespace CyDisDrawItem {
                     }
                 }
             }break;
+
             case QEvent::MouseButtonRelease: {
                 if (m_isDragging) {
                     // 点击了但是没移动超过阈值，取消拖拽状态，不创建Item
@@ -160,8 +162,9 @@ namespace CyDisDrawItem {
                     m_manager->sendRemove(lastItemid);
                 }
             }break;
-        default:
-            break;
+
+            default:
+                break;
         }
         return QObject::eventFilter(obj, event);
     }

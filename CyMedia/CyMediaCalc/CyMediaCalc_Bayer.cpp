@@ -1,4 +1,4 @@
-﻿#include "CyMediaCalc_Bayer.h"
+#include "CyMediaCalc_Bayer.h"
 #include "CyMediaCalc.h"
 
 #include <algorithm>
@@ -49,7 +49,7 @@ namespace CyMediaCalc_Bayer {
     template<typename T>
     void demosaicAHD_Split(const T* data, int32_t width, int32_t height, ePixType format, std::vector<double>& R, std::vector<double>& G, std::vector<double>& B);
     bool computeHistogram_Bayer_AHD(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel);
-    bool computeHistogram_Bayer_AHD_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& Rhistogram, CyMedia::StretchType type);
+    bool computeHistogram_Bayer_AHD_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& Rhistogram, CyMedia::StretchType type, bool bParallel);
     template<typename T>
     bool Bayer2RGB(const ImageShowInfo& info, const uint8_t* data, T* outdata, DemosaicingMethod func = DEMOSAIC_BILINEAR);
     template<typename T>
@@ -197,22 +197,74 @@ namespace CyMediaCalc_Bayer {
         //初始化容器
         Rhistogram.assign(bitMax, 0.0);
         double* pRhi = Rhistogram.data();
+        // ---- 并行阈值判断 ----
+        static int32_t cpuCores = []() {
+            int32_t cores = static_cast<int32_t>(std::thread::hardware_concurrency());
+            return cores > 0 ? cores : 4;
+            }();
+        const int32_t threshold = get_parallel_threshold_bayer_conver(cpuCores, func);
+        bool bParallel = (pixelCount >= threshold);
 
         switch (func)  {
             case CyMedia::DEMOSAIC_NONE:
             case CyMedia::DEMOSAIC_BILINEAR:
             case CyMedia::DEMOSAIC_MALVA: {
-                for (uint32_t y = 0; y < info.height; ++y) {
-                    for (uint32_t x = 0; x < info.width; ++x) {
-                        RgbPixel px = calcCoordinateColor(info, data, x, y, func);
-                        // 更新直方图
-                        pRhi[CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax)] += 1.0;
+                if (bParallel) {
+#if defined _MSC_VER
+                    // ---- PPL 并行 ----
+                    concurrency::combinable<std::vector<double>> localHist(
+                        [&]() { return std::vector<double>(bitMax, 0.0); }
+                    );
+                    concurrency::parallel_for(0, info.height, [&](int y) {
+                        auto& local = localHist.local();
+                        for (int x = 0; x < info.width; ++x) {
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
+                            int idx = CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax);
+                            local[idx] += 1.0;
+                        }
+                        });
+                    localHist.combine_each([&](std::vector<double>& local) {
+                        for (int i = 0; i < bitMax; ++i)
+                            pRhi[i] += local[i];
+                        });
+                }
+#elif defined _OPENMP
+                    // ---- OpenMP 并行 ----
+                    int numThreads = omp_get_max_threads();
+                    std::vector<std::vector<double>> localHists(
+                        numThreads, std::vector<double>(bitMax, 0.0)
+                    );
+#pragma omp parallel for
+                    for (int y = 0; y < info.height; ++y) {
+                        int tid = omp_get_thread_num();
+                        auto& local = localHists[tid];
+                        for (int x = 0; x < info.width; ++x) {
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
+                            int idx = CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax);
+                            local[idx] += 1.0;
+                        }
+                    }
+                    for (int t = 0; t < numThreads; ++t) {
+                        for (int i = 0; i < bitMax; ++i)
+                            pRhi[i] += localHists[t][i];
+                    }
+#else
+                    // 无并行支持，回退串行
+                    bParallel = false;
+#endif
+                if (false == bParallel) {
+                    for (uint32_t y = 0; y < info.height; ++y) {
+                        for (uint32_t x = 0; x < info.width; ++x) {
+                            RgbPixel px = calcCoordinateColor(info, data, x, y, func);
+                            // 更新直方图
+                            pRhi[CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax)] += 1.0;
+                        }
                     }
                 }
             }break;
 
             case CyMedia::DEMOSAIC_AHD: {
-                computeHistogram_Bayer_AHD_Stretch(info, data, Rhistogram, type);
+                computeHistogram_Bayer_AHD_Stretch(info, data, Rhistogram, type, bParallel);
             }break;
         }
         return true;
@@ -629,7 +681,7 @@ namespace CyMediaCalc_Bayer {
     }
 
     bool computeHistogram_Bayer_AHD_Stretch(const ImageShowInfo& info, const uint8_t* data,
-        std::vector<double>& Rhistogram, CyMedia::StretchType type) {
+        std::vector<double>& Rhistogram, CyMedia::StretchType type, bool bParallel) {
         // 分离 R, G, B 平面（未采样位置为 0）
         std::vector<double> R(info.width * info.height, 0), G(info.width * info.height, 0), B(info.width * info.height, 0);
         if (info.bit <= 8) {
@@ -648,12 +700,69 @@ namespace CyMediaCalc_Bayer {
         uint32_t bitMax = 1 << info.bit;
         int32_t pixelCount = info.width * info.height;
         double* pRhi = Rhistogram.data();
-        RgbPixel px;
-        for (int32_t y = 0; y < info.height; ++y) {
-            for (int32_t x = 0; x < info.width; ++x) {
-                px = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
-                // 更新直方图
-                pRhi[CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax)] += 1.0;
+        // 定义一个 lambda 用于计算单像素的拉伸索引（避免重复代码）
+        auto calcStretchIdx = [&](int32_t x, int32_t y) -> int32_t {
+            RgbPixel px = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
+            return CyMediaCalc::RGBT2StretchOneFast(px, type, bitMax);
+            };
+        if (bParallel) {
+#if defined _MSC_VER
+            // ---------- PPL 并行 ----------
+            concurrency::combinable<std::vector<double>> localHist(
+                [&]() { return std::vector<double>(bitMax, 0.0); }
+            );
+
+            concurrency::parallel_for(0, info.height, [&](int y) {
+                auto& local = localHist.local();
+                for (int x = 0; x < info.width; ++x) {
+                    int idx = calcStretchIdx(x, y);
+                    local[idx] += 1.0;
+                }
+                });
+
+            // 合并各线程局部直方图
+            localHist.combine_each([&](std::vector<double>& local) {
+                for (uint32_t i = 0; i < bitMax; ++i) {
+                    pRhi[i] += local[i];
+                }
+                });
+
+#elif defined _OPENMP
+            // ---------- OpenMP 并行 ----------
+            int numThreads = omp_get_max_threads();
+            std::vector<std::vector<double>> localHists(
+                numThreads, std::vector<double>(bitMax, 0.0)
+            );
+
+#pragma omp parallel for
+            for (int y = 0; y < info.height; ++y) {
+                int tid = omp_get_thread_num();
+                auto& local = localHists[tid];
+                for (int x = 0; x < info.width; ++x) {
+                    int idx = calcStretchIdx(x, y);
+                    local[idx] += 1.0;
+                }
+            }
+
+            // 合并结果
+            for (int t = 0; t < numThreads; ++t) {
+                auto& local = localHists[t];
+                for (uint32_t i = 0; i < bitMax; ++i) {
+                    pRhi[i] += local[i];
+                }
+            }
+
+#else
+            // ---------- 无并行库支持，强制回退串行 ----------
+            bParallel = false;
+#endif
+        }
+        if (false == bParallel) {
+            for (int32_t y = 0; y < info.height; ++y) {
+                for (int32_t x = 0; x < info.width; ++x) {
+                    int idx = calcStretchIdx(x, y);
+                    pRhi[idx] += 1.0;
+                }
             }
         }
         return true;

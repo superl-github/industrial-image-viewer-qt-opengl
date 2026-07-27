@@ -1,4 +1,20 @@
-﻿#pragma once
+/*
+ * @file        CyMediaDisGrayTest.cpp/.h
+ * @brief       图像灰度测试与直方图统计组件
+ * @details     本文件实现了 CyMediaDisGrayTest 类，作为 CyMediaDis 显示模块的辅助工具。
+ *              主要功能包括：
+ *              - 支持灰度、RGB、Bayer、YUV 等多种图像格式的直方图计算与显示；
+ *              - 提供单通道（灰度）或三通道（RGB）的统计信息：平均值、最大值、最小值、标准差、均匀性；
+ *              - 支持通过绘制图形（点、矩形、线、椭圆、多边形）选择感兴趣区域（ROI），并实时更新统计结果；
+ *              - 提供交互式图表，支持鼠标悬停提示、坐标轴缩放、通道切换及重置坐标轴；
+ *              - 适配点选模式（Pos）下的时序数据折线图显示。
+ * @note        依赖 QCustomPlot 及内部 CyMediaCalc 计算库。
+ * 
+ * @author LLF
+ * @date   July 2026
+ * @version 1.0
+ */
+#pragma once
 #include "../CyMediaBaseDef.h"
 #include "drawItem/BaseItem.h"
 
@@ -91,7 +107,7 @@ public:
 
 
     //histogram
-    bool upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
+    bool upImage(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
     bool currentTestDataIsGray();
     CyMediaDisGrayTest::oneChannelTestInfo& getGrayTestData();
     CyMediaDisGrayTest::threeChannelTestInfo& getRGBTestData();
@@ -111,6 +127,10 @@ protected:
     bool plotToolTips(double xValue, double yValue);
 
 private:
+    struct calcImageHisFlag {
+        double calcHisMaxY = 0.0;
+        double calcXRangePara = 0.0;
+    };
     void initGUI();
 
     void plotPressEvent();
@@ -124,6 +144,11 @@ private:
     void onResetShaft();
 
     void onDrawActTriggered(QAction* act);
+
+    CyMediaDisGrayTest::calcImageHisFlag upImage_Mono(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
+    CyMediaDisGrayTest::calcImageHisFlag upImage_RGB(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
+    CyMediaDisGrayTest::calcImageHisFlag upImage_Bayer(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
+    CyMediaDisGrayTest::calcImageHisFlag upImage_YUV(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
 
     void onUphisVisible();
     void onUpTestData();
