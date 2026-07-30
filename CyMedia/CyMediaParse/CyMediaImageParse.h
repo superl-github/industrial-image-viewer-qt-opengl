@@ -1,15 +1,16 @@
-﻿#pragma once
+#pragma once
 #include "CyMediaBaseDef.h"
-#include <QObject>
+
+#include <xstring>
 
 namespace CyMedia {
-    class CYMEDIA_LIB CyMdiaImageParse : public QObject {
+    class CYMEDIA_LIB CyMediaImageParse {
     public:
-        CyMdiaImageParse(QObject* parent = nullptr);
+        CyMediaImageParse();
 
     public:
-        static QString fileTypeStr(CyMedia::ImageSuffix type);
-        static CyMedia::ImageSuffix getTypeByPath(QString& filepath);
+        static std::string_view imageTypeStr(CyMedia::ImageSuffix type);
+        static CyMedia::ImageSuffix getTypeByPath(const std::string& filepath);
         
         /**
          * @brief openImage
@@ -22,7 +23,7 @@ namespace CyMedia {
          * @ref  
          * @return int 0:success 1:file error 2:Invalid file format 3:not RawHeader
         ***/
-        static int openImage(QString filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
+        static int openImage(const std::string& filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
 
         /**
          * @brief openImage_NotHeaderRaw
@@ -35,7 +36,7 @@ namespace CyMedia {
          * @ref  
          * @return int 0:success 1:file error 3:header error
         ***/
-        static int openImage_NotHeaderRaw(QString filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
+        static int openImage_NotHeaderRaw(const std::string& filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
 
         
         /**
@@ -49,6 +50,6 @@ namespace CyMedia {
          * @ref
          * @return int 0:success 1:file error 2:Invalid file format
         ***/
-        static int saveImageToFile(QString filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader);
+        static int saveImageToFile(std::string filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader);
     };
 };

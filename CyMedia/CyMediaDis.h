@@ -1,3 +1,27 @@
+/**
+* @file CyMediaDis.h
+* @brief 高性能图像显示与交互控件（基于 Qt QFrame）。
+*
+* @details
+* `CyMediaDis` 是一个功能完整的图像显示组件，专为实时图像处理与视觉检测应用设计。
+* 它集成了以下核心能力：
+*
+* - **多格式图像渲染**：支持 Mono、Bayer（RG/GR/BG/GB）、RGB/RGBA、多种 YUV 格式（Packed/Planar/Semi-Planar），
+*   以及 8/10/12/16/32 位深度，并内置颜色映射（ColorMap）和灰度拉伸（Stretch）。
+* - **OpenGL 加速**：基于 Qt GraphicsView + OpenGL 渲染，支持多线程纹理上传，适合高帧率数据流。
+* - **交互操作**：缩放（滚轮/按钮）、平移、旋转、水平/垂直翻转、自适应窗口、缩略图导航。
+* - **图形标注**：支持绘制点、矩形、线、椭圆、多边形等标注项，可编辑、移动、删除，并支持 ROI 统计。
+* - **辅助工具**：内置灰度拉伸交互控件（`CyMediaDisGrayStretch`）和灰度测试/直方图工具（`CyMediaDisGrayTest`），
+*   可独立显示或嵌入。
+* - **信号通知**：提供丰富的信号，便于外部监听图像尺寸变化、鼠标坐标、缩放值、标注事件等。
+*
+* @note 使用前需确保 OpenGL 上下文已共享（设置 `QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts)`）。
+*
+* @see CyMediaDisView, CyMediaDisViewBckDraw
+* 
+* @author LLF
+* @version 1.0
+*/
 #pragma once
 #include "CyMediaBaseDef.h"
 #include "CyMediaDis/CyMediaRecTimeW.h"
@@ -13,26 +37,6 @@
 #include <QUrl>
 
 namespace CyMedia {
-    /**
-     * @brief 高性能图像显示与交互控件（基于 Qt QFrame）。
-     *
-     * @details
-     * `CyMediaDis` 是一个功能完整的图像显示组件，专为实时图像处理与视觉检测应用设计。
-     * 它集成了以下核心能力：
-     *
-     * - **多格式图像渲染**：支持 Mono、Bayer（RG/GR/BG/GB）、RGB/RGBA、多种 YUV 格式（Packed/Planar/Semi-Planar），
-     *   以及 8/10/12/16/32 位深度，并内置颜色映射（ColorMap）和灰度拉伸（Stretch）。
-     * - **OpenGL 加速**：基于 Qt GraphicsView + OpenGL 渲染，支持多线程纹理上传，适合高帧率数据流。
-     * - **交互操作**：缩放（滚轮/按钮）、平移、旋转、水平/垂直翻转、自适应窗口、缩略图导航。
-     * - **图形标注**：支持绘制点、矩形、线、椭圆、多边形等标注项，可编辑、移动、删除，并支持 ROI 统计。
-     * - **辅助工具**：内置灰度拉伸交互控件（`CyMediaDisGrayStretch`）和灰度测试/直方图工具（`CyMediaDisGrayTest`），
-     *   可独立显示或嵌入。
-     * - **信号通知**：提供丰富的信号，便于外部监听图像尺寸变化、鼠标坐标、缩放值、标注事件等。
-     *
-     * @note 使用前需确保 OpenGL 上下文已共享（设置 `QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts)`）。
-     *
-     * @see CyMediaDisView, CyMediaDisViewBckDraw, CyMediaDisGrayStretch, CyMediaDisGrayTest
-     */
     class CYMEDIA_LIB CyMediaDis : public QFrame {
         Q_OBJECT
 

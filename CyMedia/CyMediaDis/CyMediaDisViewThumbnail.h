@@ -23,18 +23,19 @@
 #pragma once
 #include "CyMediaBaseDef.h"
 
+#include <QOpenGLWidget>
+#include <QOpenGLFunctions>
 #include <QWidget>
 #include <QGraphicsScene>
+#include <QTransform>
 
 class CyMediaDisView;
-class CyMediaDisViewThumbnail : public QWidget {
+class QOpenGLVertexArrayObject;
+class CyMediaDisViewThumbnail : public QOpenGLWidget, public QOpenGLFunctions {
     Q_OBJECT
 public:
     CyMediaDisViewThumbnail(CyMediaDisView* parentView, QWidget* parent = nullptr);
     ~CyMediaDisViewThumbnail();
-
-signals:
-    void viewRectChanged(const QRectF& rect);
 
 public:
     void setScene(QGraphicsScene* scene);
@@ -43,9 +44,6 @@ public:
     bool isBeingDragged();
 
     void setThumbnailSize(const QSize& size);
-
-    void upBackImage(CyMedia::ImageShowInfo info, uint8_t* data);
-    QImage& backImage();
 
     void setBackgroundColor(QColor color);
     void setSelectColor(QColor color);
@@ -56,21 +54,27 @@ public:
     void setBorderColor(QColor color);
 
 protected:
-    void paintEvent(QPaintEvent* event) override;
+    void paintGL() override;          // 替代 paintEvent
+    void resizeGL(int w, int h) override;
+    void initializeGL() override;
+
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
 
-    QRectF getDrawRect() const;
+private:
+    QRectF getDrawRect() const;// 辅助计算选择框
 
 private:
     static const int MIN_RECT_SIZE = 30;   // 最小边长（像素）
+
     CyMediaDisView* m_parentView = nullptr; // 指向主视图
     QGraphicsScene* m_scene = nullptr;
+    QOpenGLVertexArrayObject* m_vao = nullptr; //VAO无法共享，每个上下文要有自己的VAO
+
     QRectF mViewRect;
     bool mDragging = false;
     QPointF mClickOffsetRatio; // 鼠标点击点在小窗内的相对比例 (0~1)
-    QImage mBackImage;
     bool mDrawColor = true;
 
     QColor mBorderColor = QColor(0x00, 0xEE, 0x00);

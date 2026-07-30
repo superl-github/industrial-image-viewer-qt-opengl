@@ -1,12 +1,12 @@
-﻿#include "CyMediaDisViewThumbnail.h"
+#include "CyMediaDisViewThumbnail.h"
 #include "CyMediaDisView.h"
+#include "CyMediaDisViewBckDraw.h"
 #include "CyMediaCalc/CyMediaCalc.h"
 
-static const int THUMBNAIL_MIN_SIZE = 120;      // 最小边长
-
 CyMediaDisViewThumbnail::CyMediaDisViewThumbnail(CyMediaDisView* parentView, QWidget* parent /*= nullptr*/)
-    : QWidget(parent)
+    : QOpenGLWidget(parent)
     , m_parentView(parentView) {
+    
 }
 
 CyMediaDisViewThumbnail::~CyMediaDisViewThumbnail() {
@@ -28,122 +28,6 @@ bool CyMediaDisViewThumbnail::isBeingDragged() {
 
 void CyMediaDisViewThumbnail::setThumbnailSize(const QSize& size) {
     resize(size);
-}
-
-void CyMediaDisViewThumbnail::upBackImage(CyMedia::ImageShowInfo info, uint8_t* data) {
-    QImage image;
-    if (info.isBayer()) {
-        uint32_t rgbLen = info.width * info.height * 3;
-        if (info.bit > 8 && info.bit <= 16) {
-            rgbLen *= 2;
-        }
-        uint8_t* rgbData = new uint8_t[rgbLen];
-        CyMediaCalc::bayer2RGB(info, data, rgbData);
-        image = QImage(info.width, info.height, QImage::Format_RGB888);
-        auto pImage = image.bits();
-
-        if (info.bit <= 8) {
-            memcpy(pImage, rgbData, rgbLen);
-        }
-        else if (info.bit <= 16) {
-            float maxPixel = (1 << info.bit) - 1;
-            for (int y = 0; y < info.height; y++) {
-                for (int x = 0; x < info.width; x++) {
-                    for (int p = 0; p < 3; p++) {
-                        pImage[(y * info.width + x) * 3 + p] = (rgbData[(y * info.width + x) * 3 + p] * 255) / maxPixel;
-                    }
-                }
-            }
-        }
-    }
-    else if (info.isYUV()) {
-        uint32_t rgbLen = info.width * info.height * 3;
-        uint8_t* rgbData = new uint8_t[rgbLen];
-        CyMediaCalc::YUV2RGB(info, data, rgbData);
-        image = QImage(info.width, info.height, QImage::Format_RGB888);
-        auto pImage = image.bits();
-        memcpy(pImage, rgbData, rgbLen);
-    }
-    else {
-        switch (info.format) {
-            case CyMedia::MONO: {
-                // 单色图像
-                if (info.bit == 8) {
-                    image = QImage(data, info.width, info.height, QImage::Format_Grayscale8);
-                }
-                else if (info.bit <= 16) {
-                    uint16_t* pImage = (uint16_t*)data;
-                    float maxPixel = (1 << info.bit) - 1;
-                    image = QImage(info.width, info.height, QImage::Format_Grayscale8);
-                    for (int y = 0; y < info.height; y++) {
-                        for (int x = 0; x < info.width; x++) {
-                            image.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
-                        }
-                    }
-                }
-                else if (info.bit < 32) {
-                    uint32_t* pImage = (uint32_t*)data;
-                    float maxPixel = (1 << info.bit) - 1;
-                    image = QImage(info.width, info.height, QImage::Format_Grayscale8);
-                    for (int y = 0; y < info.height; y++) {
-                        for (int x = 0; x < info.width; x++) {
-                            image.bits()[y * info.width + x] = (pImage[y * info.width + x] * 255) / maxPixel;
-                        }
-                    }
-                }
-            }break;
-            case CyMedia::RGB: {
-                // RGB图像
-                if (info.bit == 8) {
-                    image = QImage(data, info.width, info.height, QImage::Format_RGB888);
-                }
-                else if (info.bit == 16) {
-                    // 处理16位RGB图像
-                    uint16_t* pImage = (uint16_t*)data;
-                    float maxPixel = (1 << info.bit) - 1;
-                    image = QImage(info.width, info.height, QImage::Format_RGB888);
-                    for (int y = 0; y < info.height; y++) {
-                        for (int x = 0; x < info.width; x++) {
-                            for (int p = 0; p < 3; p++) {
-                                image.bits()[(y * info.width + x) * 3 + p] = (pImage[(y * info.width + x) * 3 + p] * 255) / maxPixel;
-                            }
-                        }
-                    }
-                }
-            }break;
-            case CyMedia::RGBA: {
-                // RGBA图像
-                if (info.bit == 8) {
-                    image = QImage(data, info.width, info.height, QImage::Format_RGBA8888);
-                }
-                else if (info.bit == 16) {
-                    // 处理16位RGB图像
-                    image = QImage(info.width, info.height, QImage::Format_RGBA64);
-                    memcpy(image.bits(), data, info.width * info.height * 2);
-                }
-            }break;
-        }
-    }
-
-    // 如果图像创建成功，设置为缩略图
-    if (false == image.isNull()) {
-        mBackImage = image;
-        // 缩放到合适的大小，保持宽高比
-        int thumbSize = THUMBNAIL_MIN_SIZE;
-        if (image.width() > image.height()) {
-            int newHeight = thumbSize * image.height() / image.width();
-            mBackImage = mBackImage.scaled(thumbSize, newHeight, Qt::KeepAspectRatio);
-        }
-        else {
-            int newWidth = thumbSize * image.width() / image.height();
-            mBackImage = mBackImage.scaled(newWidth, thumbSize, Qt::KeepAspectRatio);
-        }
-        //update(); // 重绘缩略图
-    }
-}
-
-QImage& CyMediaDisViewThumbnail::backImage() {
-    return mBackImage;
 }
 
 void CyMediaDisViewThumbnail::setBackgroundColor(QColor color) {
@@ -174,33 +58,80 @@ void CyMediaDisViewThumbnail::setBorderColor(QColor color) {
     mBorderColor = color;
 }
 
-void CyMediaDisViewThumbnail::paintEvent(QPaintEvent* event) {
-    QWidget::paintEvent(event);
-    QPainter painter(this);
-    // 绘制场景缩略图
-    if (m_scene) {
-        // 绘制背景
-        if (mBackImage.isNull()) {
-            painter.setBrush(mBackGroundColor);
-            painter.setPen(Qt::transparent);
-            painter.drawRect(rect());
-        }
-        else {
-            painter.drawImage(rect(), mBackImage);
-        }
-
-        // 绘制控制矩形
-        QRectF drawRect = getDrawRect();
-        painter.setBrush(mSelectRectColor_transparent);
-        painter.setPen(mSelectRectColor);
-        painter.drawRect(drawRect);
+void CyMediaDisViewThumbnail::paintGL() {
+    if (!m_parentView) return;
+    //绘制背景图像
+    CyMediaDisViewBckDraw* drawer = m_parentView->imageDraw();
+    if (!drawer || !drawer->glIsInit() || !drawer->haveImage()) {
+        QPainter painter(this);
+        painter.fillRect(rect(), mBackGroundColor);
     }
-    //绘制边框
+    else {
+        QSizeF imgSize = m_parentView->scene()->sceneRect().size();
+        // 计算世界矩阵
+        QTransform transform;
+        double scale = qMin(width() / imgSize.width(), height() / imgSize.height());
+        double dx = (width() - imgSize.width() * scale) / 2.0;
+        double dy = (height() - imgSize.height() * scale) / 2.0;
+
+        // 变换顺序（从右到左执行）
+        transform.translate(dx, dy);                 // 4) 平移到缩略图中心
+        transform.scale(scale, scale);               // 3) 缩放
+        transform.translate(imgSize.width() / 2.0,
+            imgSize.height() / 2.0); // 2) 平移回图像中心（旋转中心）
+        if (m_parentView->isHriMirror())
+            transform.rotate(180.0, Qt::YAxis);
+        if (m_parentView->isVerMirror())
+            transform.rotate(180.0, Qt::XAxis);
+        transform.rotate(m_parentView->rotateValue());// 1) 旋转/镜像
+        transform.translate(-imgSize.width() / 2.0,
+            -imgSize.height() / 2.0); // 0) 平移图像中心至原点
+        // 调用渲染器绘制纹理
+        int physWidth = width() * devicePixelRatioF();
+        int physHeight = height() * devicePixelRatioF();
+        auto f = this->context()->extraFunctions();
+        if (f) {
+            f->glClearColor(0.0, 0.3, 0.3, 1.0);
+            f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            drawer->renderTexture(f, m_vao, rect(), physWidth, physHeight, transform);
+        }
+    }
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    // 绘制选择框（现有逻辑）
+    QRectF drawRect = getDrawRect();
+    painter.setBrush(mSelectRectColor_transparent);
+    painter.setPen(mSelectRectColor);
+    painter.drawRect(drawRect);
+
+    // 绘制边框
     if (mDrawColor) {
         painter.setPen(QPen(mBorderColor, 2));
         painter.setBrush(Qt::NoBrush);
-        painter.drawRect(this->rect());
+        painter.drawRect(rect());
     }
+}
+
+
+void CyMediaDisViewThumbnail::resizeGL(int w, int h) {
+
+}
+
+void CyMediaDisViewThumbnail::initializeGL() {
+    // ===== 诊断代码 =====
+    QOpenGLContext* currentCtx = QOpenGLContext::currentContext();
+    if (currentCtx) {
+        qDebug() << "[Thumbnail] Current context:" << (void*)currentCtx;
+        qDebug() << "[Thumbnail] Share context:" << (void*)currentCtx->shareContext();
+        qDebug() << "[Thumbnail] Format:" << currentCtx->format();
+
+        // 检查是否和主窗口共享
+        // 你可以在主窗口的 initializeGL 里也打印 context 指针
+        // 如果 shareContext() 返回非 null，说明在同一 share group
+    }
+
+    m_vao = m_parentView->imageDraw()->createVAO();
 }
 
 void CyMediaDisViewThumbnail::mousePressEvent(QMouseEvent* event) {

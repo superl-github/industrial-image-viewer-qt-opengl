@@ -96,7 +96,7 @@ namespace CyMedia {
         oneFrameBuffer* getBuffer(bool force = false);
         void upImageToBuffer(oneFrameBuffer* buffer, CyMedia::ImageShowInfo& info, uint8_t* data);
         bool addData(CyMedia::ImageShowInfo info, uint8_t* data, bool isSource = false, bool force = false);
-        void addOneGrayData(bool upImage, bool force = false);
+        void addOneGrayData(bool upImage, bool upStretch = true, bool force = false);
         void clearImage();
         bool upDataIsSlow();
 
@@ -175,11 +175,11 @@ namespace CyMedia {
         QPushButton* zoomFitButton = 0;     ///< 适应窗口按钮
         QPushButton* flipHButton = 0;       ///< 水平翻转按钮
         QPushButton* flipVButton = 0;       ///< 垂直翻转按钮
-        bool bZoomScrollBarIsShow = true;
+        bool bZoomScrollBarIsShow = false;
 
         QElapsedTimer m_ToolWUpTimer;
         bool m_AutoThumbnail = true;
-        QSize m_AutoThumbnailSize = QSize(1000, 1000);
+        QSize m_AutoThumbnailSize = QSize(500, 500);
 
         CyMediaRecTimeW* m_RetimeItem = nullptr;
         CyMediaDisGrayStretch* m_StretchWidget = nullptr;
@@ -401,9 +401,13 @@ namespace CyMedia {
     }
 
     void CyMediaDis::setDemosaic(CyMedia::DemosaicingMethod method) {
-        d->view->imageDraw()->setDemosaic(method);
-        if (d->upDataIsSlow()) {
-            d->addOneGrayData(true);
+        if (d->view->imageDraw()->Demosaic() != method) {
+            d->view->imageDraw()->setDemosaic(method);
+            if (d->upDataIsSlow()) {
+                d->addOneGrayData(false);
+                QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
+                QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
+            }
         }
     }
 
@@ -412,7 +416,14 @@ namespace CyMedia {
     }
 
     void CyMediaDis::setYUVMethod(CyMedia::YUVTransMethod method) {
-        d->view->imageDraw()->setYUVTMethod(method);
+        if (d->view->imageDraw()->yuvMethod() != method) {
+            d->view->imageDraw()->setYUVTMethod(method);
+            if (d->upDataIsSlow()) {
+                d->addOneGrayData(false);
+                QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
+                QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
+            }
+        }
     }
 
     QStringList CyMediaDis::ColorMapList() const {
@@ -424,33 +435,24 @@ namespace CyMedia {
     }
 
     bool CyMediaDis::setColorMap(quint32 index) {
-        if (false == d->view->imageDraw()->setColorMap(index))
-            return false;
-        /*if (d->upDataIsSlow()) {
-            if (d->m_rawInfo.format >= CyMedia::MONO
-                || (d->m_rawInfo.format >= CyMedia::BAYERRG && d->m_rawInfo.format <= CyMedia::BAYERGB && d->view->showBayerSource())) {
-                d->addOneGrayData(
-                    d->graytestwidget->isVisible(),
-                    d->grayStretchWidget->isVisible(),
-                    false);
-            }
-        }*/
-        return true;
+        if (d->view->imageDraw()->colorMapIndex() == index) return true;
+
+        bool setRe = d->view->imageDraw()->setColorMap(index);
+        if (setRe && d->upDataIsSlow()) {
+            QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
+        }
+        return setRe;
     }
 
     bool CyMediaDis::setColorMap(const QString& mapName) {
-        if (false == d->view->imageDraw()->setColorMap(mapName))
-            return false;
-        /*if (d->upDataIsSlow()) {
-            if (d->m_rawInfo.format >= CyMedia::MONO
-                || (d->m_rawInfo.format >= CyMedia::BAYERRG && d->m_rawInfo.format <= CyMedia::BAYERGB && d->view->showBayerSource())) {
-                d->addOneGrayData(
-                    d->graytestwidget->isVisible(),
-                    d->grayStretchWidget->isVisible(),
-                    false);
-            }
-        }*/
-        return true;
+        if(d->view->imageDraw()->colorMapName() == mapName) return true;
+        bool setRe = d->view->imageDraw()->setColorMap(mapName);
+        if (setRe && d->upDataIsSlow()) {
+            QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
+        }
+        return setRe;
     }
 
     void CyMediaDis::zoomIn() {
@@ -595,7 +597,7 @@ namespace CyMedia {
     void CyMediaDis::setThumbnailAutoEnable(bool enable) {
         d->m_AutoThumbnail = enable;
         if (d->upDataIsSlow()) {
-            d->addOneGrayData(true);
+            d->addOneGrayData(true, false);
         }
     }
 
@@ -606,7 +608,7 @@ namespace CyMedia {
     void CyMediaDis::setThumbnailAutoEnableSize(QSize size) {
         d->m_AutoThumbnailSize = size;
         if (d->upDataIsSlow()) {
-            d->addOneGrayData(true);
+            d->addOneGrayData(true, false);
         }
     }
 
@@ -757,7 +759,7 @@ namespace CyMedia {
         return true;
     }
 
-    void CyMediaDis::privateData::addOneGrayData(bool upImage, bool force /*= false*/) {
+    void CyMediaDis::privateData::addOneGrayData(bool upImage, bool upStretch/* = true*/, bool force/* = false*/) {
         if (false == bHaveData) {
             return;
         }
@@ -773,7 +775,7 @@ namespace CyMedia {
         //重置状态
         t_pBuffer->bIsSource = true;
         t_pBuffer->bUpImage = upImage;
-        t_pBuffer->bUpStretch = (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
+        t_pBuffer->bUpStretch = upStretch && m_StretchWidget->isVisible();// (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
         t_pBuffer->bIsAddFps = false;
 
         t_pBuffer->bisUpData = true;
@@ -990,7 +992,7 @@ namespace CyMedia {
         }
         //缩略图
         if (up && false == opePara.isSource) {
-            view->upThumbnaildata(Imageinfo, Imagedata);
+            QMetaObject::invokeMethod(view->thumnailWidget(), "update", Qt::QueuedConnection);
         }
     }
     void CyMediaDis::privateData::Thread_ImageData_SpecialOpe(CyMedia::ImageShowInfo& srcInfo, uint8_t** srcData, opeFrameThreadPara& opePara) {
@@ -1165,6 +1167,9 @@ namespace CyMedia {
         if (guiIsInit)
             return;
         guiIsInit = true;
+        //初始化信息
+        m_imageinfo.width = 1000;
+        m_imageinfo.height = 1000;
 
         initScene();
         initToolBar();
@@ -1392,6 +1397,7 @@ namespace CyMedia {
                 auto strytchpata = m_StretchWidget->stretchValue();
                 view->imageDraw()->setStreaChPara(strytchpata.start, strytchpata.end, strytchpata.max);
                 view->viewport()->update();
+                if (view->thumnailWidget()->isVisible()) view->thumnailWidget()->update();
             }
             });
 
@@ -1472,7 +1478,7 @@ namespace CyMedia {
             if (sender() == m_StretchWidget) {
                 upImage = (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
             }
-            addOneGrayData(upImage, true);
+            addOneGrayData(upImage, true, true);
         }
     }
 

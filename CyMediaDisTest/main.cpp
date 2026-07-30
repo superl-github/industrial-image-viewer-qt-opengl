@@ -1,19 +1,34 @@
-#include <QtWidgets/QApplication>
-#include "CyMediaDisTest.h"
+﻿#include "CyMediaDisTest.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
 #include <iostream>
 
+#include <QApplication>
 #include <QFile>
 #include <QSurfaceFormat>
+#include <QTextCodec>
+#include <QFileInfo>
 
 bool createConsole(std::string title, std::string testStr);
-int main(int argc, char *argv[])
-{
-    if (argc >= 2 && QString(argv[1]) == "-c")
-        createConsole("CyMediaDisTest", "init...\n");
+int main(int argc, char *argv[]) {
+    //获取传递参数
+    QString dragFile;
+    QStringList mainCommandList;
+    for (int i = 0; i < argc - 1; i++) {
+        mainCommandList.append(argv[i + 1]);
+    }
+    for (auto& oneCommand : mainCommandList) {
+        if (oneCommand == "-c") {
+            createConsole("CyMediaDisTest", "init...\n");
+        }
+        else {
+            if (QFileInfo(oneCommand).isFile()) {
+                dragFile = oneCommand;
+            }
+        }
+    }
 
     QFile tempFile("D:\\Users\\llf\\Desktop\\RTX\\llf\\light_defect.raw");
     int index = 0;
@@ -42,14 +57,19 @@ int main(int argc, char *argv[])
     QSurfaceFormat format;
     format.setVersion(3, 3);
     format.setProfile(QSurfaceFormat::CoreProfile);
-    format.setDepthBufferSize(24);          // 与您 QOpenGLWidget 的设置保持一致
+    format.setDepthBufferSize(24);
     format.setStencilBufferSize(8);
     format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
     QSurfaceFormat::setDefaultFormat(format);
+    //显示UTF-8
+    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
 
     QApplication app(argc, argv);
     CyMediaDisTest window;
     window.show();
+    if (dragFile.size()) {
+        window.openFile(dragFile);
+    }
     return app.exec();
 }
 

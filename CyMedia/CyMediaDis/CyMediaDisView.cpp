@@ -85,7 +85,8 @@ void CyMediaDisView::MyViewPrivateData::updateThumbnail() {
     // 获取当前视口在场景中的矩形（世界坐标）
     QPointF topLeft = m_view->mapToScene(0, 0);
     QPointF bottomRight = m_view->mapToScene(m_view->viewport()->width(), m_view->viewport()->height());
-    QRectF viewSceneRect(topLeft, bottomRight);
+    //QRectF viewSceneRect(topLeft, bottomRight);
+    QRectF viewSceneRect = m_view->mapToScene(m_view->viewport()->rect()).boundingRect();
 
     // 获取缩略图实际尺寸
     QSize thumbSize = m_view->m_Thumbnail->size();
@@ -173,15 +174,14 @@ void CyMediaDisView::MyViewPrivateData::upThumbanilSize() {
         }
         w = imageSize.width() * hRadio;
     }
-    m_view->m_Thumbnail->setThumbnailSize(QSize(w + 0.5, h + 0.5));
+    QSize setSize(w + 0.5, h + 0.5);
+    if (setSize != m_view->m_Thumbnail->size()) m_view->m_Thumbnail->setThumbnailSize(setSize);
 }
 
 CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
     :QGraphicsView() {
     d = new MyViewPrivateData;
     d->m_view = this;
-    m_backDraw = new CyMediaDisViewBckDraw(this);
-    m_Thumbnail = new CyMediaDisViewThumbnail(this, this);
 
     setFrameShape(QFrame::NoFrame);
     setMouseTracking(true);
@@ -190,14 +190,15 @@ CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &CyMediaDisView::onScrollValueChanged);
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &CyMediaDisView::onScrollValueChanged);
 
+    m_backDraw = new CyMediaDisViewBckDraw(this);
+
     // 初始化缩略图窗口
-    d->updateThumbnail();
-    d->upThumbanilPosition();
-    m_Thumbnail->hide();
-    // 连接信号
-    connect(m_Thumbnail, &CyMediaDisViewThumbnail::viewRectChanged, this, [this](const QRectF& rect) {
-        d->onViewRectChanged(rect);
-        });
+    //m_Thumbnail = new CyMediaDisViewThumbnail(this, this);
+    ////m_Thumbnail->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+    //m_Thumbnail->setAttribute(Qt::WA_TranslucentBackground);
+    //d->updateThumbnail();
+    //d->upThumbanilPosition();
+    //m_Thumbnail->hide();
 
     //指定opengl版本
     QOpenGLWidget* OpenGlwidget = new QOpenGLWidget();
@@ -219,12 +220,13 @@ CyMediaDisView::~CyMediaDisView() {
 
 void CyMediaDisView::setCyScene(QGraphicsScene* scene) {
     this->setScene(scene);
-    m_Thumbnail->setScene(scene);
+    if (m_Thumbnail) m_Thumbnail->setScene(scene);
     scene->setBackgroundBrush(QBrush(Qt::black, Qt::SolidPattern));
 }
 
 void CyMediaDisView::sceneRectUp(const QRectF& rect) {
-    //setSceneRect(rect);
+    setSceneRect(rect);
+    d->upThumbanilSize();
     d->updateThumbnail();
 }
 
@@ -366,6 +368,10 @@ void CyMediaDisView::clearBackGround() {
     }
 }
 
+QWidget* CyMediaDisView::thumnailWidget() {
+    return m_Thumbnail;
+}
+
 bool CyMediaDisView::thumbnailEnable() {
     return d->mThumbnailEnable;
 }
@@ -381,14 +387,6 @@ void CyMediaDisView::setThumbnailEnable(bool enable) {
 
 bool CyMediaDisView::thumbnailVisible() {
     return m_Thumbnail->isVisible();
-}
-
-void CyMediaDisView::upThumbnaildata(CyMedia::ImageShowInfo info, uint8_t* data) {
-    m_Thumbnail->upBackImage(info, data);
-}
-
-QImage& CyMediaDisView::ThumbnailImage() {
-    return m_Thumbnail->backImage();
 }
 
 void CyMediaDisView::setThumbnailSelectColor(QColor color) {
@@ -451,6 +449,15 @@ void CyMediaDisView::showEvent(QShowEvent* e) {
         m_backDraw->initgl(glWidget->context());
         glWidget->doneCurrent();
     }
+    // 创建缩略图（如果尚未创建）
+    if (!m_Thumbnail) {
+        m_Thumbnail = new CyMediaDisViewThumbnail(this, this);
+        m_Thumbnail->setScene(this->scene());
+        d->upThumbanilSize();
+        d->upThumbanilPosition();
+        m_Thumbnail->hide(); // 初始隐藏
+    }
+    d->updateThumbnail();
 }
 
 void CyMediaDisView::closeEvent(QCloseEvent* e) {
@@ -544,7 +551,6 @@ void CyMediaDisView::keyReleaseEvent(QKeyEvent* event)
 
 void CyMediaDisView::resizeEvent(QResizeEvent* event) {
     QGraphicsView::resizeEvent(event);
-
     if (m_Thumbnail) {
         d->upThumbanilSize();
         d->updateThumbnail();

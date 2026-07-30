@@ -97,11 +97,10 @@ public:
     void clearBackGround();
 
     //缩略图
+    QWidget* thumnailWidget();
     bool thumbnailEnable();
     void setThumbnailEnable(bool enable);
     bool thumbnailVisible();
-    void upThumbnaildata(CyMedia::ImageShowInfo info, uint8_t* data);
-    QImage& ThumbnailImage();
     void setThumbnailSelectColor(QColor color);
     void setThumbnailBackgroundColor(QColor color);
     QColor thumbnailBorderColor();

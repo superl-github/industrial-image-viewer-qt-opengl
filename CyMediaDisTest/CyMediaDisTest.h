@@ -3,7 +3,7 @@
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaTestCommon.h"
 #include "CyMediaDis.h"
-#include "CyMediaParse/CyMediaFileParse.h"
+#include "CyMediaParse/CyMediaImageParse.h"
 
 #include <QtWidgets/QMainWindow>
 #include <QThread>
@@ -23,15 +23,17 @@ public:
 public:
     QString getAnalogImageTypeName(CyMediaTest::eAnalogImageType type);
     void genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& img, int frameIdx);
-
     QString geyBayerMethodStr(CyMedia::DemosaicingMethod methord);
+    QString geyYUVMethodStr(CyMedia::YUVTransMethod methord);
+
+    void openFile(QString filePath);
 
 private:
     void initGUI();
     void initStatus();
     void initMenu();
     void initContexMenu();
-    void upFlush();
+    void flushTranslate();
     void initcap();
 
     //Menu
@@ -47,6 +49,7 @@ private:
 
     void on_act_view_colormap_type(QAction* act);
     void on_act_view_bayer_rebuild_type(QAction* act);
+    void on_act_view_yuv_rebuild_type(QAction* act);
     void on_act_gray_stretch();
 
     void on_act_grayscale_measure();
@@ -78,7 +81,7 @@ private:
     Ui::CyMediaDisTestClass ui;
     CyMedia::CyMediaDis* m_view = nullptr;
     CyMedia::CyMediaDis_GetRawInfoDialog* m_rawHeaderW = nullptr;
-    CyMedia::CyMdiaImageParse* m_file_func;
+    CyMedia::CyMediaImageParse* m_image_func;
 
     //status
     QLabel* ui_ImageSizeLabel = nullptr;
@@ -113,6 +116,9 @@ private:
     QMenu* ui_menu_bayer_rebuild = nullptr;
     QVector<QAction*> ui_act_view_bayer_rebuild_list;
     QActionGroup* ui_act_group_view_bayer_rebuild = nullptr;
+    QMenu* ui_menu_yuv_rebuild = nullptr;
+    QVector<QAction*> ui_act_view_yuv_rebuild_list;
+    QActionGroup* ui_act_group_view_yuv_rebuild = nullptr;
     QAction* ui_grayscaleStretchAct = nullptr;
     //Menu/Tool
     QMenu* ui_menu_tool = nullptr;

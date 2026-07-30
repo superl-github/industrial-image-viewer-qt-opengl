@@ -58,7 +58,7 @@
     <ClCompile Include="CyMediaDis\CyMediaDisView.cpp">
       <Filter>CyMediaDis</Filter>
     </ClCompile>
-    <ClCompile Include="CyMediaParse\CyMediaFileParse.cpp">
+    <ClCompile Include="CyMediaParse\CyMediaImageParse.cpp">
       <Filter>CyMediaParse</Filter>
     </ClCompile>
     <ClCompile Include="CyMediaCalc\CyMediaCalc_YUV.cpp">
@@ -66,6 +66,12 @@
     </ClCompile>
     <ClCompile Include="CyMediaCalc\CyMediaFileFunc.cpp">
       <Filter>CyMediaCalc</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaParse\CyMediaVideoParseRaw.cpp">
+      <Filter>CyMediaParse</Filter>
+    </ClCompile>
+    <ClCompile Include="CyMediaParse\CyMediaVideoParse.cpp">
+      <Filter>CyMediaParse</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -202,7 +208,7 @@
     <ClInclude Include="CyMediaBaseDef.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CyMediaParse\CyMediaFileParse.h">
+    <ClInclude Include="CyMediaParse\CyMediaImageParse.h">
       <Filter>CyMediaParse</Filter>
     </ClInclude>
     <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h">
@@ -210,6 +216,22 @@
     </ClInclude>
     <ClInclude Include="CyMediaCalc\CyMediaFileFunc.h">
       <Filter>CyMediaCalc</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="CyMediaParse\CyMediaVideoParseRaw.h">
+      <Filter>CyMediaParse</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaParse\CyMediaVideoParseBase.h">
+      <Filter>CyMediaParse</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaParse\CyMediaVideoParse.h">
+      <Filter>CyMediaParse</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaParse\stb_image.h">
+      <Filter>CyMediaParse</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaParse\stb_image_write.h">
+      <Filter>CyMediaParse</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -227,5 +249,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="isYUV420" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CyMedia.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

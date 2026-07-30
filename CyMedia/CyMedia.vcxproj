@@ -128,7 +128,8 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+      <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
+copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
 copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -151,7 +152,8 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+      <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
+copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
 copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -169,7 +171,8 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\rcc\</QtRccDir>
     </QtRcc>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
+      <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
+copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -186,7 +189,8 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <QtRccDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\rcc\</QtRccDir>
     </QtRcc>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
+      <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
+copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
@@ -246,7 +250,9 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaCalc\CyMediaFileFunc.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
-    <ClCompile Include="CyMediaParse\CyMediaFileParse.cpp" />
+    <ClCompile Include="CyMediaParse\CyMediaImageParse.cpp" />
+    <ClCompile Include="CyMediaParse\CyMediaVideoParse.cpp" />
+    <ClCompile Include="CyMediaParse\CyMediaVideoParseRaw.cpp" />
     <QtMoc Include="CyMediaDis\cycustomwidget.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
@@ -351,7 +357,13 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h" />
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
     <ClInclude Include="CyMediaCalc\CyMediaFileFunc.h" />
-    <ClInclude Include="CyMediaParse\CyMediaFileParse.h" />
+    <ClInclude Include="CyMediaParse\CyMediaImageParse.h" />
+    <ClInclude Include="CyMediaParse\CyMediaVideoParse.h" />
+    <ClInclude Include="CyMediaParse\CyMediaVideoParseBase.h" />
+    <ClInclude Include="CyMediaParse\CyMediaVideoParseRaw.h" />
+    <ClInclude Include="CyMediaParse\stb_image.h" />
+    <ClInclude Include="CyMediaParse\stb_image_write.h" />
+    <ClInclude Include="resource.h" />
     <QtMoc Include="CyMediaDis\CyMediaDisViewThumbnail.h" />
     <QtMoc Include="CyMediaDis\CyMediaDisViewBckDraw.h" />
     <QtMoc Include="CyMediaDis\drawItem\Item_Polygon.h" />
@@ -401,6 +413,9 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
   </ItemGroup>
   <ItemGroup>
     <None Include="isYUV420" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CyMedia.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

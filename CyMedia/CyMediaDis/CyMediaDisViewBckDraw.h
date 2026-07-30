@@ -1,5 +1,5 @@
 /*****************************************************************//**
- * @class CyMediaDisViewBckDraw
+ * @file CyMediaDisViewBckDraw.h
  * @brief OpenGL 图像渲染引擎，负责纹理管理、着色器编译及背景绘制。
  * @details
  *  本类作为 `CyMediaDisView` 的后端，执行实际的 OpenGL 渲染工作。
@@ -44,16 +44,24 @@ public:
     CyMediaDisViewBckDraw(QGraphicsView* view);
     ~CyMediaDisViewBckDraw();
 
+    /**
+    * @brief （缩略图专用）
+    */
+    void renderTexture(QOpenGLExtraFunctions* f, QOpenGLVertexArrayObject* VAO,
+        const QRectF& targetRect, int viewWidth, int viewHeight,
+        const QTransform& transform = QTransform());
+
 signals:
     void textureSizeOver(bool flag, QString txt);
 
 public:
-    // 更新图像相关
+    // 更新图像相关 QGraphicsView调用
     void initgl(QOpenGLContext* ctx);
     bool glIsInit();
     void drawBackground(QPainter* painter, const QRectF& rect);
 
     QOpenGLContext* createSharedContext();
+    QOpenGLVertexArrayObject* createVAO();
     /**
      * @brief upBackGround  更新背景图像
      * @details 支持子线程上传纹理
@@ -91,12 +99,14 @@ public:
     // 颜色映射
     QStringList ColorMapList() const;
     qint32 colorMapIndex() const;
+    QString colorMapName() const;
     bool setColorMap(qint32 index);
     bool setColorMap(const QString& mapName);
 
 private:
     enum ShaderVariant {
-        MONO = 0,
+        None = 0,
+        MONO,
         MONO_OVERSIZE,
         RGB,
         BAYER_NONE,
@@ -144,6 +154,7 @@ private:
         uint32_t vTexDataOffset = 0;
 
         // 标志
+        bool isReBiuld = false;
         bool needUpImageInfo = false;
     };
 
@@ -157,8 +168,7 @@ private:
     GLushort m_indicesArray[6] = { 0, 1, 2, 3, 2, 1 };
 
     bool mUseOpenGL = true;
-    ShaderVariant m_currentShaderType = ShaderVariant::MONO;
-    bool m_shaderDirty = true;
+    ShaderVariant m_currentShaderType = ShaderVariant::None;
     QString m_commonFragmentSource;
     QOpenGLShaderProgram* m_shader_program = nullptr;
     QOpenGLVertexArrayObject* pVAO = nullptr;
@@ -194,6 +204,7 @@ private:
     QString m_ColorMapDirPath;
     QStringList m_ColorMapList;
     qint32 m_ColorMapIndex = 0;
+    QString m_ColorMapName;
     quint8* m_ColorMapData = nullptr;
     qint32 m_ColorMapFileSize = 768;
     qint32 m_ColorMapData_Width = 0;
@@ -254,7 +265,7 @@ private:
     ShaderVariant determineShaderVariant(const CyMedia::ImageShowInfo& info);
     void loadCommonShader();
     QString loadFragmentShaderSource(ShaderVariant variant);
-    bool recompileShader(QOpenGLExtraFunctions* f, const CyMedia::ImageShowInfo& info);
+    bool recompileShader(QOpenGLExtraFunctions* f, CyMediaDisViewBckDraw::oneTexturePara* para);
     void upUniforLocation(QOpenGLShaderProgram* program);
 
     //共享上下文相关
@@ -273,7 +284,7 @@ private:
     void updateTextureFormat(const CyMedia::ImageShowInfo& info, int idx, bool oversize = false);
     void upShaderUniformSampler(QOpenGLExtraFunctions* f);
     void upShaderUniformImageInfo(QOpenGLExtraFunctions* f, int colorType);
-    void upShaderUniformOther(QOpenGLExtraFunctions* f, QMatrix4x4 mat);
+    void upShaderUniformOther(QOpenGLExtraFunctions* f, QMatrix4x4 mat, float zoom = 1.0f);
     void updateStretchUniforms(QOpenGLExtraFunctions* f);
 
     void showGlslError(QString tiltle, QString  txt);

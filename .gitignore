@@ -3,6 +3,13 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# my ignore
+/CyMedia/CyMediaDis/colorMap_ALL
+/.vs/CyMedia
+/OutFile
+/Doxygen
+开发说明.md
+
 # User-specific files
 *.rsuser
 *.suo
@@ -427,10 +434,3 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
-
-# other
-/CyMedia/CyMediaDis/colorMap_ALL
-/.vs/CyMedia
-/OutFile
-/Doxygen
-开发说明.md

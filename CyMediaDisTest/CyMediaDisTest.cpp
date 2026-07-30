@@ -23,7 +23,7 @@ CyMediaDisTest::CyMediaDisTest(QWidget* parent)
 
     m_Setting = new QSettings(QString("CyMediaDisTest.ini"), QSettings::IniFormat, this);
     initGUI();
-    upFlush();
+    flushTranslate();
     initcap();
 
     //QTimer::singleShot(300, this, [this] {
@@ -151,6 +151,19 @@ QString CyMediaDisTest::geyBayerMethodStr(CyMedia::DemosaicingMethod methord) {
     return QString("unknown");
 }
 
+QString CyMediaDisTest::geyYUVMethodStr(CyMedia::YUVTransMethod methord) {
+    switch (methord) {
+    case CyMedia::YUVTRANS_NORMAL:return tr("rgb");
+    case CyMedia::YUVTRANS_Y:return tr("Only Y");
+    }
+
+    return QString("unknown");
+}
+
+void CyMediaDisTest::openFile(QString filePath) {
+    urlsDropOpe(QList<QUrl>{QUrl::fromUserInput(filePath)});
+}
+
 void CyMediaDisTest::initGUI() {
     m_view = new CyMedia::CyMediaDis(this);
     m_view->setAcceptDrops(acceptDrops());
@@ -162,7 +175,7 @@ void CyMediaDisTest::initGUI() {
     m_view->setYUVMethod(CyMedia::YUVTRANS_Y);
 
     m_rawHeaderW = new CyMedia::CyMediaDis_GetRawInfoDialog(this);
-    m_file_func = new CyMedia::CyMdiaImageParse(this);
+    m_image_func = new CyMedia::CyMediaImageParse();
 
     QVBoxLayout* mainLyout = new QVBoxLayout(ui.centralWidget);
     mainLyout->setContentsMargins(0, 0, 0, 0);
@@ -291,6 +304,22 @@ void CyMediaDisTest::initMenu() {
     ui_menu_view->addMenu(ui_menu_bayer_rebuild);
     connect(ui_act_group_view_bayer_rebuild, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_view_bayer_rebuild_type);
 
+    ui_menu_yuv_rebuild = new QMenu(ui_menu_view);
+    ui_act_group_view_yuv_rebuild = new QActionGroup(this);
+    for (int i = CyMedia::YUVTRANS_NORMAL; i <= CyMedia::YUVTRANS_Y; i++) {
+        t_act = new QAction(ui_menu_yuv_rebuild);
+        t_act->setCheckable(true);
+        t_act->setData(i);
+        ui_act_view_yuv_rebuild_list.append(t_act);
+        ui_act_group_view_yuv_rebuild->addAction(t_act);
+        ui_menu_yuv_rebuild->addAction(t_act);
+        if (i == m_view->YUVMethod()) {
+            t_act->setChecked(true);
+        }
+    }
+    ui_menu_view->addMenu(ui_menu_yuv_rebuild);
+    connect(ui_act_group_view_yuv_rebuild, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_view_yuv_rebuild_type);
+
     ui_grayscaleStretchAct = new QAction(ui_menu_view);
     ui_menu_view->addAction(ui_grayscaleStretchAct);
     connect(ui_grayscaleStretchAct, &QAction::triggered, this, &CyMediaDisTest::on_act_gray_stretch);
@@ -320,7 +349,7 @@ void CyMediaDisTest::initContexMenu() {
 
 }
 
-void CyMediaDisTest::upFlush() {
+void CyMediaDisTest::flushTranslate() {
     //status
     ui_ImageSize_NameLabel->setText(tr("Image size: "));
     ui_PosColor_NameLabel->setText(tr("Coordinate color: "));
@@ -348,6 +377,10 @@ void CyMediaDisTest::upFlush() {
     ui_menu_bayer_rebuild->setTitle(tr("Demosaicing Method"));
     for (auto oneact : ui_act_view_bayer_rebuild_list) {
         oneact->setText(geyBayerMethodStr(CyMedia::DemosaicingMethod(oneact->data().toUInt())));
+    }
+    ui_menu_yuv_rebuild->setTitle(tr("YUV Method"));
+    for (auto oneact : ui_act_view_yuv_rebuild_list) {
+        oneact->setText(geyYUVMethodStr(CyMedia::YUVTransMethod(oneact->data().toUInt())));
     }
     ui_grayscaleStretchAct->setText(tr("Grayscale stretching"));
 
@@ -439,6 +472,10 @@ void CyMediaDisTest::on_act_view_bayer_rebuild_type(QAction* act) {
     m_view->setDemosaic(CyMedia::DemosaicingMethod(act->data().toUInt()));
 }
 
+void CyMediaDisTest::on_act_view_yuv_rebuild_type(QAction* act) {
+    m_view->setYUVMethod(CyMedia::YUVTransMethod(act->data().toUInt()));
+}
+
 void CyMediaDisTest::on_act_gray_stretch() {
     auto w = m_view->stretchWidget();
     if (!w) return;
@@ -479,12 +516,12 @@ void CyMediaDisTest::closeReplay() {
 }
 
 void CyMediaDisTest::onFileOpen(QString filepath) {
-    auto fileType = m_file_func->getTypeByPath(filepath);
+    auto fileType = m_image_func->getTypeByPath(filepath.toStdString());
     if (fileType == CyMedia::IMAGE_SUFFIX_INVALID) {
         QMessageBox::warning(
             this,
             tr("error"),
-            tr("Invalid file or unsupported format"),
+            tr("Invalid file or unsupported format : %1").arg(filepath),
             QMessageBox::Ok
         );
         return;
@@ -497,7 +534,7 @@ void CyMediaDisTest::onFileOpen(QString filepath) {
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
     QString errStr;
-    int openRet = m_file_func->openImage(filepath, fileType, info, data);
+    int openRet = m_image_func->openImage(filepath.toStdString(), fileType, info, data);
     if (openRet == 3) {
         m_rawHeaderW->setOpenFileName(QFileInfo(filepath).completeBaseName());
 
@@ -550,7 +587,7 @@ void CyMediaDisTest::onFileOpen(QString filepath) {
         m_Setting->sync();
 
         info.upLenth();
-        openRet = m_file_func->openImage_NotHeaderRaw(filepath, m_rawHeaderW->imageOffset(), info, data);
+        openRet = m_image_func->openImage_NotHeaderRaw(filepath.toStdString(), m_rawHeaderW->imageOffset(), info, data);
     }
     if (0 != openRet) {
         QString errStr;

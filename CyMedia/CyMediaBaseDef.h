@@ -4,7 +4,7 @@
  * @details 本文件定义了整个库所依赖的基础数据类型，包括像素格式、图像信息结构、
  *          色彩空间转换常量以及通用回调函数类型。所有上层模块（如 CyMediaDis）
  *          均依赖此文件中的定义。
- * @author CyMedia Team
+ * @author LLF
  * @version 1.0
  */
 
@@ -20,7 +20,16 @@
 #  define CYMEDIA_LIB __declspec(dllimport)
 # endif
 
+/**
+ * @brief namespace CyMedia.
+ * @details 定义了整个库所依赖的基础数据类型，包括像素格式、图像信息结构、
+ *          色彩空间转换常量以及通用回调函数类型。所有上层模块（如 CyMediaDis）
+ *          均依赖此命名空间中的定义。
+ */
 namespace CyMedia {
+    //================ 版本号 ====================
+    const char VERSION[] = "V 1.1.1";
+
     //==================== 色彩空间转换常量 ====================
     /**
      * @brief sRGB 非线性转换阈值 (0.04045)。
@@ -43,13 +52,11 @@ namespace CyMedia {
      */
     const float THRESHOLD_F_INV = 6.0f / 29.0f;
 
-    //==================== 回调函数类型 ====================
     /**
-     * @brief 日志回调函数类型。
-     * @param msg 日志消息内容。
-     * @param pUser 用户自定义指针，用于传递上下文。
+     * @defgroup CyMediaBaseTypes CyMedia 基础类型定义
+     * @brief 包含所有核心数据结构、枚举和类型别名。
+     * @{
      */
-    using LogCallback = std::function<void(const std::string&, void*)>;
 
     //==================== 公共枚举定义 ====================
     /**
@@ -409,12 +416,12 @@ namespace CyMedia {
     * @brief RAW 图像文件头信息结构体。
     * @details 用于存储序列化 RAW 文件时的附加元信息。
     */
-    typedef struct _RawImageHeadInfo {
+    typedef struct _RawVideoHeadInfo {
         ImageShowInfo frameInfo; ///< 帧图像信息
         float fps;               ///< 帧率（帧/秒）
         int frameCount;          ///< 总帧数
         int64_t size;            ///< 文件总大小（字节）
-    }RawImageHeadInfo;
+    }RawVideoHeadInfo;
 
     /**
      * @brief 二维坐标点（整数）。
@@ -461,9 +468,29 @@ namespace CyMedia {
         float b = 0;
         float a = 0;
     }RgbaPixelF;
-
+    /** @} */
     
 #pragma pack(pop)
+    //==================== 回调函数类型 ====================
+
+    /**
+     * @brief 日志回调函数类型。
+     * @param msg 日志消息内容。
+     * @param pUser 用户自定义指针，用于传递上下文。
+     */
+    using LogCallback = std::function<void(const std::string&, void*)>;
+
+    /**
+     * @brief 视频帧数据回调函数类型。
+     * @details 用于异步播放模式，每解析到一帧图像时触发。
+     *          回调函数内禁止执行耗时操作，以免阻塞推流线程。
+     * @param info 当前帧的图像属性（CyMedia::ImageShowInfo）。
+     * @param data 指向帧图像数据的只读指针（生命周期由解析器管理）。
+     * @param size 帧数据大小（字节数）。
+     * @param userData 用户注册时传入的自定义指针。
+     */
+    using FrameCallback = std::function<void(const ImageShowInfo& info, const uint8_t* data, uint32_t size, void* userData)>;
+
     //==================== 工具函数 ====================
 
     /**
