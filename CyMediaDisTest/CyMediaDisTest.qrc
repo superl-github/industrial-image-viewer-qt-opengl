@@ -1,4 +1,5 @@
 <RCC>
-    <qresource prefix="CyMediaDisTest">
+    <qresource prefix="/CyMediaDisTest">
+        <file>CyMedia.png</file>
     </qresource>
 </RCC>

@@ -12,6 +12,7 @@
 CyMediaDisTest::CyMediaDisTest(QWidget* parent)
     : QMainWindow(parent) {
     ui.setupUi(this);
+    this->setWindowIcon(QIcon(":/CyMediaDisTest/CyMedia.png"));
     setAcceptDrops(true);
     resize(1000, 800);
     //OpenGL检查
@@ -168,6 +169,7 @@ void CyMediaDisTest::initGUI() {
     m_view = new CyMedia::CyMediaDis(this);
     m_view->setAcceptDrops(acceptDrops());
     m_view->setSceneAcceptDrop(acceptDrops());
+    m_view->setDirectUpImage(true);
     connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, &CyMediaDisTest::onViewUpPosPix);
     connect(m_view, &CyMedia::CyMediaDis::imageSizeChanged, this, &CyMediaDisTest::onImageSizeChanged);
     connect(m_view, &CyMedia::CyMediaDis::urlsDrop, this, &CyMediaDisTest::urlsDropOpe);
@@ -534,7 +536,7 @@ void CyMediaDisTest::onFileOpen(QString filepath) {
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
     QString errStr;
-    int openRet = m_image_func->openImage(filepath.toStdString(), fileType, info, data);
+    int openRet = m_image_func->openImage(filepath.toStdWString(), fileType, info, data);
     if (openRet == 3) {
         m_rawHeaderW->setOpenFileName(QFileInfo(filepath).completeBaseName());
 
@@ -587,7 +589,7 @@ void CyMediaDisTest::onFileOpen(QString filepath) {
         m_Setting->sync();
 
         info.upLenth();
-        openRet = m_image_func->openImage_NotHeaderRaw(filepath.toStdString(), m_rawHeaderW->imageOffset(), info, data);
+        openRet = m_image_func->openImage_NotHeaderRaw(filepath.toLocal8Bit().data(), m_rawHeaderW->imageOffset(), info, data);
     }
     if (0 != openRet) {
         QString errStr;

@@ -97,6 +97,7 @@ public:
     void clearBackGround();
 
     //缩略图
+    void setViewTopLeft(const QPointF& topLeft);
     QWidget* thumnailWidget();
     bool thumbnailEnable();
     void setThumbnailEnable(bool enable);

@@ -2,6 +2,7 @@
 #include "CyMediaBaseDef.h"
 
 #include <xstring>
+#include <filesystem>
 
 namespace CyMedia {
     class CYMEDIA_LIB CyMediaImageParse {
@@ -23,7 +24,7 @@ namespace CyMedia {
          * @ref  
          * @return int 0:success 1:file error 2:Invalid file format 3:not RawHeader
         ***/
-        static int openImage(const std::string& filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
+        static int openImage(std::filesystem::path filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
 
         /**
          * @brief openImage_NotHeaderRaw
@@ -36,7 +37,7 @@ namespace CyMedia {
          * @ref  
          * @return int 0:success 1:file error 3:header error
         ***/
-        static int openImage_NotHeaderRaw(const std::string& filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
+        static int openImage_NotHeaderRaw(std::filesystem::path filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
 
         
         /**
@@ -50,6 +51,6 @@ namespace CyMedia {
          * @ref
          * @return int 0:success 1:file error 2:Invalid file format
         ***/
-        static int saveImageToFile(std::string filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader);
+        static int saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader);
     };
 };

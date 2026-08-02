@@ -243,6 +243,18 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
     //Colormap 纹理
     f->glActiveTexture(GL_TEXTURE3);
     f->glBindTexture(GL_TEXTURE_2D, pTexture_ColorMap->textureId());
+    if (bColorMapChange) {
+        f->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+            m_ColorMapData_Width,
+            m_ColorMapData_Height,
+            GL_RED, GL_UNSIGNED_BYTE, m_ColorMapData);
+        GLenum glerr = f->glGetError();
+        if (glerr != GL_NO_ERROR) {
+            qWarning() << "glTexSubImage2D(Colormap) failed:" << glerr;
+        }
+        f->glFinish();
+        bColorMapChange = false;
+    }
 
     //更新顶点
     if (pTex->showInfo.width != m_vertex_current_w || 
@@ -624,8 +636,12 @@ void CyMediaDisViewBckDraw::initTexture(QOpenGLExtraFunctions* f) {
     // Texture wrapping
     pTexture_ColorMap->setWrapMode(QOpenGLTexture::ClampToEdge);
     if (m_ColorMapData) {
-        f->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_ColorMapData_Width, m_ColorMapData_Height,
-            0, GL_RGB, GL_UNSIGNED_BYTE, m_ColorMapData);
+        f->glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_ColorMapData_Width, m_ColorMapData_Height,
+            0, GL_RED, GL_UNSIGNED_BYTE, m_ColorMapData);
+        GLenum glerr = f->glGetError();
+        if (glerr != GL_NO_ERROR) {
+            qWarning() << "glTexImage2D(Colormap) failed:" << glerr;
+        }
     }
 }
 
@@ -1180,7 +1196,7 @@ bool CyMediaDisViewBckDraw::setColorMap(qint32 index) {
         return false;
     //除默认None外读取CM文件
     if (index > 0) {
-        QString transCMFileName = QString("%1\\%2.cm").arg(m_ColorMapDirPath).arg(m_ColorMapList[index]);
+        QString transCMFileName = QString("%1/%2.cm").arg(m_ColorMapDirPath).arg(m_ColorMapList[index]);
         QFile cmFile(transCMFileName);
         if (false == cmFile.open(QIODevice::ReadOnly))
             return false;

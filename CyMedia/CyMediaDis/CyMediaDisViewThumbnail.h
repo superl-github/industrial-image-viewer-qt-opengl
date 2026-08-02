@@ -73,8 +73,12 @@ private:
     QOpenGLVertexArrayObject* m_vao = nullptr; //VAO无法共享，每个上下文要有自己的VAO
 
     QRectF mViewRect;
+    QPointF m_pressThumbPos;          // 鼠标按下时在缩略图中的位置
+    QPointF m_pressSceneTopLeft;      // 按下时视口左上角场景坐标
+    QSizeF  m_pressSceneSize;         // 按下时视口在场景中的大小
+    QRectF  m_pressThumbRect;         // 按下时场景矩形在缩略图上的映射（未钳制）
+
     bool mDragging = false;
-    QPointF mClickOffsetRatio; // 鼠标点击点在小窗内的相对比例 (0~1)
     bool mDrawColor = true;
 
     QColor mBorderColor = QColor(0x00, 0xEE, 0x00);

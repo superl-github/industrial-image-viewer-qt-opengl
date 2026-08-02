@@ -13,6 +13,8 @@
  *
  *  设计为可在任意线程（主线程或子线程）中调用 `upBackGround()` 更新纹理，
  *  需配合 `createSharedContext()` 创建共享 OpenGL 上下文以确保线程安全。
+ * 
+ *  colormap文件 768字节 = 256(R) + 256(G) + 256(B)
  *  
  *  @warning 采用全局共享上下文方案，需要在初始化QApplication前，QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
  *  @see CyMediaDisView

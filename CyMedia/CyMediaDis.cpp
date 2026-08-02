@@ -19,6 +19,7 @@
 #include <QThread>
 #include <QOpenGLWidget>
 #include <QListView>
+#include <QWindow>
 
 #define ImageStackMaxSize 3
 
@@ -38,6 +39,7 @@ namespace CyMedia {
         }oneFrameBuffer_;
 
         typedef struct opeFrameThreadPara {
+            bool* thread_Flag = nullptr;
             QElapsedTimer dataFpsTimer;
             int dataFpsTimePointMs = 3000;
             int dataFpsFramePoint = 30;
@@ -75,6 +77,10 @@ namespace CyMedia {
 
                 BayerTransOnCPU = true;
                 YUVTransOnCPU = true;
+
+                if (ctx) {
+                    delete ctx;
+                }
             }
         }_opeFrameThreadPara;
 
@@ -136,7 +142,6 @@ namespace CyMedia {
         QColor mThemeColor = QColor(0x2a, 0xa3, 0xc6);
         CyMediaDis* m_parent = nullptr;
         CyMediaDisView* view = nullptr;
-        bool upBackGroupShared = false;
         CyDMediaDisScen* scene = nullptr;
         CyDisDrawItem::ItemManager* drawmanager = nullptr;
         CyDisDrawItem::DrawItemTool* drawingTool = nullptr;
@@ -148,6 +153,10 @@ namespace CyMedia {
         quint32 ImageDataStack_currentOpe = 0;
 
         //=====Image=====
+        bool m_bDirectUpImage = false;
+        bool m_directUpImageFlag = true;
+        opeFrameThreadPara m_directUpImagePara;
+        oneFrameBuffer m_directUpImageBuffer;
         CyMediaDisImageCallBack mImageCallBack = nullptr;
         void* mImageCallBackUser = nullptr;
         CyMedia::ImageShowInfo m_imageinfo;
@@ -361,6 +370,38 @@ namespace CyMedia {
 
     bool CyMediaDis::upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force /*= false*/) {
         return d->addData(info, data, false, force);
+    }
+
+    bool CyMediaDis::upIamgeIsDirect() {
+        return d->m_bDirectUpImage;
+    }
+
+    void CyMediaDis::setDirectUpImage(bool flag) {
+        if (d->m_bDirectUpImage == flag) return;
+        d->m_bDirectUpImage = flag;
+        if (d->m_bDirectUpImage) {
+            //停止图像处理线程
+            // 退出数据处理线程
+            d->stopImageOpeThread();
+            // 重置buffer
+            for (int i = 0; i < d->ImageStackMaxNum; ++i) {
+                d->threadPare_ImageDataArray[i].bisUpData = false;
+            }
+            //初始化
+            d->m_directUpImagePara.init();
+            d->m_directUpImagePara.thread_Flag = &d->m_directUpImageFlag;
+            d->m_directUpImageBuffer.bIsAddFps = true;
+            d->m_directUpImageBuffer.bIsSource = false;
+            d->m_directUpImageBuffer.bUpImage = true;
+            d->m_directUpImageBuffer.bUpStretch = true;
+        }
+        else {
+            //释放资源
+            if (d->m_directUpImagePara.ctx) {
+                delete d->m_directUpImagePara.ctx;
+            }
+            d->m_directUpImageBuffer.pdata = nullptr;
+        }
     }
 
     void CyMediaDis::registerImageCallBack(CyMediaDisImageCallBack func, void* pUser) {
@@ -735,6 +776,36 @@ namespace CyMedia {
             log_printf("跳过图像(update)\n\r");
             return false;
         }
+        //直接更新
+        if (true == m_bDirectUpImage) {
+            m_directUpImageBuffer.info = info;
+            m_directUpImageBuffer.pdata = data;
+            //更新处理参数
+            {
+                //实时判断要不要在CPU统一处理特殊转换(Bayer/YUV)，目标：尽量只转换一次
+                m_directUpImagePara.colorOpe.bayerFunc = view->imageDraw()->Demosaic();
+                m_directUpImagePara.colorOpe.YUVFunc = view->imageDraw()->yuvMethod();
+                m_directUpImagePara.colorOpe.stretchType = m_StretchWidget->stretchtype();
+
+                int transNum = 0;
+                if (view->thumbnailVisible()) transNum++;
+                if (transNum > 1) {
+                    m_directUpImagePara.BayerTransOnCPU = true;
+                    m_directUpImagePara.YUVTransOnCPU = true;
+                }
+                else {
+                    m_directUpImagePara.BayerTransOnCPU = false;
+                    m_directUpImagePara.YUVTransOnCPU = false;
+                }
+                if (m_directUpImagePara.colorOpe.bayerFunc == DEMOSAIC_AHD) m_directUpImagePara.BayerTransOnCPU = true;//AHD未在OPenGL实现
+
+                m_directUpImagePara.isSource = false;
+                m_directUpImagePara.upStretch = true;
+            }
+
+            Thread_ImageData_oneFrame(m_directUpImageBuffer, m_directUpImagePara);
+            return true;
+        }
 
         //数据入栈
         QMutexLocker lock(&m_dataLock);
@@ -760,6 +831,10 @@ namespace CyMedia {
     }
 
     void CyMediaDis::privateData::addOneGrayData(bool upImage, bool upStretch/* = true*/, bool force/* = false*/) {
+        if (m_bDirectUpImage) {
+            m_parent->emit needUpImage();
+            return;
+        }
         if (false == bHaveData) {
             return;
         }
@@ -828,6 +903,7 @@ namespace CyMedia {
         oneFrameBuffer tFrame;
 
         bImageDataThread_flag = true;
+        opePara.thread_Flag = &bImageDataThread_flag;
         while (bImageDataThread_flag) {
             //取数据
             int targetIdx = -1;
@@ -916,7 +992,7 @@ namespace CyMedia {
         }
         memcpy(&Imageinfo, &(frame.info), sizeof(CyMedia::ImageShowInfo));
         //检查是否退出
-        if (false == bImageDataThread_flag) {
+        if (false == *opePara.thread_Flag) {
             return;
         }
 
@@ -931,16 +1007,19 @@ namespace CyMedia {
             memcpy(m_rawImageData, Imagedata, m_rawInfo.length);
         }
         // 检查是否退出
-        if (false == bImageDataThread_flag) {
+        if (false == *opePara.thread_Flag) {
             return;
         }
 
         // 特殊格式处理
         Thread_ImageData_SpecialOpe(Imageinfo, &Imagedata, opePara);
         // 检查是否退出
-        if (false == bImageDataThread_flag) {
+        if (false == *opePara.thread_Flag) {
             return;
         }
+
+        //更新状态
+        bHaveData = true;
 
         //辅助工具
         Thread_ImageData_Tools(Imageinfo, Imagedata, opePara);
@@ -957,10 +1036,8 @@ namespace CyMedia {
             }
         }
 
-        //更新状态
-        bHaveData = true;
         // 检查是否退出
-        if (false == bImageDataThread_flag) {
+        if (false == *opePara.thread_Flag) {
             return;
         }
     }
@@ -990,10 +1067,10 @@ namespace CyMedia {
         if (up) {
             mGrayTestWidget->upImage(Imageinfo, Imagedata, opePara.colorOpe);
         }
-        //缩略图
-        if (up && false == opePara.isSource) {
-            QMetaObject::invokeMethod(view->thumnailWidget(), "update", Qt::QueuedConnection);
-        }
+        ////缩略图
+        //if (up && false == opePara.isSource) {
+        //    QMetaObject::invokeMethod(view->thumnailWidget(), "update", Qt::QueuedConnection);
+        //}
     }
     void CyMediaDis::privateData::Thread_ImageData_SpecialOpe(CyMedia::ImageShowInfo& srcInfo, uint8_t** srcData, opeFrameThreadPara& opePara) {
         if (srcInfo.format >= CyMedia::BAYERRG
@@ -1075,10 +1152,9 @@ namespace CyMedia {
     }
     void CyMediaDis::privateData::Thread_ImageData_UpDis(CyMedia::ImageShowInfo& src_info, uint8_t* src_data, opeFrameThreadPara& opePara) {
         //创建更新图像外部上下文并设置共享
-        if (false == upBackGroupShared) {
+        if (!opePara.ctx) {
             opePara.ctx = view->imageDraw()->createSharedContext();
-            if (opePara.ctx) upBackGroupShared = true;
-            if (false == upBackGroupShared) {
+            if (!opePara.ctx) {
                 return;
             }
         }
@@ -1446,7 +1522,7 @@ namespace CyMedia {
 
     void CyMediaDis::privateData::ImageDataDoneReceive(CyMedia::ImageShowInfo info) {
         //检查线程是否退出
-        if (false == bImageDataThread_flag) {
+        if (false == m_bDirectUpImage && false == bImageDataThread_flag) {
             log_printf("跳过图像(Receive)\n\r");
             return;
         }
@@ -1461,15 +1537,16 @@ namespace CyMedia {
         if (m_AutoThumbnail) {
             view->setThumbnailEnable(info.width >= m_AutoThumbnailSize.width() || info.height >= m_AutoThumbnailSize.height());
         }
+        view->thumnailWidget()->update();
+
+        scene->update();
+        view->update();
+        m_parent->update();
 
         if (m_bFirstUpImage) {
             m_bFirstUpImage = false;
             m_parent->zoomAuto();
         }
-
-        scene->update();
-        view->update();
-        m_parent->update();
     }
 
     void CyMediaDis::privateData::onGrayToolNeedImage() {

@@ -1,6 +1,6 @@
 /**
  * @file DrawItemTool.h
- * @brief 鼠标交互绘制工具（新版），通过事件过滤器将用户操作转发给预览图形项自身处理。
+ * @brief 鼠标交互绘制工具，通过事件过滤器将用户操作转发给预览图形项自身处理。
  *
  * 本工具是绘图模块的核心交互控制器，设计目标为支持所有图形类型（包括复杂的多边形）：
  * - 通过 installEventFilter 监听 QGraphicsView 的视口事件。
@@ -11,8 +11,6 @@
  * - 支持替换模式（setReplaceMode），绘制新图形前自动移除上一个图形。
  * - 绘制完成（isDrawFinished 返回 true）或右键取消时，自动清理预览项并发出 drawItem 信号。
  *
- * 后续优化建议：将内部逻辑拆分为 startDrawing/updatePreview/finishDrawing 以提升可读性，
- * 但核心的事件转发机制必须保留。
  */
 #pragma once
 #include "BaseItem.h"

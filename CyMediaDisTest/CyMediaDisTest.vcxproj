@@ -72,6 +72,8 @@
     <QtInstall>5.14.2_msvc2017_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
+    <QtDeploy>true</QtDeploy>
+    <QtDeployCompilerRuntime>skip</QtDeployCompilerRuntime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="QtSettings">
     <QtInstall>5.14.2_msvc2017</QtInstall>
@@ -263,6 +265,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CyMediaTestCommon.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CyMediaTest.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="CyMedia.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

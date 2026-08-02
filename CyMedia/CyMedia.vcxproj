@@ -412,9 +412,6 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </QtTranslation>
   </ItemGroup>
   <ItemGroup>
-    <None Include="isYUV420" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="CyMedia.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -77,15 +77,12 @@ void CyMediaDisViewThumbnail::paintGL() {
         // 变换顺序（从右到左执行）
         transform.translate(dx, dy);                 // 4) 平移到缩略图中心
         transform.scale(scale, scale);               // 3) 缩放
-        transform.translate(imgSize.width() / 2.0,
-            imgSize.height() / 2.0); // 2) 平移回图像中心（旋转中心）
-        if (m_parentView->isHriMirror())
-            transform.rotate(180.0, Qt::YAxis);
-        if (m_parentView->isVerMirror())
-            transform.rotate(180.0, Qt::XAxis);
-        transform.rotate(m_parentView->rotateValue());// 1) 旋转/镜像
-        transform.translate(-imgSize.width() / 2.0,
-            -imgSize.height() / 2.0); // 0) 平移图像中心至原点
+        //transform.translate(imgSize.width() / 2.0, imgSize.height() / 2.0); // 2) 平移回图像中心（旋转中心）
+        //if (m_parentView->isHriMirror()) transform.rotate(180.0, Qt::YAxis);
+        //if (m_parentView->isVerMirror()) transform.rotate(180.0, Qt::XAxis);
+        //transform.rotate(m_parentView->rotateValue());// 1) 旋转/镜像
+        //transform.translate(-imgSize.width() / 2.0, -imgSize.height() / 2.0); // 0) 平移图像中心至原点
+        //采用缩略图一直正向的方案，选框适应旋转/镜像，主图不变
         // 调用渲染器绘制纹理
         int physWidth = width() * devicePixelRatioF();
         int physHeight = height() * devicePixelRatioF();
@@ -136,34 +133,32 @@ void CyMediaDisViewThumbnail::initializeGL() {
 
 void CyMediaDisViewThumbnail::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton && m_parentView) {
-        QRectF drawRect = getDrawRect();
-        if (drawRect.contains(event->pos())) {
-            mDragging = true;
-            setCursor(Qt::ClosedHandCursor);
-            // 计算偏移比例（相对于 drawRect 左上角）
-            mClickOffsetRatio = QPointF(
-                (event->x() - drawRect.x()) / drawRect.width(),
-                (event->y() - drawRect.y()) / drawRect.height()
-            );
-            // 钳制到 [0,1]
-            mClickOffsetRatio.setX(qBound(0.0, mClickOffsetRatio.x(), 1.0));
-            mClickOffsetRatio.setY(qBound(0.0, mClickOffsetRatio.y(), 1.0));
-        }
+        // 记录缩略图点击位置
+        m_pressThumbPos = event->pos();
+        // 记录当前场景矩形在缩略图上的映射（未钳制）
+        m_pressThumbRect = mViewRect;
+        // 记录视口左上角场景坐标
+        m_pressSceneTopLeft = m_parentView->mapToScene(QPoint(0, 0));
+        // 记录视口在场景中的大小
+        QRect viewRect = m_parentView->viewport()->rect();
+        QRectF sceneRect = m_parentView->mapToScene(viewRect).boundingRect();
+        m_pressSceneSize = sceneRect.size();
+
+        mDragging = true;
+        setCursor(Qt::ClosedHandCursor);
     }
     QWidget::mousePressEvent(event);
 }
 
 void CyMediaDisViewThumbnail::mouseMoveEvent(QMouseEvent* event) {
     if (mDragging && m_parentView && m_parentView->scene()) {
-        QRectF drawRect = getDrawRect();
-        // 计算期望的 drawRect 左上角（保持偏移不变）
-        double newDrawX = event->x() - mClickOffsetRatio.x() * drawRect.width();
-        double newDrawY = event->y() - mClickOffsetRatio.y() * drawRect.height();
-        // 不裁剪边界，让滚动条自动钳制（允许超出）
-        double xRatio = newDrawX / width();
-        double yRatio = newDrawY / height();
-        // 通知主视图更新视口
-        m_parentView->setViewFromThumbnailPos(xRatio, yRatio);
+        QPointF deltaThumb = event->pos() - m_pressThumbPos;
+        // 计算场景坐标平移量
+        double scaleX = m_pressSceneSize.width() / m_pressThumbRect.width();
+        double scaleY = m_pressSceneSize.height() / m_pressThumbRect.height();
+        QPointF deltaScene(deltaThumb.x() * scaleX, deltaThumb.y() * scaleY);
+        QPointF newTopLeft = m_pressSceneTopLeft + deltaScene;
+        m_parentView->setViewTopLeft(newTopLeft);
     }
     QWidget::mouseMoveEvent(event);
 }

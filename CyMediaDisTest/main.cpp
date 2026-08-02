@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisTest.h"
+#include "CyMediaDisTest.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -57,12 +57,11 @@ int main(int argc, char *argv[]) {
     QSurfaceFormat format;
     format.setVersion(3, 3);
     format.setProfile(QSurfaceFormat::CoreProfile);
-    format.setDepthBufferSize(24);
-    format.setStencilBufferSize(8);
-    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    format.setSwapInterval(0);
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    //format.setDepthBufferSize(24);
+    //format.setStencilBufferSize(8);
     QSurfaceFormat::setDefaultFormat(format);
-    //显示UTF-8
-    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
 
     QApplication app(argc, argv);
     CyMediaDisTest window;

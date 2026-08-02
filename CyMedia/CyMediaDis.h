@@ -69,6 +69,10 @@ namespace CyMedia {
          * @brief 当鼠标在视图上双击时发出。
          */
         void DoubleClickOnView();
+        /**
+         * @details 当需要图像数据时发出(直接更新模式，不会留存数据)
+         */
+        void needUpImage();
 
         /**
          * @brief 鼠标移动时发出，携带当前像素坐标及颜色值。
@@ -191,6 +195,19 @@ namespace CyMedia {
          * @return 数据成功入队返回 `true`，否则 `false`。
          */
         bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
+        /**
+         * @brief upIamgeIsDirect 是否直接处理更新数据，不进入缓存
+         * @details 
+         * \return bool
+         */
+        bool upIamgeIsDirect();
+        /**
+         * @brief setDirectUpImage 设置是否直接处理更新数据，不进入缓存
+         * @details 
+         * @param[in] flag true 是 false 否
+         * \return void
+         */
+        void setDirectUpImage(bool flag);
         /**
          * @brief 注册图像处理完成后的回调函数。
          * @details 当一帧图像被处理（包括格式转换、拉伸等）后，会调用此回调，

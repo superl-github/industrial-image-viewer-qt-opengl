@@ -248,9 +248,6 @@
     </QtTranslation>
   </ItemGroup>
   <ItemGroup>
-    <None Include="isYUV420" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="CyMedia.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>

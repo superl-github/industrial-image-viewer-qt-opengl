@@ -9,6 +9,7 @@
 /OutFile
 /Doxygen
 开发说明.md
+/colormap生成
 
 # User-specific files
 *.rsuser

@@ -1,5 +1,6 @@
 #include "CyMediaImageParse.h"
 
+#define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -8,6 +9,34 @@
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+
+#ifdef _WIN32
+#include <cstdio>  // for _wfopen
+#endif
+
+FILE* openFileForReading(const std::filesystem::path& path) {
+#ifdef _WIN32
+    // Windows 下使用宽字符版本 _wfopen
+    return _wfopen(path.wstring().c_str(), L"rb");
+#else
+    // Linux/macOS 下，path.string() 返回 UTF-8 字符串
+    return fopen(path.string().c_str(), "rb");
+#endif
+}
+FILE* openFileForWriting(const std::filesystem::path& path) {
+#ifdef _WIN32
+    return _wfopen(path.wstring().c_str(), L"wb");
+#else
+    return fopen(path.string().c_str(), "wb");
+#endif
+}
+
+void my_stbi_write_func(void* context, void* data, int size) {
+    // 将 context 指针恢复为 FILE*
+    FILE* fp = static_cast<FILE*>(context);
+    // 将数据写入文件
+    fwrite(data, 1, size, fp);
+}
 
 namespace CyMedia {
     CyMediaImageParse::CyMediaImageParse() {
@@ -44,7 +73,7 @@ namespace CyMedia {
     }
 
 
-    int CyMediaImageParse::openImage(const std::string& filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {
+    int CyMediaImageParse::openImage(std::filesystem::path filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {
         if (!std::filesystem::is_regular_file(filePath)) {
             return  1;
         }
@@ -71,10 +100,14 @@ namespace CyMedia {
             return 0;
         }
         //Other
+        FILE* fp = openFileForReading(filePath);
+        if (!fp) return 1;
+
         int w, h, channels;
-        unsigned char* img = stbi_load(filePath.c_str(), &w, &h, &channels, 0);
-        if (!img)
-            return 2; // invalid file format
+        unsigned char* img = stbi_load_from_file(fp, &w, &h, &channels, 0);
+        fclose(fp);
+
+        if (!img) return 2; // invalid file format
 
         info.width = w;
         info.height = h;
@@ -98,7 +131,7 @@ namespace CyMedia {
     }
 
 
-    int CyMediaImageParse::openImage_NotHeaderRaw(const std::string& filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {//以二进制模式打开文件
+    int CyMediaImageParse::openImage_NotHeaderRaw(std::filesystem::path filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {//以二进制模式打开文件
         if (!std::filesystem::is_regular_file(filePath)) {
             return  1;// file error
         }
@@ -122,8 +155,8 @@ namespace CyMedia {
     }
 
 
-    int CyMediaImageParse::saveImageToFile(std::string filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader) {
-        auto fileType = getTypeByPath(filePath);
+    int CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader) {
+        auto fileType = getTypeByPath(filePath.string());
 
         //RAW
         if (fileType == CyMedia::IMAGE_SUFFIX_RAW) {
@@ -160,17 +193,20 @@ namespace CyMedia {
         else
             return 2; // 不支持的像素格式 TODO 其他格式转为RGB或者Mono
 
+        FILE* fp = openFileForWriting(filePath);
+        if (!fp) return 1;
+
         int w = info.width, h = info.height;
         int result = 0;
 
         if (fileType == IMAGE_SUFFIX_BMP) {
-            result = stbi_write_bmp(filePath.c_str(), w, h, channels, data);
+            result = stbi_write_bmp_to_func(my_stbi_write_func, fp, w, h, channels, data);
         }
         else if (fileType == IMAGE_SUFFIX_PNG) {
-            result = stbi_write_png(filePath.c_str(), w, h, channels, data, 0);
+            result = stbi_write_png_to_func(my_stbi_write_func, fp, w, h, channels, data, 0);
         }
         else if (fileType == IMAGE_SUFFIX_JPEG) {
-            result = stbi_write_jpg(filePath.c_str(), w, h, channels, data, 90);
+            result = stbi_write_jpg_to_func(my_stbi_write_func, fp, w, h, channels, data, 90);
         }
         else {
             return 2; // 不支持的保存格式
