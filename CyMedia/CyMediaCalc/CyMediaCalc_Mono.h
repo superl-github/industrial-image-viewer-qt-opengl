@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "../CyMediaBaseDef.h"
 #include <vector>
@@ -20,8 +20,9 @@ namespace CyMediaCalc_Mono {
     void computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity);
 
     //图像转换
-    bool Mono10P2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
-    bool Mono12P2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
-    bool Mono10P_GVSP2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
-    bool Mono12P_GVSP2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
+    bool Mono10P2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata);
+    bool Mono12P2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata);
+    bool Mono10P_GVSP2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata);
+    bool Mono12P_GVSP2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata);
+    bool MonoUmPack_8(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata);
 }

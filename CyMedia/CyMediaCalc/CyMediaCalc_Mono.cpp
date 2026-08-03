@@ -1,4 +1,4 @@
-﻿#include "CyMediaCalc_Mono.h"
+#include "CyMediaCalc_Mono.h"
 #if defined _MSC_VER
     #include <ppl.h>
     #include <thread>
@@ -10,7 +10,8 @@
 namespace CyMediaCalc_Mono {
     //辅助函数
     inline uint32_t getMonoPixelValue(const ImageShowInfo& info, const uint8_t* data, size_t idx);
-    bool MonoConvert(ImageShowInfo& info, uint8_t* data, uint16_t* outdata);
+    bool MonoConvert(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata);
+    bool MonoConvert_8(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata);
 
     int32_t calcCoordinateColor_Mono(ImageShowInfo& info, uint8_t* pdata, size_t idx) {
         if (info.special_pixel == PIXEL_VALUE_F32) {
@@ -240,28 +241,36 @@ namespace CyMediaCalc_Mono {
 
     }
 
-    bool Mono10P2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata) {
+    bool Mono10P2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata) {
         if (info.format != MONO10P)
             return false;
         return MonoConvert(info, data, outdata);
     }
 
-    bool Mono12P2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata) {
+    bool Mono12P2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata) {
         if (info.format != MONO12P)
             return false;
         return MonoConvert(info, data, outdata);
     }
 
-    bool Mono10P_GVSP2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata) {
+    bool Mono10P_GVSP2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata) {
         if (info.format != MONO10P_GVSP)
             return false;
         return MonoConvert(info, data, outdata);
     }
 
-    bool Mono12P_GVSP2MonoConver(ImageShowInfo& info, uint8_t* data, uint16_t* outdata) {
+    bool Mono12P_GVSP2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata) {
         if (info.format != MONO12P_GVSP)
             return false;
         return MonoConvert(info, data, outdata);
+    }
+
+    bool MonoUmPack_8(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata) {
+        if (info.format >= MONO10P &&
+            info.format <= MONO12P_GVSP) {
+            return MonoConvert(info, data, outdata);
+        }
+        return false;
     }
 
 
@@ -298,7 +307,7 @@ namespace CyMediaCalc_Mono {
         }
         return 0; // fallback
     }
-    bool MonoConvert(ImageShowInfo& info, uint8_t* data, uint16_t* outdata) {
+    bool MonoConvert(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata) {
         if (!data || !outdata || info.width <= 0 || info.height <= 0) {
             return false;
         }
@@ -359,6 +368,78 @@ namespace CyMediaCalc_Mono {
         for (int32_t i = 0; i < pixelCount; ++i) {
             uint32_t gray = getMonoPixelValue(info, data, i);
             if (gray > maxVal) gray = maxVal;
+            outdata[i] = gray;
+        }
+#endif
+
+        return true;
+    }
+    bool MonoConvert_8(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata) {
+        if (!data || !outdata || info.width <= 0 || info.height <= 0) {
+            return false;
+        }
+
+        // 判断是否为 Mono 类型
+        bool isMono = (info.format == MONO) || (info.format == MONO_OVERSIZE);
+        bool isMono10P = (info.format == MONO10P || info.format == MONO10P_GVSP);
+        bool isMono12P = (info.format == MONO12P || info.format == MONO12P_GVSP);
+
+        if (!(isMono || isMono10P || isMono12P)) {
+            return false; // 不支持非 Mono 格式
+        }
+
+        size_t pixelCount = static_cast<size_t>(info.width) * info.height;
+
+        // 确定最大灰度值（决定直方图 bins 数）
+        float bitMax = 0;
+        uint32_t maxVal = 0;
+        uint32_t outMaxVal = 255;
+        float scale = 0;
+        if (isMono10P || (isMono && info.bit == 10)) {
+            bitMax = 1024;
+        }
+        else if (isMono12P || (isMono && info.bit == 12)) {
+            bitMax = 4096;
+        }
+        else if (isMono && info.bit <= 16) {
+            bitMax = (1U << info.bit);
+            if (maxVal > 65536) maxVal = 65536; // 安全上限
+        }
+        else {
+            return false; // 不支持的 bit depth
+        }
+        maxVal = bitMax - 1.0;
+        scale = 256 * 1.0 / bitMax;
+
+#ifdef _OPENMP
+#pragma omp for schedule(dynamic)
+        for (size_t i = 0; i < pixelCount; ++i) {
+            uint32_t gray = getMonoPixelValue(info, data, i) * scale;
+            if (gray > outMaxVal) gray = outMaxVal;
+            outdata[i] = gray;
+        }
+#elif defined (_MSC_VER)
+        // 获取硬件并发线程数，用于分块
+        unsigned int nThreads = std::thread::hardware_concurrency();
+        if (nThreads == 0) nThreads = 4;
+        size_t chunkSize = std::max(pixelCount / (nThreads * 4), size_t(1024)); // 每块至少 1k 像素
+
+        // 并行处理像素块
+        concurrency::parallel_for(size_t(0), pixelCount, chunkSize, [&](size_t start) {
+            size_t end = std::min(start + chunkSize, pixelCount);
+            unsigned int tid = concurrency::Context::CurrentContext()->GetVirtualProcessorId() % nThreads;
+
+            for (int32_t i = start; i < end; ++i) {
+                int32_t gray = getMonoPixelValue(info, data, i) * scale;
+                if (gray > outMaxVal) gray = maxVal; // 安全 clamp
+                outdata[i] = gray;
+            }
+            });
+#else
+        // 遍历所有像素
+        for (int32_t i = 0; i < pixelCount; ++i) {
+            uint32_t gray = getMonoPixelValue(info, data, i) * scale;
+            if (gray > outMaxVal) gray = outMaxVal;
             outdata[i] = gray;
         }
 #endif

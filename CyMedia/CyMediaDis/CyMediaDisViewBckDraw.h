@@ -191,7 +191,7 @@ private:
     CyMedia::DemosaicingMethod mDemosaicMethod = CyMedia::DEMOSAIC_BILINEAR;
     
     // YUV处理
-    CyMedia::YUVTransMethod m_yuv_trans_method = CyMedia::YUVTRANS_NORMAL;
+    CyMedia::YUVTransMethod m_yuv_trans_method = CyMedia::BT601;
 
     //拉伸参数
     CyMedia::StretchType eStretchType = CyMedia::stretch_None;

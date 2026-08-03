@@ -51,6 +51,6 @@ namespace CyMedia {
          * @ref
          * @return int 0:success 1:file error 2:Invalid file format
         ***/
-        static int saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader);
+        static int saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, bool addRawHeader);
     };
 };

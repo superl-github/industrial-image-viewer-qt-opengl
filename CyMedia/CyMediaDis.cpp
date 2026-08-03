@@ -73,7 +73,7 @@ namespace CyMedia {
                 pAlignImage_info.length = 0;
 
                 colorOpe.bayerFunc = DEMOSAIC_BILINEAR;
-                colorOpe.YUVFunc = YUVTRANS_NORMAL;
+                colorOpe.YUVFunc = BT601;
 
                 BayerTransOnCPU = true;
                 YUVTransOnCPU = true;

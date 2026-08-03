@@ -158,8 +158,8 @@ namespace CyMedia {
      * @brief YUV 转 RGB 的转换方法。
      */
     enum YUVTransMethod {
-        YUVTRANS_NORMAL = 0, ///< 标准 YUV 转 RGB（全彩色转换）
-        YUVTRANS_Y,          ///< 仅使用 Y 通道（亮度），忽略 UV（输出灰度）
+        YUVTRANS_Y = 0,///< 仅使用 Y 通道（亮度），忽略 UV（输出灰度）
+        BT601, ///< 标准 YUV 转 RGB（BT.601）      
     };
 
     /**
@@ -202,6 +202,8 @@ namespace CyMedia {
         CyMedia::DemosaicingMethod bayerFunc;
         CyMedia::YUVTransMethod YUVFunc;
         StretchType stretchType;
+        int stretch_S = 0;
+        int stretch_E = 0;
     };
 
     /**

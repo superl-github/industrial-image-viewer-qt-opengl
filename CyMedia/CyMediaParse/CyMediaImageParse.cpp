@@ -1,4 +1,5 @@
 #include "CyMediaImageParse.h"
+#include "../CyMediaCalc/CyMediaCalc.h"
 
 #define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
@@ -155,7 +156,7 @@ namespace CyMedia {
     }
 
 
-    int CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader) {
+    int CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, bool addRawHeader) {
         auto fileType = getTypeByPath(filePath.string());
 
         //RAW
@@ -186,12 +187,109 @@ namespace CyMedia {
         if (info.bit != 8) {
             return 2;//stb_image只支持8位 TODO 后续压缩处理
         }
+        // 不支持的保存格式
+        if (fileType != IMAGE_SUFFIX_BMP &&
+            fileType != IMAGE_SUFFIX_PNG &&
+            fileType != IMAGE_SUFFIX_JPEG) {
+            return 2;
+        }
+
         int channels = 0;
-        if (info.format == MONO)       channels = 1;
-        else if (info.format == RGB)   channels = 3;
-        else if (info.format == RGBA)  channels = 4;
-        else
-            return 2; // 不支持的像素格式 TODO 其他格式转为RGB或者Mono
+        void* writeData = (void*)data;
+        uint8_t* opeImageData = nullptr;
+        switch (info.format) {
+            case CyMedia::MONO: {
+                channels = 1;
+                if (info.bit <= 8) {
+                    
+                }
+                else if (info.bit <= 16){
+                    float scale = 256.0 / (1 << info.bit);
+                    uint16_t* psrc = (uint16_t*)data;
+                    opeImageData = new uint8_t[info.width * info.height];
+                    for (int h = 0; h < info.height; h++) {
+                        for (int w = 0; w < info.width; w++) {
+                            opeImageData[h * info.width + w] = psrc[h * info.width + w] * scale;
+                        }
+                    }
+                    writeData = opeImageData;
+                }
+                else if (info.bit <= 31) {
+                    float scale = 256.0 / (1 << info.bit);
+                    uint32_t* psrc = (uint32_t*)data;
+                    opeImageData = new uint8_t[info.width * info.height];
+                    for (int h = 0; h < info.height; h++) {
+                        for (int w = 0; w < info.width; w++) {
+                            opeImageData[h * info.width + w] = psrc[h * info.width + w] * scale;
+                        }
+                    }
+                    writeData = opeImageData;
+                }
+                else {
+                    return 2;
+                }
+            }break;
+
+            case CyMedia::MONO10P:
+            case CyMedia::MONO10P_GVSP:
+            case CyMedia::MONO12P:
+            case CyMedia::MONO12P_GVSP: {
+                opeImageData = new uint8_t[info.width * info.height];
+                CyMediaCalc::monoUnPack_8(info, data, opeImageData);
+                writeData = opeImageData;
+
+            }break;
+
+            case CyMedia::MONO_OVERSIZE: return 2;
+
+            case CyMedia::RGB: {
+                channels = 3;
+                opeImageData = new uint8_t[info.width * info.height * 3];
+
+                writeData = opeImageData;
+            }break;
+
+            case CyMedia::RGBA: {
+                channels = 4;
+                opeImageData = new uint8_t[info.width * info.height * 3];
+
+                writeData = opeImageData;
+            }break;
+
+            case CyMedia::BAYERRG:
+            case CyMedia::BAYERGR:
+            case CyMedia::BAYERBG:
+            case CyMedia::BAYERGB: {
+                if (opePara.bayerFunc == DEMOSAIC_NONE) {
+                    channels = 1;
+                }
+                else {
+                    channels = 3;
+                    opeImageData = new uint8_t[info.width * info.height * 3];
+                    CyMediaCalc::bayer2RGB_8(info, data, opeImageData, opePara.bayerFunc);
+                    writeData = opeImageData;
+                }
+            }break;
+
+            case CyMedia::FOURCC_YUY2:
+            case CyMedia::FOURCC_YVYU:
+            case CyMedia::FOURCC_I422:
+            case CyMedia::FOURCC_YV16:
+            case CyMedia::FOURCC_I420:
+            case CyMedia::FOURCC_YV12:
+            case CyMedia::FOURCC_NV12:
+            case CyMedia::FOURCC_NV21: {
+                if (opePara.YUVFunc == YUVTRANS_Y) {
+                    channels = 1;
+                }
+                else {
+                    channels = 3;
+                    opeImageData = new uint8_t[info.width * info.height * 3];
+                    CyMediaCalc::YUV2RGB(info, data, opeImageData, opePara.YUVFunc);
+                    writeData = opeImageData;
+                }
+            }break;
+        }
 
         FILE* fp = openFileForWriting(filePath);
         if (!fp) return 1;
@@ -200,16 +298,17 @@ namespace CyMedia {
         int result = 0;
 
         if (fileType == IMAGE_SUFFIX_BMP) {
-            result = stbi_write_bmp_to_func(my_stbi_write_func, fp, w, h, channels, data);
+            result = stbi_write_bmp_to_func(my_stbi_write_func, fp, w, h, channels, writeData);
         }
         else if (fileType == IMAGE_SUFFIX_PNG) {
-            result = stbi_write_png_to_func(my_stbi_write_func, fp, w, h, channels, data, 0);
+            result = stbi_write_png_to_func(my_stbi_write_func, fp, w, h, channels, writeData, 0);
         }
         else if (fileType == IMAGE_SUFFIX_JPEG) {
-            result = stbi_write_jpg_to_func(my_stbi_write_func, fp, w, h, channels, data, 90);
+            result = stbi_write_jpg_to_func(my_stbi_write_func, fp, w, h, channels, writeData, 90);
         }
-        else {
-            return 2; // 不支持的保存格式
+
+        if (opeImageData) {
+            delete[] opeImageData;
         }
 
         return (result != 0) ? 0 : 1;

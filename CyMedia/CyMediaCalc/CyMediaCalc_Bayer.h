@@ -1,4 +1,4 @@
-﻿#include "../CyMediaBaseDef.h"
+#include "../CyMediaBaseDef.h"
 
 #include <vector>
 
@@ -22,4 +22,5 @@ namespace CyMediaCalc_Bayer {
 
     //图像转换
     bool bayer2RGB(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, DemosaicingMethod func = DEMOSAIC_BILINEAR);
+    bool bayer2RGB_8(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, DemosaicingMethod func = DEMOSAIC_BILINEAR);
 }
