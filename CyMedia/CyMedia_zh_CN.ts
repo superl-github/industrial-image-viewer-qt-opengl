@@ -155,6 +155,41 @@
     </message>
 </context>
 <context>
+    <name>CyMedia::CyMediaDis_GetRawInfoDialog</name>
+    <message>
+        <source>Image width(number of columns)</source>
+        <translation>图像宽度（列数）</translation>
+    </message>
+    <message>
+        <source>Image height(number of line)</source>
+        <translation>图像高度（行数）</translation>
+    </message>
+    <message>
+        <source>Bit width</source>
+        <translation>位宽</translation>
+    </message>
+    <message>
+        <source>Pixel data format</source>
+        <translation>像素数据格式</translation>
+    </message>
+    <message>
+        <source>Pixel format</source>
+        <translation>像素格式</translation>
+    </message>
+    <message>
+        <source>Data head offset</source>
+        <translation>数据头偏移量</translation>
+    </message>
+    <message>
+        <source>confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <source>cancle</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
     <name>CyMediaDisGrayStretch</name>
     <message>
         <source>Automatic</source>
@@ -270,6 +305,25 @@
     <message>
         <source>Polygon</source>
         <translation>多边形</translation>
+    </message>
+</context>
+<context>
+    <name>CyMediaDisViewBckDraw</name>
+    <message>
+        <source>No Image</source>
+        <translation>无图像</translation>
+    </message>
+    <message>
+        <source>vertex shader</source>
+        <translation>顶点着色器</translation>
+    </message>
+    <message>
+        <source>Fragment shader</source>
+        <translation>片元着色器</translation>
+    </message>
+    <message>
+        <source>GL Program link</source>
+        <translation>GL 程序链接</translation>
     </message>
 </context>
 </TS>

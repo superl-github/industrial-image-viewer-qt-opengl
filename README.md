@@ -6,7 +6,13 @@ Image-Video-On-QGraphicsView
 
   It was developed to meet the need for interfacing with **camera image streams**, so it uses OpenGL rendering and image processing to ensure speed as much as possible. Using QGraphicsView eliminates a lot of external work, such as image matrices and additional attachments.
 
-**V 1.2 **
+**V 1.2.1**
+
+- 修正版本信息
+- 修复CyMediaCalc::YUV2RGB声明和定义不一致
+- 更新翻译文件
+
+**V 1.2.0 **
 
 - 添加版本信息
 - 完善注释

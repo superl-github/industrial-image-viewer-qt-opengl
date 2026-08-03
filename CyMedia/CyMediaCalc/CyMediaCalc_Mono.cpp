@@ -268,7 +268,7 @@ namespace CyMediaCalc_Mono {
     bool MonoUmPack_8(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata) {
         if (info.format >= MONO10P &&
             info.format <= MONO12P_GVSP) {
-            return MonoConvert(info, data, outdata);
+            return MonoConvert_8(info, data, outdata);
         }
         return false;
     }

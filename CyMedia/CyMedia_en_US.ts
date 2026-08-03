@@ -127,6 +127,41 @@
     </message>
 </context>
 <context>
+    <name>CyMedia::CyMediaDis_GetRawInfoDialog</name>
+    <message>
+        <source>Image width(number of columns)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Image height(number of line)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bit width</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pixel data format</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pixel format</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Data head offset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>confirm</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>cancle</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>CyMediaDisGrayStretch</name>
     <message>
         <source>Automatic</source>
@@ -241,6 +276,25 @@
     </message>
     <message>
         <source>Polygon</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CyMediaDisViewBckDraw</name>
+    <message>
+        <source>No Image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>vertex shader</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fragment shader</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>GL Program link</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

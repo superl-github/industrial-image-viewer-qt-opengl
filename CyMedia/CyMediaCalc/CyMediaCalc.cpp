@@ -239,19 +239,19 @@ namespace CyMediaCalc {
         return false;
     }
 
-    bool CYMEDIA_LIB monoUnPack_8(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data) {
+    bool monoUnPack_8(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data) {
         return CyMediaCalc_Mono::MonoUmPack_8(info, data, out_data);
     }
 
-    bool bayer2RGB(ImageShowInfo& info, uint8_t* data, uint8_t* out_data, DemosaicingMethod func/* = DEMOSAIC_BILINEAR*/) {
+    bool bayer2RGB(const ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, DemosaicingMethod func/* = DEMOSAIC_BILINEAR*/) {
         return CyMediaCalc_Bayer::bayer2RGB(info, data, out_data, func);
     }
 
-    bool CYMEDIA_LIB bayer2RGB_8(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, DemosaicingMethod func /*= DEMOSAIC_BILINEAR*/) {
+    bool bayer2RGB_8(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, DemosaicingMethod func /*= DEMOSAIC_BILINEAR*/) {
         return CyMediaCalc_Bayer::bayer2RGB_8(info, data, out_data, func);
     }
 
-    bool CYMEDIA_LIB YUV2RGB(const ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, YUVTransMethod func /*= YUVTRANS_NORMAL*/) {
+    bool YUV2RGB(const ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, YUVTransMethod func /*= YUVTRANS_NORMAL*/) {
         return CyMediaCalc_YUV::YUV2RGBConver(info, data, out_data, func);
     }
 

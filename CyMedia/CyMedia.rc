@@ -1,4 +1,4 @@
-﻿// Microsoft Visual C++ generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 #pragma code_page(65001)
 
@@ -53,7 +53,7 @@ END
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,1,1,0
+ PRODUCTVERSION 1,2,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -68,6 +68,7 @@ BEGIN
     BEGIN
         BLOCK "000404b0"
         BEGIN
+            VALUE "Comments", "基于Qt(5.14.2)和OpenGL开发，支持mono/rgb(a)/bayer/yuv 格式解码显示。\r\n内嵌灰度拉伸与直方图统计工具，并提供图像计算与文件解析函数接口"
             VALUE "CompanyName", "港宇"
             VALUE "FileDescription", "通用图像处理与显示核心组件"
             VALUE "FileVersion", "1.0.0.1"
@@ -75,11 +76,11 @@ BEGIN
             VALUE "LegalCopyright", "Copyright (C) 2026"
             VALUE "OriginalFilename", "CyMedia.dll"
             VALUE "ProductName", "CyMedia"
-            VALUE "ProductVersion", "1.1.1.0"
-            VALUE "Comments", "基于Qt(5.14.2)和OpenGL开发，支持mono/rgb(a)/bayer/yuv 格式解码显示。\r\n内嵌灰度拉伸与直方图统计工具，并提供图像计算与文件解析函数接口"
+            VALUE "ProductVersion", "1.2.1.0"
         END
         BLOCK "040904b0"
         BEGIN
+            VALUE "Comments", "Developed based on Qt(5.14) and OpenGL, it supports decoding and display of mono/rgb(a)/bayer/yuv formats.\r\n It embeds grayscale stretching and histogram statistics tools, and provides function interfaces for image calculation and file parsing."
             VALUE "CompanyName", "CamYu"
             VALUE "FileDescription", "Image processing and Visualization Core Module"
             VALUE "FileVersion", "1.0.0.1"
@@ -87,7 +88,7 @@ BEGIN
             VALUE "LegalCopyright", "Copyright (C) 2026"
             VALUE "OriginalFilename", "CyMedia.dll"
             VALUE "ProductName", "CyMedia"
-    VALUE "Comments", "Developed based on Qt(5.14) and OpenGL, it supports decoding and display of mono/rgb(a)/bayer/yuv formats.\r\n It embeds grayscale stretching and histogram statistics tools, and provides function interfaces for image calculation and file parsing."
+            VALUE "ProductVersion", "1.2.1.0"
         END
     END
     BLOCK "VarFileInfo"
