@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CyMediaVideoParseBase.h"
 #include <fstream>
 #include <mutex>
@@ -18,7 +18,7 @@ namespace CyMedia {
         ~VideoParseRaw() override;
 
         // 基类接口实现
-        bool open(const std::string& filePath) override;
+        int open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format = false) override;
         void close() override;
         bool isOpen() const override;
 
@@ -28,7 +28,7 @@ namespace CyMedia {
 
         bool getFrame(uint32_t index, std::vector<uint8_t>& outData) override;
 
-        void registerFrameCallback(FrameCallback callback, void* userData = nullptr) override;
+        void registerFrameCallback(CyMedia::FrameCallback callback, void* userData = nullptr) override;
 
         void play() override;
         void setPause(bool pause) override;
@@ -47,7 +47,8 @@ namespace CyMedia {
     private:
         // 文件与元数据
         std::fstream m_file;
-        std::string m_filePath;
+        uint32_t m_heardOffset = 0;
+        std::filesystem::path m_filePath;
         ImageShowInfo m_frameInfo;      // 统一使用新定义的图像信息
         uint32_t m_totalFrames = 0;
         float m_framerate = 0.0f;
@@ -64,11 +65,11 @@ namespace CyMedia {
 
         // 帧率控制
         float m_speed = 1.0f;
-        uint64_t m_frameIntervalUs = 0; // 微秒
+        uint64_t m_frameIntervalMs = 0; // 微秒
         std::chrono::time_point<std::chrono::high_resolution_clock> m_timer;
 
         // 回调
-        FrameCallback m_callback = nullptr;
+        CyMedia::FrameCallback m_callback = nullptr;
         void* m_userData = nullptr;
 
         // 线程与同步

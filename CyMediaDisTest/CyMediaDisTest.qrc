@@ -1,5 +1,8 @@
 <RCC>
     <qresource prefix="/CyMediaDisTest">
         <file>CyMedia.png</file>
+        <file>Icon/pause.png</file>
+        <file>Icon/play.png</file>
+        <file>Icon/replay.png</file>
     </qresource>
 </RCC>

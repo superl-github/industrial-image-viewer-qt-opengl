@@ -1,6 +1,9 @@
-#include "CyMediaVideoParseRaw.h"
+﻿#include "CyMediaVideoParseRaw.h"
 #include <cstring>
 #include <chrono>
+#include <winsock.h>
+
+#pragma comment(lib, "ws2_32.lib")
 
 namespace CyMedia {
 // RAW 文件头部结构
@@ -19,11 +22,11 @@ namespace CyMedia {
     VideoParseRaw::VideoParseRaw() = default;
     VideoParseRaw::~VideoParseRaw() { close(); }
 
-    bool VideoParseRaw::open(const std::string& filePath) {
+    int VideoParseRaw::open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format/* = false*/) {
         close(); // 确保关闭之前的
 
         m_file.open(filePath, std::ios::in | std::ios::binary);
-        if (!m_file.is_open()) return false;
+        if (!m_file.is_open()) return 1;
 
         // 1. 获取文件大小
         m_file.seekg(0, std::ios::end);
@@ -32,18 +35,45 @@ namespace CyMedia {
 
         // 2. 读取头部
         RawFileHeader header;
-        if (fileSize < sizeof(RawFileHeader)) {
+        m_heardOffset = format ? parseInfo.dataOffset : sizeof(RawFileHeader);
+        if (fileSize < m_heardOffset) {
             m_file.close();
-            return false;
+            return 2;
         }
-        m_file.read(reinterpret_cast<char*>(&header), sizeof(RawFileHeader));
-
+        if (format) {
+            header.version = 1;
+            header.nBit = parseInfo.frameInfo.bit;
+            header.nColor = parseInfo.frameInfo.format;
+            header.nWidth = parseInfo.frameInfo.width;
+            header.nHeight = parseInfo.frameInfo.height;
+            header.rate = parseInfo.fps * 100;
+            header.frameLength = parseInfo.frameInfo.length;
+            m_heardOffset = 0;
+        }
+        else {
+            m_file.read(reinterpret_cast<char*>(&header), sizeof(RawFileHeader));
+            header.nColor = htonl(header.nColor);
+            header.nWidth = htonl(header.nWidth);
+            header.nHeight = htonl(header.nHeight);
+            header.rate = htonl(header.rate);
+            header.frameLength = htonl(header.frameLength);
+            m_heardOffset = sizeof(RawFileHeader);
+        }
+        
         // 3. 校验数据完整性（帧数是否为整数）
-        uint64_t dataSize = fileSize - sizeof(RawFileHeader);
+        uint64_t dataSize = fileSize;
+        if (false == format) {
+            dataSize -= sizeof(RawFileHeader);
+        }
         uint32_t calcFrames = static_cast<uint32_t>(dataSize / header.frameLength);
+        //按照格式解析帧数必须大于1，否则是图像
+        if (format && calcFrames <= 1) {
+            m_file.close();
+            return 2;
+        }
         if (dataSize != (calcFrames * header.frameLength)) {
             m_file.close();
-            return false;
+            return 2;
         }
 
         // 4. 填充 CyMedia::ImageShowInfo（统一数据结构）
@@ -64,7 +94,7 @@ namespace CyMedia {
         // 5. 填充其他元数据
         m_totalFrames = calcFrames;
         m_framerate = static_cast<float>(header.rate) / 100.0f;
-        m_frameIntervalUs = static_cast<uint64_t>(1000.0 * 1000.0 / m_framerate);
+        m_frameIntervalMs = static_cast<uint64_t>(1000.0 / m_framerate);
 
         // 6. 初始化缓存
         m_frameBuffer.resize(m_frameDataSize);
@@ -81,7 +111,15 @@ namespace CyMedia {
             m_thread = std::thread(threadProc, this);
         }
 
-        return true;
+        //填充文件信息
+        parseInfo.videoType = VIDEO_SUFFIX_RAW;
+        parseInfo.frameInfo = m_frameInfo;
+        parseInfo.dataOffset = m_heardOffset;
+        parseInfo.fps = m_framerate;
+        parseInfo.frameCount = calcFrames;
+        parseInfo.size = fileSize;
+
+        return 0;
     }
 
     void VideoParseRaw::close() {
@@ -120,7 +158,7 @@ namespace CyMedia {
     }
 
     // ---- 异步播放控制 ----
-    void VideoParseRaw::registerFrameCallback(FrameCallback callback, void* userData) {
+    void VideoParseRaw::registerFrameCallback(CyMedia::FrameCallback callback, void* userData) {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_callback = callback;
         m_userData = userData;
@@ -135,10 +173,10 @@ namespace CyMedia {
 
     void VideoParseRaw::setPause(bool pause) {
         m_bPause = pause;
-        if (!pause) {
-            // 恢复时重置计时，防止跳跃
-            m_timer = std::chrono::high_resolution_clock::now();
-        }
+        //if (!pause) {
+        //    // 恢复时重置计时，防止跳跃
+        //    m_timer = std::chrono::high_resolution_clock::now();
+        //}
     }
 
     bool VideoParseRaw::isPaused() const { return m_bPause; }
@@ -155,13 +193,13 @@ namespace CyMedia {
     void VideoParseRaw::setSpeed(float speed) {
         if (speed <= 0) return;
         m_speed = speed;
-        m_frameIntervalUs = static_cast<uint64_t>(1000.0 * 1000.0 / (m_framerate * m_speed));
+        m_frameIntervalMs = static_cast<uint64_t>(1000.0 / (m_framerate * m_speed));
     }
 
     // ---- 内部实现 ----
     bool VideoParseRaw::readFrameData(uint32_t pos, uint8_t* buffer) {
         if (!buffer || pos < 1 || pos > m_totalFrames) return false;
-        uint64_t offset = sizeof(RawFileHeader) + static_cast<uint64_t>(pos - 1) * m_frameDataSize;
+        uint64_t offset = m_heardOffset + static_cast<uint64_t>(pos - 1) * m_frameDataSize;
         std::lock_guard<std::mutex> lock(m_mutex);
         m_file.seekg(offset, std::ios::beg);
         m_file.read(reinterpret_cast<char*>(buffer), m_frameDataSize);
@@ -170,31 +208,29 @@ namespace CyMedia {
 
     void VideoParseRaw::threadProc(VideoParseRaw* pThis) {
         while (pThis->m_threadRunning) {
-            if (pThis->m_bPlay && !pThis->m_bPause && pThis->m_callback) {
+            //播放
+            if (pThis->m_bPlay && false == pThis->m_bPause) {
                 // 帧率控制
                 auto now = std::chrono::high_resolution_clock::now();
-                auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - pThis->m_timer).count();
-
-                if (elapsed >= pThis->m_frameIntervalUs) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - pThis->m_timer).count();
+                if (elapsed >= pThis->m_frameIntervalMs) {
                     // 读取当前帧
                     uint32_t current = pThis->m_currentPos.load();
-                    if (current <= pThis->m_totalFrames) {
-                        if (pThis->readFrameData(current, pThis->m_frameBuffer.data())) {
-                            // 触发回调
-                            pThis->m_callback(pThis->m_frameInfo, pThis->m_frameBuffer.data(), pThis->m_frameDataSize, pThis->m_userData);
-                            pThis->m_currentPos++;
-                        }
+                    bool upRe = pThis->readFrameData(current, pThis->m_frameBuffer.data());
+                    if (upRe && pThis->m_callback) {
+                        pThis->m_callback(pThis->m_frameInfo, pThis->m_frameBuffer.data(), current, pThis->m_userData);
+                        pThis->m_currentPos++;
                     }
-                    else {
-                        // 循环播放：到达末尾后暂停
-                        pThis->m_currentPos = 1;
-                        pThis->m_bPause = true;
-                    }
-                    pThis->m_timer = now; // 重置计时器
+                    pThis->m_timer = now;
                 }
                 else {
                     // 未到时间，休眠一小段时间减少 CPU 占用
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                //播放到尾部暂停
+                if (pThis->m_currentPos > pThis->m_totalFrames) {
+                    pThis->m_currentPos = pThis->m_totalFrames;
+                    pThis->m_bPause = true;
                 }
             }
             else {

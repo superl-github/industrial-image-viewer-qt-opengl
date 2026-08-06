@@ -1,8 +1,10 @@
-// CyMediaVideoParseBase.h
+﻿// CyMediaVideoParseBase.h
 #pragma once
 #include "CyMediaBaseDef.h"
 #include <functional>
 #include <string>
+#include <xstring>
+#include <filesystem>
 #include <vector>
 
 namespace CyMedia {
@@ -20,9 +22,11 @@ namespace CyMedia {
         /**
          * @brief 打开视频文件。
          * @param filePath 文件绝对路径或相对路径（UTF-8编码）。
-         * @return 成功返回 true，失败返回 false（如文件不存在、格式不匹配）。
+         * @param parseInfo 存放解析的视频文件信息。
+         * @param format true:按照parseInfo指定的信息解析视频文件(raw)。
+         * @return 成功返回 0，文件错误->1 格式(解析)错误->2。
          */
-        virtual bool open(const std::string& filePath) = 0;
+        virtual int open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format = false) = 0;
 
         /**
          * @brief 关闭当前打开的文件，释放所有资源（包括线程和缓存）。
@@ -76,7 +80,7 @@ namespace CyMedia {
          * @param callback 回调函数对象（可为 nullptr 以取消回调）。
          * @param userData 用户自定义数据，会在回调时原样透传。
          */
-        virtual void registerFrameCallback(FrameCallback callback, void* userData = nullptr) = 0;
+        virtual void registerFrameCallback(CyMedia::FrameCallback callback, void* userData = nullptr) = 0;
 
         /**
          * @brief 开始或恢复异步播放（非阻塞）。

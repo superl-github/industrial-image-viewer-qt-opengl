@@ -1,4 +1,4 @@
-
+﻿
 #include "CyMediaDisView.h"
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "CyMediaDisViewBckDraw.h"
@@ -127,8 +127,8 @@ bool CyMediaDisView::MyViewPrivateData::shouldShowThumbnail() const {
     }
 
     // 检查是否场景放大后超过视图窗口
-    return ((pView->scene()->sceneRect().width() * xZoomValue > pView->viewport()->width() ||
-            pView->scene()->sceneRect().height() * xZoomValue > pView->viewport()->height()));
+    return (pView->scene()->sceneRect().width() * xZoomValue  > pView->viewport()->width() ||
+            pView->scene()->sceneRect().height() * xZoomValue > pView->viewport()->height());
 }
 
 void CyMediaDisView::MyViewPrivateData::onViewRectChanged(const QRectF& rect) {
@@ -271,8 +271,9 @@ void CyMediaDisView::zoomAuto(void) {
 
     QSize fRect = this->size();
     QSizeF sceneRect = this->scene()->sceneRect().size();
-    qreal s = qMin(fRect.width() / sceneRect.width(),
-        fRect.height() / sceneRect.height());
+    qreal s = qMin(
+        fRect.width() * 0.999 / sceneRect.width(),
+        fRect.height() * 0.999 / sceneRect.height());
     d->zoom(s);
 }
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * @file CyMediaDis.h
 * @brief 高性能图像显示与交互控件（基于 Qt QFrame）。
 *
@@ -20,16 +20,14 @@
 * @see CyMediaDisView, CyMediaDisViewBckDraw
 * 
 * @author LLF
-* @version 1.0
+* @version 1.2.2
 */
 #pragma once
 #include "CyMediaBaseDef.h"
-#include "CyMediaDis/CyMediaRecTimeW.h"
-#include "CyMediaDis/CyMediaDisGrayStretch.h"
-#include "CyMediaDis/CyMediaDisGrayTest.h"
 #include "CyMediaDis/drawItem/BaseItem.h"
 #include "CyMediaDis/drawItem/CyDisDrawItem.h"
 
+#include <QFrame>
 #include <QWidget>
 #include <QDialog>
 #include <QPushButton>
@@ -496,7 +494,7 @@ namespace CyMedia {
          * @brief 获取灰度拉伸交互控件指针。
          * @return `CyMediaDisGrayStretch*` 指针。
          */
-        CyMediaDisGrayStretch* stretchWidget();
+        QWidget* stretchWidget();
         /**
          * @brief 设置灰度拉伸交互控件的可见性。
          * @param visible `true` 显示，`false` 隐藏。
@@ -507,7 +505,7 @@ namespace CyMedia {
          * @brief 获取灰度测试/直方图控件指针。
          * @return `CyMediaDisGrayTest*` 指针。
          */
-        CyMediaDisGrayTest* grayTestWidget();
+        QWidget* grayTestWidget();
         /**
          * @brief 设置灰度测试/直方图控件的可见性。
          * @param visible `true` 显示，`false` 隐藏。
@@ -539,6 +537,26 @@ namespace CyMedia {
          * @brief 刷新界面翻译（多语言切换时调用）。
          */
         void flushTrans();
+
+        /**
+         * @brief 返回特殊像素格式编辑框的可见性
+         */
+        bool SpecialIsPixeVisible();
+        /**
+         * @brief 设置特殊像素格式编辑框的可见性
+         * @param visi true:可见 false:隐藏
+         */
+        void setSpecialPixeVisible(bool visi);
+
+        /**
+         * @brief 返回FPS编辑框的可见性
+         */
+        bool FpsIsPixeVisible();
+        /**
+         * @brief 设置FPS编辑框的可见性
+         * @param visi true:可见 false:隐藏
+         */
+        void setFpsVisible(bool visi);
 
         /**
          * @brief 获取当前选择的文件名（仅显示用）。
@@ -577,6 +595,12 @@ namespace CyMedia {
 		quint32 imageOffset();
 
         /**
+         * @brief 获取用户设置的视频帧率
+         * @return 帧率
+        ***/
+        float videoFps();
+
+        /**
          * @brief 设置文件名显示。
          * @param name 文件名字符串。
          */
@@ -590,7 +614,15 @@ namespace CyMedia {
          * @param spv 像素值数据类型。
          * @param offset 偏移量。
          */
-		void setOpenInfo(quint32 w, quint32 h, quint32 bit, CyMedia::ePixType pixelType, CyMedia::ePixelValueType spv, quint32 offset);
+		void setOpenInfo(
+            quint32 w, 
+            quint32 h, 
+            quint32 bit, 
+            CyMedia::ePixType pixelType, 
+            CyMedia::ePixelValueType spv, 
+            quint32 offset);
+
+        void setFPSValue(float fps);
 
 	protected:
         /**

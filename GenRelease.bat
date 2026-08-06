@@ -18,6 +18,7 @@ set "GenDir_Demo=%GenDir%\Demo"
 md "%GenDir_include%" 2>nul
 md "%GenDir_include%\CyMediaDis\" 2>nul
 md "%GenDir_include%\CyMediaDis\drawItem\" 2>nul
+md "%GenDir_include%\CyMediaParse\" 2>nul
 
 
 md "%GenDir_Bin_32%\Debug\" 2>nul
@@ -37,12 +38,13 @@ md "%GenDir_Demo%" 2>nul
 echo "copy Header"
 copy "CyMedia\CyMediaBaseDef.h" "%GenDir_include%"
 copy "CyMedia\CyMediaDis.h" "%GenDir_include%"
-copy "CyMedia\CyMediaDis\CyMediaRecTimeW.h" "%GenDir_include%\CyMediaDis\"
-copy "CyMedia\CyMediaDis\CyMediaDisGrayTest.h" "%GenDir_include%\CyMediaDis\"
-copy "CyMedia\CyMediaDis\CyMediaDisGrayStretch.h" "%GenDir_include%\CyMediaDis\"
 
 copy "CyMedia\CyMediaDis\drawItem\CyDisDrawItem.h" "%GenDir_include%\CyMediaDis\drawItem\"
 copy "CyMedia\CyMediaDis\drawItem\BaseItem.h" "%GenDir_include%\CyMediaDis\drawItem\"
+::include->CyMediaParse
+copy "CyMedia\CyMediaParse\CyMediaImageParse.h" "%GenDir_include%\CyMediaParse"
+copy "CyMedia\CyMediaParse\CyMediaVideoParse.h" "%GenDir_include%\CyMediaParse"
+
 
 ::Bin->colorMaP
 echo "copy ColorMap"

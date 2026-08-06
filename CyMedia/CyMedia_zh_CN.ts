@@ -127,34 +127,6 @@
     </message>
 </context>
 <context>
-    <name>CyDisDrawItem::EllipseItem</name>
-    <message>
-        <source>Geometric shapes</source>
-        <translation type="vanished">几何形状</translation>
-    </message>
-</context>
-<context>
-    <name>CyDisDrawItem::LineItem</name>
-    <message>
-        <source>Geometric shapes</source>
-        <translation type="vanished">几何形状</translation>
-    </message>
-</context>
-<context>
-    <name>CyDisDrawItem::PointItem</name>
-    <message>
-        <source>Geometric shapes</source>
-        <translation type="vanished">几何形状</translation>
-    </message>
-</context>
-<context>
-    <name>CyDisDrawItem::RectItem</name>
-    <message>
-        <source>Geometric shapes</source>
-        <translation type="vanished">几何形状</translation>
-    </message>
-</context>
-<context>
     <name>CyMedia::CyMediaDis_GetRawInfoDialog</name>
     <message>
         <source>Image width(number of columns)</source>
@@ -187,6 +159,10 @@
     <message>
         <source>cancle</source>
         <translation>取消</translation>
+    </message>
+    <message>
+        <source>Fps</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

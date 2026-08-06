@@ -1,9 +1,12 @@
-#pragma once
+﻿#pragma once
 
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaTestCommon.h"
 #include "CyMediaDis.h"
 #include "CyMediaParse/CyMediaImageParse.h"
+#include "CyMediaParse/CyMediaVideoParse.h"
+#include "cyplayslider.h"
+#include "CyPixelFormat.h"
 
 #include <QtWidgets/QMainWindow>
 #include <QThread>
@@ -20,6 +23,9 @@ public:
     CyMediaDisTest(QWidget *parent = nullptr);
     ~CyMediaDisTest();
 
+signals:
+    void upPlaySlider(int num, bool isFinish);
+
 public:
     QString getAnalogImageTypeName(CyMediaTest::eAnalogImageType type);
     void genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& img, int frameIdx);
@@ -27,6 +33,8 @@ public:
     QString geyYUVMethodStr(CyMedia::YUVTransMethod methord);
 
     void openFile(QString filePath);
+
+    static void rePlayImageCallBack(const CyMedia::ImageShowInfo& info, const uint8_t* data, int nCount, void* userData);
 
 private:
     void initGUI();
@@ -59,10 +67,20 @@ private:
     void on_status_timerout();
 
     //replay
+    bool CYCam_FormatTrans(CY_PIXEL_FORMAT SDKFormat, CyMedia::ePixType* CyDisFormat, int8_t* nBit);
     void closeReplay();
+    void upPlayFrame(const CyMedia::ImageShowInfo& info, const uint8_t* p_data, int nCount);
+    void onPlayBtnClick();
+    void setPause(bool pause);
+    void onPlaySliderMoved(int num);
+    void onPlaySliderDraged(int value);
+    void onPlaySliderReleased(void);
+    void onUplaySlider(int num, bool isFinish);
 
 private:
     void onFileOpen(QString filepath);
+    void onOpenRawFile(QString filePath);
+    int onOpenRawVideo(QString filepath, bool format);
     void onViewUpPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR);
     void onImageSizeChanged(quint32 w, quint32 h, int bit);
 
@@ -75,6 +93,8 @@ private:
     void thread_acquisition();
 
 private:
+    enum PlayingStatus { playing = 0, pause, finish, ending };
+
     QSettings* m_Setting;
     const QString m_app_name = QString("CyMediaTest");
     CyMedia::eLanguage m_language = CyMedia::ENGLISH;
@@ -133,11 +153,21 @@ private:
     bool m_bIsAcuistion = false;
     bool m_bStopView = false;
     QThread* m_AnalogAcquisitionThread = nullptr;
-    double                      m_CapFps = 0.0;
+    double  m_CapFps = 0.0;
 
     QThread* mUpImageThread = nullptr;
     bool mUpImageThreadFlag = false;
 
     QTimer* m_statusTimer = nullptr;
+
+    //replay
+    QPushButton* ui_playBtn = nullptr;
+    CyPlaySlider* ui_PlaySlider = nullptr;
+    CyMediaDisTest::PlayingStatus m_playStatus = ending;
+    bool m_bIsPlayFinish = false;
+    bool m_bManualPause = false;
+    bool m_bVideoFormat = false;
+    CyMedia::VideoParser* m_videoParse = nullptr;
+    CyMedia::VideoParseInfo m_VideoInfo;
 };
 

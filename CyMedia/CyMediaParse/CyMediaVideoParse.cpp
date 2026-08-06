@@ -1,4 +1,4 @@
-#include "CyMediaVideoParse.h"
+﻿#include "CyMediaVideoParse.h"
 #include "CyMediaVideoParseRaw.h"
 
 #include <algorithm>
@@ -37,7 +37,7 @@ namespace CyMedia {
     CyMedia::VideoSuffix VideoParser::getvideoTypeByPath(const std::string& filePath) {
         std::string ext = filePath.substr(filePath.find_last_of('.') + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-        if (ext == "raw") {
+        if (ext == "raw" || ext == "rawv") {
             return VIDEO_SUFFIX_RAW;
         }
 
@@ -45,19 +45,19 @@ namespace CyMedia {
     }
 
 
-    bool VideoParser::open(const std::string& filePath) {
+    int VideoParser::open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format/* = false*/) {
         close(); // 释放旧的解析器
 
-        auto videoType = getvideoTypeByPath(filePath);
+        auto videoType = getvideoTypeByPath(filePath.string());
 
         if (videoType == VIDEO_SUFFIX_RAW) {
             d->m_impl = std::make_unique<VideoParseRaw>();
         }
         else {
-            return false; // 不支持的格式
+            return 3; // 不支持的格式
         }
 
-        return d->m_impl->open(filePath);
+        return d->m_impl->open(filePath, parseInfo, format);
     }
 
 
@@ -95,7 +95,7 @@ namespace CyMedia {
     }
 
 
-    void VideoParser::registerFrameCallback(FrameCallback callback, void* userData /*= nullptr*/) {
+    void VideoParser::registerFrameCallback(CyMedia::FrameCallback callback, void* userData /*= nullptr*/) {
         if (d->m_impl) d->m_impl->registerFrameCallback(callback, userData);
     }
 

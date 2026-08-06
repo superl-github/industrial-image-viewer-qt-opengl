@@ -1,4 +1,4 @@
-#include "CyMediaDisViewBckDraw.h"
+﻿#include "CyMediaDisViewBckDraw.h"
 #include "CyMediaDisView.h"
 
 #include <QApplication>
@@ -88,7 +88,7 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
     if (!recompileShader(f, pTex)) {
         return;
     }
-    f->glClearColor(0.3, 0.3, 0.3, 1.0);
+    f->glClearColor(0.0, 0.0, 0.0, 1.0);
     f->glClear(GL_COLOR_BUFFER_BIT);
 
     // 绑定主纹理（主纹理、U/V、ColorMap）
@@ -154,6 +154,7 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
 }
 
 void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
+    QMutexLocker locker(&m_glMutex);
     if (m_gl_init) return;
     if (!ctx) return;
     QOpenGLExtraFunctions* f = ctx->extraFunctions(); if (!f) return;
@@ -165,6 +166,13 @@ void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
     m_offscreenSurface = new QOffscreenSurface();
     m_offscreenSurface->setFormat(ctx->format());
     m_offscreenSurface->create();
+    if (!m_offscreenSurface->isValid()) {
+        qWarning() << "Offscreen surface invalid after creation!";
+        m_gl_init = false;
+        delete m_offscreenSurface;
+        m_offscreenSurface = nullptr;
+        return;
+    }
 
     // 获取最大纹理尺寸
     f->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_gl_max_texture_size);
@@ -182,6 +190,7 @@ bool CyMediaDisViewBckDraw::glIsInit() {
 }
 
 void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect) {
+    QMutexLocker locker(&m_glMutex);
     GLenum err;
     QSize viewRect = m_view->viewport()->size() * m_view->viewport()->devicePixelRatioF();
     if (false == m_haveImage) {
@@ -226,6 +235,8 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
         painter->endNativePainting();
         return;
     }
+    f->glClearColor(0.0, 0.0, 0.0, 1.0);
+    f->glClear(GL_COLOR_BUFFER_BIT);
 
     //主纹理
     f->glActiveTexture(GL_TEXTURE0);
@@ -505,21 +516,26 @@ void CyMediaDisViewBckDraw::upUniforLocation(QOpenGLShaderProgram* program) {
 }
 
 bool CyMediaDisViewBckDraw::makeOffSurface(QOpenGLContext* ctx) {
-    if (!ctx) return false;
-    if (!m_offscreenSurface || !m_offscreenSurface->isValid()) {
-        qWarning() << "Offscreen surface invalid";
+    if (!ctx || !ctx->isValid()) {
+        qWarning() << "CyMediaDisViewBckDraw::makeOffSurface:Invalid context";
         return false;
     }
-    // 如果当前线程已绑定其他上下文，先释放
-    if (QOpenGLContext::currentContext() != ctx) {
-        if (!ctx->makeCurrent(m_offscreenSurface)) {
-            qWarning() << "makeCurrent failed, error";
-            // 尝试重新创建 surface（若格式不匹配）
-            recreateOffscreenSurface(ctx->format());
-            if (!ctx->makeCurrent(m_offscreenSurface)) {
-                return false;
-            }
-        }
+    // 确保表面有效，若无效则重建
+    if (!m_offscreenSurface || !m_offscreenSurface->isValid()) {
+        recreateOffscreenSurface(ctx->format());
+    }
+    // 如果当前上下文已是目标上下文，则无需切换
+    if (QOpenGLContext::currentContext() == ctx) {
+        return true;
+    }
+    // 先解绑当前上下文（避免残留）
+    if (QOpenGLContext::currentContext()) {
+        QOpenGLContext::currentContext()->doneCurrent();
+    }
+    // 尝试绑定
+    if (!ctx->makeCurrent(m_offscreenSurface)) {
+        qWarning() << "makeCurrent failed, recreating surface...";
+        recreateOffscreenSurface(ctx->format());
     }
     return true;
 }
@@ -1044,9 +1060,7 @@ void CyMediaDisViewBckDraw::hideOverSizeError() {
 
 bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* data, QOpenGLContext* ctx) {
     Q_ASSERT_X(ctx != nullptr, "upBackGround", "Context must not be null!");
-    if (!data) return false;
-
-    if (!data || !m_gl_init || !ctx) return false;
+    if (!data || !m_gl_init) return false;
     if (false == makeOffSurface(ctx)) return false;
     QOpenGLExtraFunctions* f = ctx->extraFunctions(); if (!f) return false;
     f->initializeOpenGLFunctions();

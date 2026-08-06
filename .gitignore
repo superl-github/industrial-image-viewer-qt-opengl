@@ -435,3 +435,4 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+/CyMediaDisTest/Icon

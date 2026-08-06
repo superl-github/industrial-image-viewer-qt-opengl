@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file CyMediaBaseDef.h
  * @brief CyMedia 库的核心基础类型、枚举、结构体及全局定义。
  * @details 本文件定义了整个库所依赖的基础数据类型，包括像素格式、图像信息结构、
@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <functional>
 #include <string>
+#include <filesystem>
 
  //==================== 库导出/导入宏 ====================
 # if defined(CYMEDIA_EXPORT)
@@ -28,7 +29,7 @@
  */
 namespace CyMedia {
     //================ 版本号 ====================
-    const char VERSION[] = "V 1.2.1";
+    const char VERSION[] = "V 1.2.2";
 
     //==================== 色彩空间转换常量 ====================
     /**
@@ -321,24 +322,25 @@ namespace CyMedia {
         /**
          * @brief 根据当前参数（宽、高、位深、格式）计算并更新 `length` 字段。
          * @details 特别注意 10/12 位打包格式的按位计算逻辑。
+         * @return 返回计算后的长度
          */
-        void upLenth() {
+        bool upLenth() {
             int pixelNum = width * height;
             if (format == MONO10P) {
                  length = (pixelNum * 10 + 7) / 8;
-                 return;
+                 return length;
             }
             else if (format == MONO10P_GVSP) {
                 length = (pixelNum * 10 + 7) / 8;
-                return;
+                return length;
             }
             else if (format == MONO12P) {
                 length = (pixelNum * 12 + 7) / 8;
-                return;
+                return length;
             }
             else if (format == MONO12P_GVSP) {
                 length = (pixelNum * 12 + 7) / 8;
-                return;
+                return length;
             }
 
             int pixelLen = 0;
@@ -366,6 +368,7 @@ namespace CyMedia {
             }
 
             length = pixelNum * pixelLen * channel();
+            return length;
         }
 
         //==================== 格式判定辅助函数 ====================
@@ -415,15 +418,17 @@ namespace CyMedia {
     };
 
     /**
-    * @brief RAW 图像文件头信息结构体。
-    * @details 用于存储序列化 RAW 文件时的附加元信息。
+    * @brief 视频文件头信息。
+    * @details 用于接收视频文件分析的信息。
     */
-    typedef struct _RawVideoHeadInfo {
+    typedef struct _VideoParseInfo {
+        VideoSuffix videoType;   ///< 视频文件类型
         ImageShowInfo frameInfo; ///< 帧图像信息
+        uint32_t dataOffset;     ///< 视频数据偏移
         float fps;               ///< 帧率（帧/秒）
         int frameCount;          ///< 总帧数
         int64_t size;            ///< 文件总大小（字节）
-    }RawVideoHeadInfo;
+    }VideoParseInfo;
 
     /**
      * @brief 二维坐标点（整数）。
@@ -488,10 +493,9 @@ namespace CyMedia {
      *          回调函数内禁止执行耗时操作，以免阻塞推流线程。
      * @param info 当前帧的图像属性（CyMedia::ImageShowInfo）。
      * @param data 指向帧图像数据的只读指针（生命周期由解析器管理）。
-     * @param size 帧数据大小（字节数）。
      * @param userData 用户注册时传入的自定义指针。
      */
-    using FrameCallback = std::function<void(const ImageShowInfo& info, const uint8_t* data, uint32_t size, void* userData)>;
+    typedef void (*FrameCallback)(const CyMedia::ImageShowInfo& info, const uint8_t* p_data, int nCount, void* pUser);
 
     //==================== 工具函数 ====================
 

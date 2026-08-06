@@ -261,10 +261,13 @@
     <QtMoc Include="CyMediaDisTest.h" />
     <ClCompile Include="CyMediaDisTest.cpp" />
     <ClCompile Include="CyMediaTestCommon.cpp" />
+    <ClCompile Include="CyPlaySlider.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CyMediaTestCommon.h" />
+    <QtMoc Include="CyPlaySlider.h" />
+    <ClInclude Include="CyPixelFormat.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file CyMediaVideoParse.h
  * @brief CyMedia 视频解析器统一入口（对外接口）。
  * @details 提供视频文件解析、帧获取、播放控制等完整功能。
@@ -44,10 +44,12 @@ namespace CyMedia {
         /**
          * @brief 打开视频文件（自动识别格式）。
          * @param filePath 文件路径（UTF-8 编码）。
-         * @return 成功返回 true，失败（文件不存在/格式不支持/数据损坏）返回 false。
+         * @param parseInfo 解析的视频文件信息。
+         * @param format true:按照parseInfo指定的信息解析视频文件(raw)。
+         * @return 成功返回 0，文件错误->1 格式(解析)错误->2 格式不支持->3。
          * @note 若当前已打开文件，将自动关闭并释放资源。
          */
-        bool open(const std::string& filePath);
+        int open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format = false);
 
         /**
          * @brief 关闭当前文件，释放所有资源（线程、缓存、句柄）。
@@ -102,7 +104,7 @@ namespace CyMedia {
          * @note 注册后需调用 play() 启动推送线程。
          * @see play(), setPause()
          */
-        void registerFrameCallback(FrameCallback callback, void* userData = nullptr);
+        void registerFrameCallback(CyMedia::FrameCallback callback, void* userData = nullptr);
 
         /**
          * @brief 启动或恢复异步播放（非阻塞）。

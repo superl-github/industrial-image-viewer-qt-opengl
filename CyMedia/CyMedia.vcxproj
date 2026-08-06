@@ -391,10 +391,10 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
   </ItemGroup>
   <ItemGroup>
     <QtTranslation Include="CyMedia_en_US.ts">
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)OutFile\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)OutFile\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)OutFile\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)OutFile\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)CyMediaDis\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)CyMediaDis\</QmOutputDir>
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">lrelease</BuildAction>
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|x64'">lrelease</BuildAction>
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">lrelease</BuildAction>
@@ -409,6 +409,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|x64'">lrelease</BuildAction>
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">lrelease</BuildAction>
       <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">lrelease</BuildAction>
+      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NoObsolete>
     </QtTranslation>
   </ItemGroup>
   <ItemGroup>

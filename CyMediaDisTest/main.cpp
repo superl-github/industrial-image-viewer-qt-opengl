@@ -1,4 +1,4 @@
-#include "CyMediaDisTest.h"
+﻿#include "CyMediaDisTest.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -30,27 +30,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    QFile tempFile("D:\\Users\\llf\\Desktop\\RTX\\llf\\light_defect.raw");
-    int index = 0;
-    if (tempFile.open(QIODevice::ReadOnly)) {
-        auto readCode = tempFile.readAll();
-        tempFile.close();
-        double* pCode = (double*)readCode.data();
-        QList<QPoint> checkPosList;
-        checkPosList.append({ 809, 840});
-        checkPosList.append({ 801, 841 });
-        checkPosList.append({ 800, 841 });
-        checkPosList.append({ 800, 840 });
-
-        for (auto onePos : checkPosList) {
-            printf("(%d,%d) %f\n", onePos.x(), onePos.y(), pCode[onePos.y() * 1024 + onePos.x()]);
-        }
-        printf("\n\n");
-        for (auto onePos : checkPosList) {
-            printf("(%d,%d) => %08x\n", onePos.x(), onePos.y(), ((onePos.y() << 16) | onePos.x()));
-        }
-        printf("\n\n");
-    }
     //启用全局共享上下文
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     //指定OpenGL版本
@@ -64,6 +43,21 @@ int main(int argc, char *argv[]) {
     QSurfaceFormat::setDefaultFormat(format);
 
     QApplication app(argc, argv);
+    //opengl检测
+    bool supportOpenGL = CyMedia::CyMediaDis::supportsOpenGLForCyMedia();
+    if (false == supportOpenGL) {
+        MessageBoxA(
+            nullptr,
+            "The current device's OpenGL support does not meet the program's requirements.",
+            "error",
+            MB_OK
+        );
+        app.quit();
+        return -1;
+    }
+    else {
+        printf("OpenGL yes!!!\n");
+    }
     CyMediaDisTest window;
     window.show();
     if (dragFile.size()) {

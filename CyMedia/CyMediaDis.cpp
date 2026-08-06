@@ -1,11 +1,18 @@
-#include "CyMediaDis.h"
+﻿#include "CyMediaDis.h"
+
+#include "CyMediaDis/CyMediaRecTimeW.h"
 
 #include "CyMediaDis/CyMediaDisView.h"
 #include "CyMediaDis/CyMediaDisViewBckDraw.h"
 #include "CyMediaDis/CyDMediaDisScen.h"
-#include "CyMediaCalc/CyMediaCalc.h"
+
 #include "CyMediaDis/drawItem/CyDisDrawItem.h"
 #include "CyMediaDis/drawItem/DrawItemTool.h"
+
+#include "CyMediaDis/CyMediaDisGrayStretch.h"
+#include "CyMediaDis/CyMediaDisGrayTest.h"
+
+#include "CyMediaCalc/CyMediaCalc.h"
 
 #include <queue>
 
@@ -23,19 +30,33 @@
 
 #define ImageStackMaxSize 3
 
+class SquareButton : public QPushButton {
+    Q_OBJECT
+public:
+    explicit SquareButton(QWidget* parent = nullptr) : QPushButton(parent) {};
+    int heightForWidth(int w) const override { return w; };
+    QSize sizeHint()const override {
+        return m_size;
+    }
+
+public:
+    QSize m_size{26,26};
+};
+
 namespace CyMedia {
     class CyMediaDis::privateData : public QObject {
         Q_OBJECT
 
     public:
         typedef struct oneFrameBuffer {
-            CyMedia::ImageShowInfo info;                        // 图像信息
-            unsigned char* pdata = nullptr;                     // 图像数据
-            bool            bisUpData = false;                  // 是否是新数据需要更新
-            bool            bIsSource = false;                  // 是否是模块存储的原始数据
-            bool            bUpImage = true;                    // 是否更新显示图像
-            bool            bUpStretch = true;                  // 是否更新灰度拉伸
-            bool            bIsAddFps = true;                   // 是否统计帧频
+            CyMedia::ImageShowInfo info;                        ///< 图像信息
+            unsigned char* pdata = nullptr;                     ///< 图像数据
+            bool            bisUpData = false;                  ///< 是否是新数据需要更新
+            bool            bIsSource = false;                  ///< 是否是模块存储的原始数据
+            bool            bCopySource = true;                 ///< 是否copy到本地源数据 
+            bool            bUpImage = true;                    ///< 是否更新显示图像
+            bool            bUpStretch = true;                  ///< 是否更新灰度拉伸
+            bool            bIsAddFps = true;                   ///< 是否统计帧频
         }oneFrameBuffer_;
 
         typedef struct opeFrameThreadPara {
@@ -54,6 +75,7 @@ namespace CyMedia {
             bool upStretch = false;
 
             QOpenGLContext* ctx = nullptr;
+            QThread* thread_ctx = nullptr;
             CyMedia::ImageColorOpe colorOpe;
 
             bool BayerTransOnCPU = true;
@@ -101,7 +123,7 @@ namespace CyMedia {
 
         oneFrameBuffer* getBuffer(bool force = false);
         void upImageToBuffer(oneFrameBuffer* buffer, CyMedia::ImageShowInfo& info, uint8_t* data);
-        bool addData(CyMedia::ImageShowInfo info, uint8_t* data, bool isSource = false, bool force = false);
+        bool addData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
         void addOneGrayData(bool upImage, bool upStretch = true, bool force = false);
         void clearImage();
         bool upDataIsSlow();
@@ -155,8 +177,10 @@ namespace CyMedia {
         //=====Image=====
         bool m_bDirectUpImage = false;
         bool m_directUpImageFlag = true;
+        QTimer* m_directImageFPSTimer = nullptr;
         opeFrameThreadPara m_directUpImagePara;
         oneFrameBuffer m_directUpImageBuffer;
+        uint32_t m_copySourceNum = 0;
         CyMediaDisImageCallBack mImageCallBack = nullptr;
         void* mImageCallBackUser = nullptr;
         CyMedia::ImageShowInfo m_imageinfo;
@@ -167,7 +191,7 @@ namespace CyMedia {
         bool m_bFirstUpImage = true;          ///< 是否首次更新图像
 
         CyMedia::ImageShowInfo  m_rawInfo;        ///< 接收数据原始信息
-        unsigned char* m_rawImageData = 0;        ///< 接收数据原始图像
+        uint8_t* m_rawImageData = nullptr;        ///< 接收数据原始图像
 
         //=====数据统计=====
         int64_t nDataFpsCount = 0;
@@ -178,12 +202,12 @@ namespace CyMedia {
 
         //=====UI/Tool=====
         QWidget* toolWidget = 0;      ///< Parent window of tool button
-        QPushButton* zoomInButton = 0;      ///< 放大按钮
-        QPushButton* zoomOutButton = 0;     ///< 缩小按钮
-        QPushButton* zoomRawButton = 0;     ///< 原始比例按钮
-        QPushButton* zoomFitButton = 0;     ///< 适应窗口按钮
-        QPushButton* flipHButton = 0;       ///< 水平翻转按钮
-        QPushButton* flipVButton = 0;       ///< 垂直翻转按钮
+        SquareButton* zoomInButton = 0;      ///< 放大按钮
+        SquareButton* zoomOutButton = 0;     ///< 缩小按钮
+        SquareButton* zoomRawButton = 0;     ///< 原始比例按钮
+        SquareButton* zoomFitButton = 0;     ///< 适应窗口按钮
+        SquareButton* flipHButton = 0;       ///< 水平翻转按钮
+        SquareButton* flipVButton = 0;       ///< 垂直翻转按钮
         bool bZoomScrollBarIsShow = false;
 
         QElapsedTimer m_ToolWUpTimer;
@@ -218,7 +242,7 @@ namespace CyMedia {
             for (int i = 0; i < d->ImageStackMaxNum; ++i) {
                 delete[] d->threadPare_ImageDataArray[i].pdata;
             }
-            delete[] d->m_rawImageData;
+            if (d->m_rawImageData) delete[] d->m_rawImageData;
 
             d->m_StretchWidget->setParent(nullptr);
             d->m_StretchWidget->close();
@@ -369,7 +393,7 @@ namespace CyMedia {
     }
 
     bool CyMediaDis::upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force /*= false*/) {
-        return d->addData(info, data, false, force);
+        return d->addData(info, data, force);
     }
 
     bool CyMediaDis::upIamgeIsDirect() {
@@ -394,8 +418,10 @@ namespace CyMedia {
             d->m_directUpImageBuffer.bIsSource = false;
             d->m_directUpImageBuffer.bUpImage = true;
             d->m_directUpImageBuffer.bUpStretch = true;
+            d->m_directImageFPSTimer->start();
         }
         else {
+            d->m_directImageFPSTimer->stop();
             //释放资源
             if (d->m_directUpImagePara.ctx) {
                 delete d->m_directUpImagePara.ctx;
@@ -658,6 +684,10 @@ namespace CyMedia {
     }
 
     void CyMediaDis::setRecTimeVisible(bool visi) {
+        if (visi) {
+            d->m_RetimeItem->raise();
+            d->m_RetimeItem->move(10, d->toolWidget->height());
+        }
         d->m_RetimeItem->setVisible(visi);
     }
 
@@ -673,7 +703,7 @@ namespace CyMedia {
         d->m_RetimeItem->upRecTime_Timed(saved, sum);
     }
 
-    CyMediaDisGrayStretch* CyMediaDis::stretchWidget() {
+    QWidget* CyMediaDis::stretchWidget() {
         return d->m_StretchWidget;
     }
 
@@ -681,7 +711,7 @@ namespace CyMedia {
         d->m_StretchWidget->setVisible(visible);
     }
 
-    CyMediaDisGrayTest* CyMediaDis::grayTestWidget() {
+    QWidget* CyMediaDis::grayTestWidget() {
         return d->mGrayTestWidget;
     }
 
@@ -761,13 +791,14 @@ namespace CyMedia {
         memcpy(buffer->pdata, data, info.length);
     }
 
-    bool CyMediaDis::privateData::addData(CyMedia::ImageShowInfo info, uint8_t* data, bool isSource/* = false*/, bool force /*= false*/) {
+    bool CyMediaDis::privateData::addData(CyMedia::ImageShowInfo info, uint8_t* data, bool force /*= false*/) {
         if (!data || info.width <= 0 || info.height <= 0 || info.bit <= 0 || info.length <= 0) {
             return false;
         }
-        static const size_t MAX_IMAGE_SIZE = 200 * 1024 * 1024; // 200MB
-        if (info.length > MAX_IMAGE_SIZE) {
-            log_printf("图像过大，拒绝: %u bytes\n", info.length);
+        static const size_t MAX_IMAGE_SIZE = 15000;
+        if (info.width > MAX_IMAGE_SIZE || 
+            info.height > MAX_IMAGE_SIZE) {
+            log_printf("图像过大，拒绝: (%d %d)，最大(%d)\n", info.width, info.height, MAX_IMAGE_SIZE);
             return false;
         }
 
@@ -776,8 +807,11 @@ namespace CyMedia {
             log_printf("跳过图像(update)\n\r");
             return false;
         }
+        oneFrameBuffer* t_pBuffer = nullptr;
+
         //直接更新
         if (true == m_bDirectUpImage) {
+            t_pBuffer = &m_directUpImageBuffer;
             m_directUpImageBuffer.info = info;
             m_directUpImageBuffer.pdata = data;
             //更新处理参数
@@ -799,41 +833,55 @@ namespace CyMedia {
                 }
                 if (m_directUpImagePara.colorOpe.bayerFunc == DEMOSAIC_AHD) m_directUpImagePara.BayerTransOnCPU = true;//AHD未在OPenGL实现
 
-                m_directUpImagePara.isSource = false;
+                m_directUpImagePara.isSource = true;
                 m_directUpImagePara.upStretch = true;
             }
-
+        }
+        else {
+            //数据入栈
+            QMutexLocker lock(&m_dataLock);
+            t_pBuffer = getBuffer(force);
+            if (!t_pBuffer)
+                return false;
+            //重置状态
+            t_pBuffer->bIsSource = false;
+            t_pBuffer->bUpImage = true;
+            t_pBuffer->bUpStretch = m_StretchWidget->isVisible();
+            t_pBuffer->bIsAddFps = true;
+        }
+        //判断Copy
+        t_pBuffer->bCopySource = false;
+        if (upDataIsSlow()) {
+            t_pBuffer->bCopySource = true;
+            m_copySourceNum = 0;
+        }
+        else {
+            m_copySourceNum++;
+            if (m_copySourceNum >= 10) {
+                m_copySourceNum = 0;
+                t_pBuffer->bCopySource = true;
+            }
+        }
+        if (m_bDirectUpImage) {
             Thread_ImageData_oneFrame(m_directUpImageBuffer, m_directUpImagePara);
-            return true;
         }
-
-        //数据入栈
-        QMutexLocker lock(&m_dataLock);
-        oneFrameBuffer* t_pBuffer = getBuffer(force);
-        if (!t_pBuffer)
-            return false;
-        upImageToBuffer(t_pBuffer, info,  data);
-        //重置状态
-        t_pBuffer->bIsSource = isSource;
-        t_pBuffer->bUpImage = true;
-        t_pBuffer->bUpStretch = m_StretchWidget->isVisible();
-        t_pBuffer->bIsAddFps = true;
-
-        t_pBuffer->bisUpData = true;
-        // 启动线程
-        if (false == pImageDataThread->isRunning()) {
-            bImageDataThread_flag = true;
-            pImageDataThread->start();
-            log_printf("启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
+        else {
+            upImageToBuffer(t_pBuffer, info, data);
+            //更新标志
+            t_pBuffer->bisUpData = true;
+            // 启动线程
+            if (false == pImageDataThread->isRunning()) {
+                bImageDataThread_flag = true;
+                pImageDataThread->start();
+                log_printf("启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
+            }
         }
-
         return true;
     }
 
     void CyMediaDis::privateData::addOneGrayData(bool upImage, bool upStretch/* = true*/, bool force/* = false*/) {
         if (m_bDirectUpImage) {
             m_parent->emit needUpImage();
-            return;
         }
         if (false == bHaveData) {
             return;
@@ -845,14 +893,13 @@ namespace CyMedia {
         oneFrameBuffer* t_pBuffer = getBuffer(force);
         if (!t_pBuffer)
             return;
-    
-        //upImageToBuffer(t_pBuffer, m_rawInfo, m_rawImageData);
         //重置状态
         t_pBuffer->bIsSource = true;
         t_pBuffer->bUpImage = upImage;
         t_pBuffer->bUpStretch = upStretch && m_StretchWidget->isVisible();// (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
         t_pBuffer->bIsAddFps = false;
-
+        upImageToBuffer(t_pBuffer, m_rawInfo, m_rawImageData);
+        //更新标志
         t_pBuffer->bisUpData = true;
     }
 
@@ -881,7 +928,7 @@ namespace CyMedia {
     }
 
     bool CyMediaDis::privateData::upDataIsSlow() {
-        return ((DataFps < 2.1) || std::isinf(DataFps)) && bHaveData;
+        return (DataFps < 2.1) || std::isinf(DataFps);
     }
 
     void CyMediaDis::privateData::stopImageOpeThread() {
@@ -894,7 +941,7 @@ namespace CyMedia {
     }
 
     void CyMediaDis::privateData::Thread_ImageData() {
-        static opeFrameThreadPara opePara;
+        CyMediaDis::privateData::opeFrameThreadPara opePara;
         opePara.init();
 
         QElapsedTimer eTiemr;
@@ -972,18 +1019,19 @@ namespace CyMedia {
         eTimer.start();
 
         // 统计更新帧频
-        if (opePara.dataFpsTimer.isValid())
-            opePara.dataFpsTimer.start();
-        if (nDataFpsCount >= opePara.dataFpsFramePoint || opePara.dataFpsTimer.elapsed() >= opePara.dataFpsTimePointMs) {
-            DataFps = 1000.0 * nDataFpsCount / opePara.dataFpsTimer.elapsed();
-            nDataFpsCount = 0;
-            opePara.dataFpsTimer.restart();
-        }
-
         if (frame.bIsAddFps) {
             nDataFpsCount++;
         }
-
+        if (false == m_bDirectUpImage) {
+            if (opePara.dataFpsTimer.isValid())
+                opePara.dataFpsTimer.start();
+            if (nDataFpsCount >= opePara.dataFpsFramePoint || opePara.dataFpsTimer.elapsed() >= opePara.dataFpsTimePointMs) {
+                DataFps = 1000.0 * nDataFpsCount / opePara.dataFpsTimer.elapsed();
+                nDataFpsCount = 0;
+                opePara.dataFpsTimer.restart();
+            }
+        }
+        
         //数据指向
         auto Imagedata = frame.pdata;
         CyMedia::ImageShowInfo Imageinfo;
@@ -996,13 +1044,14 @@ namespace CyMedia {
             return;
         }
 
-        //拷贝原始数据，用以静态图像分析、保存raw等功能
-        if (false == frame.bIsSource) {
+        //拷贝原始数据，用以静态图像分析、保存等功能
+        if (false == frame.bIsSource && true == frame.bCopySource) {
             QMutexLocker lock(&m_dataLock);
             if (memcmp(&m_rawInfo, &Imageinfo, sizeof(CyMedia::ImageShowInfo))) {
                 memcpy(&m_rawInfo, &Imageinfo, sizeof(CyMedia::ImageShowInfo));
-                delete[] m_rawImageData;
-                m_rawImageData = new unsigned char[m_rawInfo.length];
+                if (m_rawImageData)
+                    delete[] m_rawImageData;
+                m_rawImageData = new uint8_t[m_rawInfo.length];
             }
             memcpy(m_rawImageData, Imagedata, m_rawInfo.length);
         }
@@ -1157,6 +1206,14 @@ namespace CyMedia {
             if (!opePara.ctx) {
                 return;
             }
+            opePara.thread_ctx = QThread::currentThread();
+        }
+        else if (QThread::currentThread() != opePara.thread_ctx) {
+            delete opePara.ctx;
+            opePara.ctx = view->imageDraw()->createSharedContext();
+            if (!opePara.ctx) {
+                return;
+            }
         }
         bool imageInfoChange = false;
         double r = 0, g = 0, b = 0;
@@ -1246,6 +1303,12 @@ namespace CyMedia {
         //初始化信息
         m_imageinfo.width = 1000;
         m_imageinfo.height = 1000;
+        m_directImageFPSTimer = new QTimer(this);
+        connect(m_directImageFPSTimer, &QTimer::timeout, this, [this]() {
+            if (false == m_bDirectUpImage) return;
+            DataFps = nDataFpsCount;
+            nDataFpsCount = 0;
+            });
 
         initScene();
         initToolBar();
@@ -1328,9 +1391,7 @@ namespace CyMedia {
             "   color:black;"
             "}"
         );
-        zoomInButton = new QPushButton(toolWidget);
-        zoomInButton->setMinimumSize(toolBarIconSize, toolBarIconSize);
-        zoomInButton->setMaximumSize(toolBarIconSize, toolBarIconSize);
+        zoomInButton = new SquareButton(toolWidget);
         zoomInButton->setText("");
         zoomInButton->setToolTip(u8"Zoom In");
         zoomInButton->setStyleSheet(
@@ -1343,11 +1404,9 @@ namespace CyMedia {
             "image:url(:/CyMediaDis/ICONS/ZoomIn-hover.png);"
             "}"
         );
-        connect(zoomInButton, &QPushButton::clicked, view, &CyMediaDisView::zoomIn);
+        connect(zoomInButton, &SquareButton::clicked, view, &CyMediaDisView::zoomIn);
 
-        zoomOutButton = new QPushButton(toolWidget);
-        zoomOutButton->setMinimumSize(toolBarIconSize, toolBarIconSize);
-        zoomOutButton->setMaximumSize(toolBarIconSize, toolBarIconSize);
+        zoomOutButton = new SquareButton(toolWidget);
         zoomOutButton->setText("");
         zoomOutButton->setToolTip(u8"Zoom Out");
         zoomOutButton->setStyleSheet(
@@ -1360,11 +1419,9 @@ namespace CyMedia {
             "image:url(:/CyMediaDis/ICONS/ZoomOut-hover.png);"
             "}"
         );
-        connect(zoomOutButton, &QPushButton::clicked, view, &CyMediaDisView::zoomOut);
+        connect(zoomOutButton, &SquareButton::clicked, view, &CyMediaDisView::zoomOut);
 
-        zoomRawButton = new QPushButton(toolWidget);
-        zoomRawButton->setMinimumSize(toolBarIconSize, toolBarIconSize);
-        zoomRawButton->setMaximumSize(toolBarIconSize, toolBarIconSize);
+        zoomRawButton = new SquareButton(toolWidget);
         zoomRawButton->setText("");
         zoomRawButton->setToolTip(u8"Actual Size");
         zoomRawButton->setStyleSheet(
@@ -1377,14 +1434,12 @@ namespace CyMedia {
             "image:url(:/CyMediaDis/ICONS/zoonRaw-hover.png);"
             "}"
         );
-        connect(zoomRawButton, &QPushButton::clicked, m_parent,
+        connect(zoomRawButton, &SquareButton::clicked, m_parent,
             [this]() {
                 view->zoomRaw();
             });
 
-        zoomFitButton = new QPushButton(toolWidget);
-        zoomFitButton->setMinimumSize(toolBarIconSize, toolBarIconSize);
-        zoomFitButton->setMaximumSize(toolBarIconSize, toolBarIconSize);
+        zoomFitButton = new SquareButton(toolWidget);
         zoomFitButton->setText("");
         zoomFitButton->setToolTip(u8"Fit to window");
         zoomFitButton->setStyleSheet(
@@ -1397,11 +1452,9 @@ namespace CyMedia {
             "image:url(:/CyMediaDis/ICONS/zoonFit-hover.png);"
             "}"
         );
-        connect(zoomFitButton, &QPushButton::clicked, view, &CyMediaDisView::zoomAuto);
+        connect(zoomFitButton, &SquareButton::clicked, view, &CyMediaDisView::zoomAuto);
 
-        flipHButton = new QPushButton(toolWidget);
-        flipHButton->setMinimumSize(toolBarIconSize, toolBarIconSize);
-        flipHButton->setMaximumSize(toolBarIconSize, toolBarIconSize);
+        flipHButton = new SquareButton(toolWidget);
         flipHButton->setText("");
         flipHButton->setToolTip(u8"Flip Horizontal");
         flipHButton->setStyleSheet(
@@ -1414,11 +1467,9 @@ namespace CyMedia {
             "image:url(:/CyMediaDis/ICONS/FlipH-hover.png);"
             "}"
         );
-        connect(flipHButton, &QPushButton::clicked, view, &CyMediaDisView::hriMirror);
+        connect(flipHButton, &SquareButton::clicked, view, &CyMediaDisView::hriMirror);
 
-        flipVButton = new QPushButton(toolWidget);
-        flipVButton->setMinimumSize(toolBarIconSize, toolBarIconSize);
-        flipVButton->setMaximumSize(toolBarIconSize, toolBarIconSize);
+        flipVButton = new SquareButton(toolWidget);
         flipVButton->setText("");
         flipVButton->setToolTip(u8"Flip Vertical");
         flipVButton->setStyleSheet(
@@ -1431,7 +1482,7 @@ namespace CyMedia {
             "image:url(:/CyMediaDis/ICONS/FlipV-hover.png);"
             "}"
         );
-        connect(flipVButton, &QPushButton::clicked, view, &CyMediaDisView::verMirror);
+        connect(flipVButton, &SquareButton::clicked, view, &CyMediaDisView::verMirror);
 
         QHBoxLayout* toolLayout = new QHBoxLayout(toolWidget);
         toolLayout->setContentsMargins(0, 0, 0, 0);
@@ -1601,6 +1652,7 @@ namespace CyMedia {
         QLabel* ui_special_value_Lable = nullptr;
         QLabel* uiPixeFormatLable = nullptr;
         QLabel* uiOffsetLable = nullptr;
+        QLabel* uiFPSLable = nullptr;
 
         QSpinBox* uiWidthBox = nullptr;
         QSpinBox* uiHeightBox = nullptr;
@@ -1608,6 +1660,7 @@ namespace CyMedia {
         QComboBox* ui_special_value_box = nullptr;
         QComboBox* uiPixelFormatBox = nullptr;
         QSpinBox* uiOffsetBox = nullptr;
+        QDoubleSpinBox* uiFPSBox = nullptr;
 
         QPushButton* uiOkBtn = nullptr;
         QPushButton* uiCancleBtn = nullptr;
@@ -1626,9 +1679,28 @@ namespace CyMedia {
         d->ui_special_value_Lable->setText(tr("Pixel data format"));
         d->uiPixeFormatLable->setText(tr("Pixel format"));
         d->uiOffsetLable->setText(tr("Data head offset"));
+        d->uiFPSLable->setText(tr("Fps"));
 
         d->uiOkBtn->setText(tr("confirm"));
         d->uiCancleBtn->setText(tr("cancle"));
+    }
+
+    bool CyMediaDis_GetRawInfoDialog::SpecialIsPixeVisible() {
+        return d->ui_special_value_box->isVisible();
+    }
+
+    void CyMediaDis_GetRawInfoDialog::setSpecialPixeVisible(bool visi) {
+        d->ui_special_value_Lable->setVisible(visi);
+        d->ui_special_value_box->setVisible(visi);
+    }
+
+    bool CyMediaDis_GetRawInfoDialog::FpsIsPixeVisible() {
+        return d->uiFPSBox->isVisible();
+    }
+
+    void CyMediaDis_GetRawInfoDialog::setFpsVisible(bool visi) {
+        d->uiFPSLable->setVisible(visi);
+        d->uiFPSBox->setVisible(visi);
     }
 
     QString CyMediaDis_GetRawInfoDialog::openFileName() {
@@ -1659,6 +1731,10 @@ namespace CyMedia {
         return d->uiOffsetBox->value();
     }
 
+    float CyMediaDis_GetRawInfoDialog::videoFps() {
+        return d->uiFPSBox->value();
+    }
+
     void CyMediaDis_GetRawInfoDialog::setOpenFileName(QString name) {
         d->uiFileNameLable->setText(name);
     }
@@ -1670,6 +1746,10 @@ namespace CyMedia {
         d->ui_special_value_box->setCurrentIndex(int(spv));
         d->uiPixelFormatBox->setCurrentIndex(int(pixelType));
         d->uiOffsetBox->setValue(offset);
+    }
+
+    void CyMediaDis_GetRawInfoDialog::setFPSValue(float fps) {
+        d->uiFPSBox->setValue(fps);
     }
 
     void CyMediaDis_GetRawInfoDialog::initGUI() {
@@ -1685,6 +1765,7 @@ namespace CyMedia {
         d->ui_special_value_Lable = new QLabel(this);
         d->uiPixeFormatLable = new QLabel(this);
         d->uiOffsetLable = new QLabel(this);
+        d->uiFPSLable = new QLabel(this);
 
         d->uiWidthBox = new QSpinBox(this);
         d->uiWidthBox->setRange(2, 20000);
@@ -1722,6 +1803,10 @@ namespace CyMedia {
         d->uiOffsetBox->setRange(0, 0x7EFFFFFF);
         d->uiOffsetBox->setValue(0);
 
+        d->uiFPSBox = new QDoubleSpinBox(this);
+        d->uiFPSBox->setRange(1, 1000);
+        d->uiFPSBox->setValue(24);
+
         d->uiOkBtn = new QPushButton(this);
         d->uiCancleBtn = new QPushButton(this);
         d->uiFileNameLable->setText("None");
@@ -1747,6 +1832,10 @@ namespace CyMedia {
         rowNum++;
         formLayout->setWidget(rowNum, QFormLayout::LabelRole, d->uiOffsetLable);
         formLayout->setWidget(rowNum, QFormLayout::FieldRole, d->uiOffsetBox);
+        rowNum++;
+        formLayout->setWidget(rowNum, QFormLayout::LabelRole, d->uiFPSLable);
+        formLayout->setWidget(rowNum, QFormLayout::FieldRole, d->uiFPSBox);
+        rowNum++;
 
         QWidget* btnWidget = new QWidget(this);
         QHBoxLayout* btnLayout = new QHBoxLayout(btnWidget);
