@@ -118,9 +118,6 @@ namespace CyMedia {
 
     public:
         void initGUI();
-
-        void log_printf(CyMedia::LogLevel level, const char* fmt, ...);
-
         oneFrameBuffer* getBuffer(bool force = false);
         void upImageToBuffer(oneFrameBuffer* buffer, CyMedia::ImageShowInfo& info, uint8_t* data);
         bool addData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
@@ -208,7 +205,8 @@ namespace CyMedia {
         bool bZoomScrollBarIsShow = false;
 
         QElapsedTimer m_ToolWUpTimer;
-        bool m_AutoThumbnail = true;
+        bool m_ThumbnailEnable = true;
+        bool m_AutoThumbnail = false;
         QSize m_AutoThumbnailSize = QSize(500, 500);
 
         CyMediaRecTimeW* m_RetimeItem = nullptr;
@@ -789,18 +787,19 @@ namespace CyMedia {
 
     bool CyMediaDis::privateData::addData(CyMedia::ImageShowInfo info, uint8_t* data, bool force /*= false*/) {
         if (!data || info.width <= 0 || info.height <= 0 || info.bit <= 0 || info.length <= 0) {
+            CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::ERR, "[func] upImageData:(!data || info.width <= 0 || info.height <= 0 || info.bit <= 0 || info.length <= 0)");
             return false;
         }
         static const size_t MAX_IMAGE_SIZE = 15000;
         if (info.width > MAX_IMAGE_SIZE || 
             info.height > MAX_IMAGE_SIZE) {
-            log_printf(CyMedia::LogLevel::WAR, "图像过大，拒绝: (%d %d)，最大(%d)\n", info.width, info.height, MAX_IMAGE_SIZE);
+            CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::WAR, "[func] upImageData:图像过大，拒绝: (%d %d)，最大(%d)\n", info.width, info.height, MAX_IMAGE_SIZE);
             return false;
         }
 
         //确保NoImage不会被错误覆盖
         if (clearImageTime.isValid() && clearImageTime.elapsed() < 300) {
-            log_printf(CyMedia::LogLevel::INFO, "跳过图像(update)\n\r");
+            CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::INFO, "[func] upImageData:跳过图像(update)\n\r");
             return false;
         }
         oneFrameBuffer* t_pBuffer = nullptr;
@@ -869,7 +868,7 @@ namespace CyMedia {
             if (false == pImageDataThread->isRunning()) {
                 bImageDataThread_flag = true;
                 pImageDataThread->start();
-                log_printf(CyMedia::LogLevel::INFO, "启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
+                CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::INFO, "启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
             }
         }
         return true;
@@ -998,7 +997,7 @@ namespace CyMedia {
             }
             
             Thread_ImageData_oneFrame(tFrame, opePara);
-            log_printf(CyMedia::LogLevel::DEBUG, "Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
+            CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::TRACE, "Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
             //回收，清除状态
             QMutexLocker lock(&m_dataLock);
             threadPare_ImageDataArray[targetIdx].bisUpData = false;
@@ -1008,7 +1007,7 @@ namespace CyMedia {
         pImageDataThread->quit();
         bImageDataThread_flag = false;
         if (opePara.ctx) delete opePara.ctx;
-        log_printf(CyMedia::LogLevel::INFO, "图像处理线程退出\n\r");
+        CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::INFO, "图像处理线程退出\n\r");
     }
     void CyMediaDis::privateData::Thread_ImageData_oneFrame(const oneFrameBuffer& frame, opeFrameThreadPara& opePara) {
         QElapsedTimer eTimer;
@@ -1312,21 +1311,6 @@ namespace CyMedia {
         initLayout();
     }
 
-    void CyMediaDis::privateData::log_printf(CyMedia::LogLevel level, const char* fmt, ...) {
-        if (level < CyMediaDisLog::instance().level()) return;
-
-        // 标准 C 可变参数格式化
-        static char buffer[1024] = { 0 };
-        va_list ap;
-
-        va_start(ap, fmt);
-        vsnprintf(buffer, sizeof(buffer) - 1, fmt, ap); // 格式化到 buffer
-        va_end(ap);
-
-        // 转给回调（纯 std::string）
-        CyMediaDisLog::instance().log_print(level, std::string(buffer));
-    }
-    
     void CyMediaDis::privateData::initScene() {
         //画布
         scene = new CyDMediaDisScen(0, 0, m_imageinfo.width, m_imageinfo.height);
@@ -1359,6 +1343,7 @@ namespace CyMedia {
             });
 
         view->viewport()->installEventFilter(this);
+        m_ThumbnailEnable = view->thumbnailEnable();
     }
 
     void CyMediaDis::privateData::initToolBar() {
@@ -1560,7 +1545,7 @@ namespace CyMedia {
     void CyMediaDis::privateData::ImageDataDoneReceive(CyMedia::ImageShowInfo info) {
         //检查线程是否退出
         if (false == m_bDirectUpImage && false == bImageDataThread_flag) {
-            log_printf(CyMedia::LogLevel::INFO, "跳过图像(Receive)\n\r");
+            CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::INFO, "跳过图像(Receive)\n\r");
             return;
         }
 

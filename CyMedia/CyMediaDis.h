@@ -365,7 +365,7 @@ namespace CyMedia {
         bool thumbnailEnable();
         /**
         * @brief 设置缩略图启用状态。
-        * @note 当 `thumbnailAutoEnable()` 为 `true` 时，该设置无效。
+        * @note 当 `thumbnailAutoEnable()` 为 `true` 时，此方法无效。
         * @param enable `true` 启用，`false` 禁用。
         */
         void setThumbnailEnable(bool enable);

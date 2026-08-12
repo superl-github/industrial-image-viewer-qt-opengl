@@ -350,7 +350,7 @@ CyMediaDisViewBckDraw* CyMediaDisView::imageDraw() const {
 void CyMediaDisView::clearBackGround() {
     m_backDraw->clearBackGround();
     if (QThread::currentThread() == qApp->thread()) {
-        m_Thumbnail->setVisible(false);
+        m_Thumbnail->hide();
     }
 }
 
@@ -371,11 +371,10 @@ bool CyMediaDisView::thumbnailEnable() {
 }
 
 void CyMediaDisView::setThumbnailEnable(bool enable) {
-    if (d->mThumbnailEnable == enable)
-        return;
+    if (d->mThumbnailEnable == enable) return;
     d->mThumbnailEnable = enable;
     if (false == enable) {
-        m_Thumbnail->hide();
+        if (m_Thumbnail) m_Thumbnail->hide();
     }
 }
 

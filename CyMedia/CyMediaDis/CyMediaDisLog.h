@@ -16,6 +16,14 @@ public:
     void setLevel(CyMedia::LogLevel level);
 
     void log_print(CyMedia::LogLevel level, const std::string& msg);
+    void log_printf(CyMedia::LogLevel level, const char* fmt, ...);
+
+    void log_printf_Trace(const char* fmt, ...);
+    void log_printf_dDebug(const char* fmt, ...);
+    void log_printf_Info(const char* fmt, ...);
+    void log_printf_Warning(const char* fmt, ...);
+    void log_printf_Error(const char* fmt, ...);
+    void log_printf_Critical(const char* fmt, ...);
 
 private:
     CyMediaDisLog();

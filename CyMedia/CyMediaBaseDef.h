@@ -495,7 +495,7 @@ namespace CyMedia {
      * @param msg 日志消息内容。
      * @param pUser 用户自定义指针，用于传递上下文。
      */
-    using LogCallback = std::function<void(CyMedia::LogLevel level, const std::string&, void*)>;
+    using LogCallback = std::function<void(CyMedia::LogLevel, const std::string&, void*)>;
 
     /**
      * @brief 视频帧数据回调函数类型。
