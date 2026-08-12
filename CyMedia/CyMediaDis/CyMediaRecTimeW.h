@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <QWidget>
 
 class CyMediaRecTimeW : public QWidget {
@@ -11,7 +11,7 @@ public:
 public:
 	void upRecTime(uint64_t time);
 
-	void upRecTime(uint64_t saved, uint64_t sum);
+	void upRecTime(float saved, float sum);
 
 	void upRecTime_Timed(uint64_t saved, uint64_t sum);
 private:

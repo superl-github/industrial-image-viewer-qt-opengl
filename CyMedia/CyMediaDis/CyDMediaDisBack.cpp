@@ -1,4 +1,4 @@
-#include "CyDMediaDisBack.h"
+﻿#include "CyDMediaDisBack.h"
 
 #include <QMessageBox>
 #include <QFile>
@@ -17,7 +17,7 @@ GLushort indicesArray[6];
 
 class CyDMediaDisBack::PrivateData {
 public:
-    void log_printf(const char* fmt, ...);
+    void log_printf(CyMedia::LogLevel level, const char* fmt, ...);
 
     bool loadDataToGLBuffer(uint8_t* data, CyMedia::ImageShowInfo& info, QOpenGLFunctions* f);
 
@@ -178,7 +178,7 @@ bool CyDMediaDisBack::PrivateData::loadDataToGLBuffer(uint8_t* data, CyMedia::Im
     return true;
 }
 
-void CyDMediaDisBack::PrivateData::log_printf(const char* fmt, ...) {
+void CyDMediaDisBack::PrivateData::log_printf(CyMedia::LogLevel level, const char* fmt, ...) {
     if (!m_logCallback || !m_bIsPrintDebug) {
         return;
     }
@@ -192,7 +192,7 @@ void CyDMediaDisBack::PrivateData::log_printf(const char* fmt, ...) {
     va_end(ap);
 
     // 转给回调（纯 std::string）
-    m_logCallback(QString("CyDMediaDisBack[%1]:%2").arg(__LINE__).arg(QString::fromUtf8(buffer)).toStdString(), m_logCallback_user);
+    m_logCallback(level, QString("CyDMediaDisBack[%1]:%2").arg(__LINE__).arg(QString::fromUtf8(buffer)).toStdString(), m_logCallback_user);
 }
 
 
@@ -748,7 +748,7 @@ void CyDMediaDisBack::initglsl(QOpenGLFunctions* f)
         f->glUseProgram(d->shaderProgram->programId());
         if (false == d->shaderProgram->addShaderFromSourceCode(QOpenGLShader::Vertex, d->vertexShaderSource)) {
             d->vertexErrorMessage->setText(d->shaderProgram->log());
-            d->log_printf("%s\r\n", d->shaderProgram->log().toLatin1().data());
+            d->log_printf(CyMedia::LogLevel::ERR, "%s\r\n", d->shaderProgram->log().toLatin1().data());
             d->vertexErrorMessage->setVisible(true);
             return;
         }

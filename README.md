@@ -6,6 +6,16 @@ Image-Video-On-QGraphicsView
 
   It was developed to meet the need for interfacing with **camera image streams**, so it uses OpenGL rendering and image processing to ensure speed as much as possible. Using QGraphicsView eliminates a lot of external work, such as image matrices and additional attachments.
 
+**V 1.2.3(W)**
+
+- 现在无图像时操作镜像无效
+- 优化灰度拉伸窗口布局
+- 修复交替图像信息切换时的显示错误问题
+
+**未暂存
+
+- 
+
 **V 1.2.2**
 
 - void CyMediaDis::privateData::Thread_ImageData()中的“struct opeFrameThreadPara opePara;”语法会导致多个Dis拥有同一个opePara。

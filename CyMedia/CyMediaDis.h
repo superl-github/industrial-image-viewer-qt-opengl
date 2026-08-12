@@ -157,10 +157,11 @@ namespace CyMedia {
         bool setLanguage(CyMedia::eLanguage lang);
 
         /**
-         * @brief 启用/禁用调试日志输出。
-         * @param flag `true` 开启，`false` 关闭。
+         * @brief 设置日志等级。
+         * @param levl
+         * @see CyMedia::LogLevel
          */
-        void setPrintLog(bool flag);
+        void setlogLevel(CyMedia::LogLevel level);
         /**
          * @brief 设置日志回调函数，用于自定义日志处理。
          * @param cb 回调函数对象（接收字符串和用户指针）。
@@ -477,10 +478,10 @@ namespace CyMedia {
 		void upRecTime(uint64_t time);
         /**
         * @brief 更新录像指示器显示的已存储时长和总时长（双时间模式）。
-        * @param saved 已存储时长（毫秒）。
-        * @param sum 总时长（毫秒）。
+        * @param saved 已存储时长（秒）。
+        * @param sum 总时长（秒）。
         */
-		void upRecTime(uint64_t saved, uint64_t sum);
+		void upRecTime(float saved, float sum);
         /**
          * @brief 更新录像指示器显示的已存储时长和总时长（定时模式，带格式）。
          * @param saved 已存储时长（毫秒）。

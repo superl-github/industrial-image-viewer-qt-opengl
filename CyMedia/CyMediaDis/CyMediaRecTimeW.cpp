@@ -1,4 +1,4 @@
-#include "CyMediaRecTimeW.h"
+﻿#include "CyMediaRecTimeW.h"
 #include <QPushButton>
 #include <QLayout>
 #include <QLabel>
@@ -17,19 +17,16 @@ public:
 
 CyMediaRecTimeW::CyMediaRecTimeW(QWidget* parent/* = nullptr*/, Qt::WindowFlags f/* = Qt::WindowFlags()*/)
     :QWidget(parent, f),
-    p_data(new PrivateData)
-{
+    p_data(new PrivateData) {
     setWindowFlags(Qt::FramelessWindowHint);
     initGui();
 }
 
-CyMediaRecTimeW::~CyMediaRecTimeW()
-{
+CyMediaRecTimeW::~CyMediaRecTimeW() {
 
 }
 
-void CyMediaRecTimeW::upRecTime(uint64_t time)
-{
+void CyMediaRecTimeW::upRecTime(uint64_t time) {
     int hh = time / 60 / 60;
     int mm = time / 60 % 60;
     int ss = time % 60;
@@ -49,21 +46,17 @@ void CyMediaRecTimeW::upRecTime(uint64_t time)
         .arg(ss, 2, 10, QChar('0')));
 }
 
-void CyMediaRecTimeW::upRecTime(uint64_t saved, uint64_t sum)
-{
-    p_data->m_RecTimeButton->setText(QString("%1 / %2").arg(saved).arg(sum));
-    if (saved % 2 == 0) {
-        p_data->m_LedButton->setStyleSheet("border:none; border-radius:6px; background-color:rgba(0,0,0,0);");
-        p_data->bLedChange = true;
-    }
-    else {
+void CyMediaRecTimeW::upRecTime(float saved, float sum) {
+    p_data->m_RecTimeButton->setText(QString("%1 / %2")
+        .arg(QString::number(saved, 'f', 2))
+        .arg(QString::number(sum, 'f', 2)));
+    if (p_data->bLedChange == true) {
         p_data->m_LedButton->setStyleSheet("border:none; border-radius:6px; background-color:red;");
         p_data->bLedChange = false;
     }
 }
 
-void CyMediaRecTimeW::upRecTime_Timed(uint64_t saved, uint64_t sum)
-{
+void CyMediaRecTimeW::upRecTime_Timed(uint64_t saved, uint64_t sum) {
     int hh_e = saved / 60 / 60;
     int mm_e = saved / 60 % 60;
     int ss_e = saved % 60;
@@ -72,13 +65,11 @@ void CyMediaRecTimeW::upRecTime_Timed(uint64_t saved, uint64_t sum)
     int mm_s = sum / 60 % 60;
     int ss_s = sum % 60;
 
-    if (p_data->bLedChange)
-    {
+    if (p_data->bLedChange) {
         p_data->m_LedButton->setStyleSheet("border:none; border-radius:6px; background-color:red;");
         p_data->bLedChange = false;
     }
-    else
-    {
+    else {
         p_data->m_LedButton->setStyleSheet("border:none; border-radius:6px; background-color:rgba(0,0,0,0);");
         p_data->bLedChange = true;
     }

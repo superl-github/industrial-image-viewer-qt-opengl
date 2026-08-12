@@ -47,7 +47,7 @@ private:
 
 protected:
     class PrivateData;
-    PrivateData* p_data;
+    PrivateData* d;
 };
 
 class CustomSlider : public QSlider

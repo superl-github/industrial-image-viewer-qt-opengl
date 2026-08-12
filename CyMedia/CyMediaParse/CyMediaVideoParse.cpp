@@ -11,7 +11,7 @@
 namespace CyMedia {
     class VideoParser::Private {
     public:
-        std::unique_ptr<VideoParseBase> m_impl;
+        std::unique_ptr<VideoParseBase> m_impl = nullptr;
     };
 
 

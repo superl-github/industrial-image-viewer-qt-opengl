@@ -755,7 +755,7 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
         memcpy(&pTex->showInfo, &info, sizeof(CyMedia::ImageShowInfo));
         m_bIsOVerSize = newWidth > m_gl_max_texture_size || newHeight > m_gl_max_texture_size;
         bool tOverSize = m_bIsOVerSize;
-        //如果朝限且是灰度图可按RGBA传输
+        //如果超限且是灰度图可按RGBA传输
         if (m_bIsOVerSize) {
             if (info.isMono()) {
                 if (newWidth / 2 > m_gl_max_texture_size || newHeight / 2 > m_gl_max_texture_size) {
@@ -787,6 +787,10 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
         //重新初始化纹理
         initTextureOne(f, pTex, true);
         m_fisrt_up_image = true;
+    }
+    //和上一帧前台纹理信息不同也需要更新
+    if (pTex->needUpImageInfo == false) {
+        pTex->needUpImageInfo = (memcmp(&pTex->showInfo, &m_textureInfo[1 - backIdx].showInfo, sizeof(CyMedia::ImageShowInfo)) != 0);
     }
     //更新纹理
     //主纹理(Y 或 Packed)

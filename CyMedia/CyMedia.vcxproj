@@ -248,6 +248,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaCalc\CyMediaCalc_YUV.cpp" />
     <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp" />
     <ClCompile Include="CyMediaCalc\CyMediaFileFunc.cpp" />
+    <ClCompile Include="CyMediaDis\CyMediaDisLog.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp" />
     <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaImageParse.cpp" />
@@ -357,6 +358,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h" />
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
     <ClInclude Include="CyMediaCalc\CyMediaFileFunc.h" />
+    <ClInclude Include="CyMediaDis\CyMediaDisLog.h" />
     <ClInclude Include="CyMediaParse\CyMediaImageParse.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParse.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParseBase.h" />

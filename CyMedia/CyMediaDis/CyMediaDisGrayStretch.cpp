@@ -1,10 +1,11 @@
-#include "CyMediaDisGrayStretch.h"
+﻿#include "CyMediaDisGrayStretch.h"
 
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "Histogram/CyQCP.h"
 #include "cycustomwidget.h"
 
 #include <QToolTip>
+#include <QBoxLayout>
 
 #define debug_msg(fmt, ...) printf("[CyMediaDisGrayStretch(%d)  " fmt, __LINE__, ##__VA_ARGS__)
 
@@ -588,34 +589,41 @@ void CyMediaDisGrayStretch::initGUI() {
     //layout
     QWidget* grayCtrW = new QWidget(this);
     QHBoxLayout* grayCtrLayout = new QHBoxLayout(grayCtrW);
+    grayCtrLayout->setContentsMargins(0, 0, 0, 0);
     grayCtrLayout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     grayCtrLayout->addWidget(d->mAutoStretchLab);
     grayCtrLayout->addWidget(d->mAutoStretchBtn);
 
     QWidget* rgbCtrW = new QWidget(this);
     QHBoxLayout* rgbCtrLyout = new QHBoxLayout(rgbCtrW);
+    rgbCtrLyout->setContentsMargins(0, 0, 0, 0);
     rgbCtrLyout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     rgbCtrLyout->addWidget(d->mRGBStretchTypeLab);
     rgbCtrLyout->addWidget(d->mRGBStretchTypeBox);
     d->mControlTab->clear();
     d->mControlTab->addTab(grayCtrW, "");
     d->mControlTab->addTab(rgbCtrW, "");
-    grayCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    rgbCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    grayCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    rgbCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    QGridLayout* mainLayou = new QGridLayout(this);
-    mainLayou->addWidget(d->mCustomPlot, 0, 0, 1, 3);
-    mainLayou->addWidget(d->mStartNumberBox, 1, 0, 1, 1);
-    mainLayou->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum), 1, 1, 1, 1);
-    mainLayou->addWidget(d->mEndNumberBox, 1, 2, 1, 1);
-    mainLayou->addWidget(d->mControlTab, 2, 0, 1, 3);
+    QWidget* tCtrlW = new QWidget(this);
+    QGridLayout* tCtrlWLayout = new QGridLayout(tCtrlW);
+    tCtrlWLayout->setContentsMargins(0, 0, 0, 0);
+    tCtrlWLayout->addWidget(d->mStartNumberBox, 0, 0, 1, 1);
+    tCtrlWLayout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum), 0, 1, 1, 1);
+    tCtrlWLayout->addWidget(d->mEndNumberBox, 0, 2, 1, 1);
+    tCtrlWLayout->addWidget(d->mControlTab, 1, 0, 1, 3);
+    d->mControlTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     
-    d->mStartNumberBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    d->mEndNumberBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    d->mControlTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    QVBoxLayout* mainLayou = new QVBoxLayout(this);
+    mainLayou->setContentsMargins(0, 0, 0, 0);
+    mainLayou->addWidget(d->mCustomPlot);
+    mainLayou->addWidget(tCtrlW);
     d->mCustomPlot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    tCtrlW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     flushTrans();
+    d->mControlTab->adjustSize();
     setThemeColor(d->mThemeColor);
 
     //Connection

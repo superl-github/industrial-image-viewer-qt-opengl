@@ -162,11 +162,10 @@ void CyMediaDisTest::initGUI() {
     m_view->setAcceptDrops(acceptDrops());
     m_view->setSceneAcceptDrop(acceptDrops());
     m_view->setDirectUpImage(false);
+    m_view->setYUVMethod(CyMedia::YUVTRANS_Y);
     connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, &CyMediaDisTest::onViewUpPosPix);
     connect(m_view, &CyMedia::CyMediaDis::imageSizeChanged, this, &CyMediaDisTest::onImageSizeChanged);
     connect(m_view, &CyMedia::CyMediaDis::urlsDrop, this, &CyMediaDisTest::urlsDropOpe);
-
-    m_view->setYUVMethod(CyMedia::YUVTRANS_Y);
 
     m_rawHeaderW = new CyMedia::CyMediaDis_GetRawInfoDialog(this);
     m_image_func = new CyMedia::CyMediaImageParse();
@@ -424,7 +423,7 @@ void CyMediaDisTest::on_act_file_open() {
         this,
         tr("Select the file to open"),
         "",
-        "RAW(*.raw)"
+        "File(*.*)"
     );
     if (selFilePath.isEmpty()) return;
     onFileOpen(selFilePath);
@@ -862,25 +861,17 @@ void CyMediaDisTest::onUplaySlider(int num, bool isFinish) {
 }
 
 void CyMediaDisTest::onFileOpen(QString filePath) {
-    auto fileType = m_image_func->getTypeByPath(filePath.toStdString());
-    if (fileType == CyMedia::IMAGE_SUFFIX_INVALID) {
-        QMessageBox::warning(
-            this,
-            tr("error"),
-            tr("Invalid file or unsupported format : %1").arg(filePath),
-            QMessageBox::Ok
-        );
-        return;
-    }
+    printf("打开文件:%s\n", filePath.toUtf8().data());
     closeReplay();
-
     //是否是视频
+    printf("判断视频格式\n");
     auto videoType = CyMedia::VideoParser::getvideoTypeByPath(filePath.toUtf8().toStdString());
     if (videoType == CyMedia::VIDEO_SUFFIX_RAW) {
         onOpenRawFile(filePath);
         return;
     }
     //处理图像
+    printf("判断图像格式\n");
     auto imageType = CyMedia::CyMediaImageParse::getTypeByPath(filePath.toUtf8().toStdString());
     if (imageType == CyMedia::IMAGE_SUFFIX_INVALID) {
         QMessageBox::warning(
@@ -891,11 +882,13 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
         );
         return;
     }
+    printf("打开Raw文件\n");
     if (imageType == CyMedia::IMAGE_SUFFIX_RAW) {
         onOpenRawFile(filePath);
         return;
     }
 
+    printf("打开其他格式图像\n");
     //其他图像
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
@@ -926,6 +919,7 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
 
 void CyMediaDisTest::onOpenRawFile(QString filePath) {
     //先按照有头视频解析
+    printf("按有头视频解析\n");
     int openRe = onOpenRawVideo(filePath, false);
     if (openRe == 0) {
         return;
@@ -945,12 +939,14 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
         ;
     }
     //按照有头的图像解析
+    printf("按有头图像解析\n");
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
     QString errStr;
     int openRet = m_image_func->openImage(filePath.toStdWString(), CyMedia::IMAGE_SUFFIX_RAW, info, data);
     //未找到头
     if (openRet == 3) {
+        printf("未找到头，获取用户输入信息\n");
         //初始化头信息窗口值
         m_rawHeaderW->setOpenFileName(QFileInfo(filePath).completeBaseName());
         quint32 width = m_rawHeaderW->imageWidth();
@@ -1003,9 +999,10 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
         m_Setting->sync();
         //判断解析方式
         auto fileSize = QFileInfo(filePath).size();
-        uint32_t twoFrameAndHeadSize = (m_VideoInfo.frameInfo.upLenth() * 2) + offset;
+        uint32_t twoFrameAndHeadSize = (info.upLenth() * 2) + offset;
         //大于两帧按视频解析
         if (fileSize >= twoFrameAndHeadSize) {
+            printf("文件大于两帧，按照视频处理\n");
             m_VideoInfo.frameInfo = info;
             m_VideoInfo.dataOffset = offset;
             m_VideoInfo.fps = m_rawHeaderW->videoFps();
@@ -1033,6 +1030,7 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
             }
         }
         //按图片解析
+        printf("文件小于两帧，按照图像处理\n");
         openRet = m_image_func->openImage_NotHeaderRaw(filePath.toStdWString(), offset, info, data);
     }
     if (0 != openRet) {
@@ -1061,8 +1059,18 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
 
 int CyMediaDisTest::onOpenRawVideo(QString filepath, bool format) {
     m_bVideoFormat = format;
-    int opeRe = m_videoParse->open(filepath.toUtf8().data(), m_VideoInfo, format);
+    printf("CyMediaDisTest::onOpenRawVideo\n");
+    const std::filesystem::path videoPath = std::filesystem::u8path(filepath.toUtf8().toStdString());
+    printf("m_videoParse->open\n");
+    int opeRe = m_videoParse->open(videoPath, m_VideoInfo, format);
     if (opeRe == 0) {
+        if (false == format) {
+            printf("解析有头视频成功: %d * %d * %d bit format:%d\n", 
+                m_VideoInfo.frameInfo.width,
+                m_VideoInfo.frameInfo.height,
+                m_VideoInfo.frameInfo.bit,
+                m_VideoInfo.frameInfo.format);
+        }
         m_videoParse->registerFrameCallback(CyMediaDisTest::rePlayImageCallBack, this);
         m_playStatus = pause;
         //更新第一帧数据

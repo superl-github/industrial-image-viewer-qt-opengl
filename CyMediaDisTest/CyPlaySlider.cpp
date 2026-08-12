@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QWidget>
 #include <QLineEdit>
+#include <QLabel>
 
 
 //class CustomSlider------------------------------------------------------------
@@ -103,49 +104,51 @@ public:
     };
     int             m_dRate = 1;
     CustomSlider*   m_slider = 0;
-    QLineEdit*      m_Edit = 0;
+    QLabel*         ui_playTime_Lab = 0;
     SliderStatus    CurrentSliderStatus = SLIDER_AUTO;
 };
 
 CyPlaySlider::CyPlaySlider(QWidget* parent/* = nullptr*/)
 :QWidget(parent),
-p_data(new PrivateData) {
-    p_data->m_slider = new CustomSlider(this);
-    connect(p_data->m_slider, &CustomSlider::handleJump, this, &CyPlaySlider::handleJump);
-    connect(p_data->m_slider, &CustomSlider::handleMoved, this, &CyPlaySlider::handleMoved);
-    connect(p_data->m_slider, &CustomSlider::handleJumpDone, this, &CyPlaySlider::handleJumpDone);
+d(new PrivateData) {
+    d->m_slider = new CustomSlider(this);
+    connect(d->m_slider, &CustomSlider::handleJump, this, &CyPlaySlider::handleJump);
+    connect(d->m_slider, &CustomSlider::handleMoved, this, &CyPlaySlider::handleMoved);
+    connect(d->m_slider, &CustomSlider::handleJumpDone, this, &CyPlaySlider::handleJumpDone);
 
-    p_data->m_Edit = new QLineEdit(this);
-    QFont font = p_data->m_Edit->font();
+    d->ui_playTime_Lab = new QLabel(this);
+    //边框
+    d->ui_playTime_Lab->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+    QFont font = d->ui_playTime_Lab->font();
     font.setPointSize(8);
     font.setFamily(QString("Microsoft YaHei UI"));
     font.setBold(true);
-    p_data->m_Edit->setFont(font);
-    p_data->m_Edit->setText("000:00`000");
-    p_data->m_Edit->setMaximumWidth(72);
-    p_data->m_Edit->setEnabled(false);
+    d->ui_playTime_Lab->setFont(font);
+    d->ui_playTime_Lab->setText("000:00`000");
+    d->ui_playTime_Lab->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
+    d->ui_playTime_Lab->setEnabled(false);
     //Layout
     QHBoxLayout* m_Layout = new QHBoxLayout(this);
     m_Layout->setContentsMargins(5, 0, 5, 0);
     m_Layout->setSpacing(5);
-    m_Layout->addWidget(p_data->m_slider);
-    m_Layout->addWidget(p_data->m_Edit);
+    m_Layout->addWidget(d->m_slider);
+    m_Layout->addWidget(d->ui_playTime_Lab);
     setLayout(m_Layout);
 }
 
 CyPlaySlider::~CyPlaySlider() {
-    if (p_data) {
-        delete p_data;
-        p_data = 0;
+    if (d) {
+        delete d;
+        d = 0;
     }
 }
 
 void CyPlaySlider::setValue(int value) {
-    switch (p_data->CurrentSliderStatus) {
+    switch (d->CurrentSliderStatus) {
         case PrivateData::SLIDER_AUTO: {
-            p_data->m_slider->setValue(value);
-            double timeValue = (double)value / (double)p_data->m_dRate;
-            p_data->m_Edit->setText(QString("%0:%1:%3")
+            d->m_slider->setValue(value);
+            double timeValue = (double)value / (double)d->m_dRate;
+            d->ui_playTime_Lab->setText(QString("%0:%1:%3")
                 .arg(QString::number(int(timeValue / 60)))
                 .arg(int(timeValue) % 60, 2, 10, QChar('0'))
                 .arg(int((timeValue - int(timeValue)) * 1000), 3, 10, QChar('0'))
@@ -162,22 +165,22 @@ void CyPlaySlider::setValue(int value) {
 }
 
 int CyPlaySlider::value() {
-    return p_data->m_slider->value();
+    return d->m_slider->value();
 }
 
 void CyPlaySlider::setTimeLableVisible(bool visio) {
-    p_data->m_Edit->setVisible(visio);
+    d->ui_playTime_Lab->setVisible(visio);
 }
 
 bool CyPlaySlider::timeLableisVisible() {
-    return p_data->m_Edit->isVisible();
+    return d->ui_playTime_Lab->isVisible();
 }
 
 void CyPlaySlider::setRate(int Rate) {
-    p_data->m_dRate = Rate;
-    int value = p_data->m_slider->value();
-    double timeValue = (double)value / (double)p_data->m_dRate;
-    p_data->m_Edit->setText(QString("%0:%1:%2")
+    d->m_dRate = Rate;
+    int value = d->m_slider->value();
+    double timeValue = (double)value / (double)d->m_dRate;
+    d->ui_playTime_Lab->setText(QString("%0:%1:%2")
         .arg(QString::number(int(timeValue / 60)))
         .arg(int(timeValue) % 60, 2, 10, QChar('0'))
         .arg(int((timeValue - int(timeValue)) * 1000), 3, 10, QChar('0'))
@@ -185,54 +188,54 @@ void CyPlaySlider::setRate(int Rate) {
 }
 
 int CyPlaySlider::Rate() {
-    return p_data->m_dRate;
+    return d->m_dRate;
 }
 
 void CyPlaySlider::setRange(int min, int max) {
-    p_data->m_slider->setRange(min, max);
+    d->m_slider->setRange(min, max);
 }
 
 int CyPlaySlider::maxmum() {
-    return p_data->m_slider->maximum();
+    return d->m_slider->maximum();
 }
 
 int CyPlaySlider::minimum() {
-    return p_data->m_slider->minimum();
+    return d->m_slider->minimum();
 }
 
 void CyPlaySlider::setHandleTracking(bool tracking) {
-    p_data->m_slider->setHandleTrack(tracking);
+    d->m_slider->setHandleTrack(tracking);
 }
 
 bool CyPlaySlider::HandleTrack() {
-    return p_data->m_slider->HandleTrack();
+    return d->m_slider->HandleTrack();
 }
 
 void CyPlaySlider::setTickInterval(int ti) {
-    p_data->m_slider->setTickInterval(ti);
+    d->m_slider->setTickInterval(ti);
 }
 
 int CyPlaySlider::tickInterval() {
-    return p_data->m_slider->tickInterval();
+    return d->m_slider->tickInterval();
 }
 
 void CyPlaySlider::handleJump(int value) {
-    p_data->m_slider->setSliderPosition(value);
-    double timevalue = (double)value / (double)p_data->m_dRate;
-    p_data->m_Edit->setText(QString("%0:%1:%2")
+    d->m_slider->setSliderPosition(value);
+    double timevalue = (double)value / (double)d->m_dRate;
+    d->ui_playTime_Lab->setText(QString("%0:%1:%2")
         .arg(QString::number(int(timevalue / 60)))
         .arg(int(timevalue) % 60, 2, 10, QChar('0'))
         .arg(int((timevalue - int(timevalue)) * 1000), 3, 10, QChar('0'))
     );
-    p_data->CurrentSliderStatus = PrivateData::SLIDER_DRAG;
+    d->CurrentSliderStatus = PrivateData::SLIDER_DRAG;
     emit sliderDrag(value);
 }
 
 void CyPlaySlider::handleMoved(int value) {
-    if (p_data->CurrentSliderStatus == PrivateData::SLIDER_DRAG) {
-        p_data->m_slider->setSliderPosition(value);
-        double timevalue = (double)value / (double)p_data->m_dRate;
-        p_data->m_Edit->setText(QString("%0:%1:%2")
+    if (d->CurrentSliderStatus == PrivateData::SLIDER_DRAG) {
+        d->m_slider->setSliderPosition(value);
+        double timevalue = (double)value / (double)d->m_dRate;
+        d->ui_playTime_Lab->setText(QString("%0:%1:%2")
             .arg(QString::number(int(timevalue / 60)))
             .arg(int(timevalue) % 60, 2, 10, QChar('0'))
             .arg(int((timevalue - int(timevalue)) * 1000), 3, 10, QChar('0'))
@@ -242,6 +245,6 @@ void CyPlaySlider::handleMoved(int value) {
 }
 
 void CyPlaySlider::handleJumpDone() {
-    p_data->CurrentSliderStatus = PrivateData::SLIDER_AUTO;
+    d->CurrentSliderStatus = PrivateData::SLIDER_AUTO;
     emit sliderRelease();
 }

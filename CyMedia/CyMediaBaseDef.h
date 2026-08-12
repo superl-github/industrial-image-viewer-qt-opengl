@@ -29,7 +29,7 @@
  */
 namespace CyMedia {
     //================ 版本号 ====================
-    const char VERSION[] = "V 1.2.2";
+    const char VERSION[] = "V 1.2.3.preview";
 
     //==================== 色彩空间转换常量 ====================
     /**
@@ -66,6 +66,16 @@ namespace CyMedia {
     enum eLanguage {
         CHINESE, ///< 简体中文
         ENGLISH  ///< 英语
+    };
+
+    enum LogLevel {
+        TRACE = 0,
+        DEBUG,
+        INFO,
+        WAR,
+        ERR,
+        CRITICAL,
+        OFF,
     };
 
     /**
@@ -324,7 +334,7 @@ namespace CyMedia {
          * @details 特别注意 10/12 位打包格式的按位计算逻辑。
          * @return 返回计算后的长度
          */
-        bool upLenth() {
+        uint32_t upLenth() {
             int pixelNum = width * height;
             if (format == MONO10P) {
                  length = (pixelNum * 10 + 7) / 8;
@@ -485,7 +495,7 @@ namespace CyMedia {
      * @param msg 日志消息内容。
      * @param pUser 用户自定义指针，用于传递上下文。
      */
-    using LogCallback = std::function<void(const std::string&, void*)>;
+    using LogCallback = std::function<void(CyMedia::LogLevel level, const std::string&, void*)>;
 
     /**
      * @brief 视频帧数据回调函数类型。

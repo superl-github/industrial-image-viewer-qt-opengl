@@ -34,6 +34,9 @@ md "%GenDir_Lib_64%\Release\" 2>nul
 
 md "%GenDir_Demo%" 2>nul
 
+::doc
+copy "README.md" "%GenDir%"
+
 ::include->CyMediaDis
 echo "copy Header"
 copy "CyMedia\CyMediaBaseDef.h" "%GenDir_include%"

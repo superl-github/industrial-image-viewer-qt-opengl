@@ -305,6 +305,9 @@ bool CyMediaDisView::isVerMirror() {
 }
 
 void CyMediaDisView::hriMirror(void) {
+    if (!this->scene() || !m_backDraw->haveImage())
+        return;
+
     QTransform transform(this->transform());
     transform.rotate(180.0, Qt::YAxis);
     setTransform(transform);
@@ -313,6 +316,9 @@ void CyMediaDisView::hriMirror(void) {
 }
 
 void CyMediaDisView::verMirror(void) {
+    if (!this->scene() || !m_backDraw->haveImage())
+        return;
+
     QTransform transform(this->transform());
     transform.rotate(180.0, Qt::XAxis);
     setTransform(transform);
