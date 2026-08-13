@@ -188,8 +188,6 @@ bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, Cy
 
     //计算直方图
     calcImageHisFlag cancHisFlag;
-    cancHisFlag.calcXRangePara = 1 << info.bit;
-
     double calcHisMinX = .0;
     double calcHisMaxX = .0;
     
@@ -206,7 +204,9 @@ bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, Cy
     else if (info.isYUV()) {
         cancHisFlag = upImage_YUV(info, data, formatOpe);
     }
-
+    if (cancHisFlag.calcXRangePara <= 1.0) {
+        cancHisFlag.calcXRangePara = 1 << info.bit;
+    }
     calcHisMinX = -(cancHisFlag.calcXRangePara * 0.05);
     calcHisMaxX = cancHisFlag.calcXRangePara * 1.05;
     emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(cancHisFlag.calcHisMaxY));
@@ -696,29 +696,22 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Mono(CyMedia::I
         }
         //更新数据
         d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
-
-        if (false == d->mMaskIsfullzero) {
-            double maxY_threshold = 0.97;
-            std::sort(d->mHistogramData[hisI_Gray].begin(), d->mHistogramData[hisI_Gray].end());
-            size_t idx_maxY = static_cast<size_t>(d->mHistogramData[hisI_Gray].size() * maxY_threshold);
-            calcRe.calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
-            while (calcRe.calcHisMaxY <= 0.0) {
-                idx_maxY++;
-                if (idx_maxY >= d->mHistogramData[hisI_Gray].size()) break;
-                calcRe.calcHisMaxY = d->mHistogramData[hisI_Gray][idx_maxY];
-            }
-        }
     }
     //计算参数
-    CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, d->mHisTestData.max,
-        &d->mHisTestData.std, &d->mHisTestData.Uniformity);
+    int maxXrange = 0;
+    CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, (1 << info.bit) - 1,
+        &d->mHisTestData.std, &d->mHisTestData.Uniformity, &maxXrange);
+    calcRe.calcXRangePara = maxXrange;
+    //计算Y轴显示范围
+    if (false == d->mMaskIsfullzero && false == d->mIsPos) {
+        calcRe.calcHisMaxY = CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI_Gray]);
+    }
 
     return calcRe;
 }
 
 CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_RGB(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
     calcImageHisFlag calcRe;
-
     if (d->mIsPos) {
         //计算像素点
         double tempRGB[4];
@@ -778,13 +771,15 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_RGB(CyMedia::Im
         //更新数据
         for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
             d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
+            calcRe.calcXRangePara = 1 << info.bit;
         }
         if (false == d->mMaskIsfullzero) {
             //计算参数
+            std::vector<int> maxXrange(3);
             CyMediaCalc::computerThreeUniformity(
                 d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                d->mRGBTestData.ave, d->mRGBTestData.max,
-                d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+                d->mRGBTestData.ave, (1 << info.bit) - 1,
+                d->mRGBTestData.std, d->mRGBTestData.Uniformity, maxXrange);
             //计算Y轴显示范围
             if (d->upYrange) {
                 for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
@@ -793,6 +788,7 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_RGB(CyMedia::Im
                     }
                 }
             }
+            calcRe.calcXRangePara = (maxXrange[0] > maxXrange[1]) ? maxXrange[0] : qMax(maxXrange[1], maxXrange[2]);
         }
     }
 
@@ -864,10 +860,12 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Bayer(CyMedia::
     }
     if (false == d->mMaskIsfullzero) {
         //计算参数
+        std::vector<int> maxXrange(3);
         CyMediaCalc::computerThreeUniformity(
             d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-            d->mRGBTestData.ave, d->mRGBTestData.max,
-            d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+            d->mRGBTestData.ave, (1 << info.bit) - 1,
+            d->mRGBTestData.std, d->mRGBTestData.Uniformity, maxXrange);
+        calcRe.calcXRangePara = (maxXrange[0] > maxXrange[1]) ? maxXrange[0] : qMax(maxXrange[1], maxXrange[2]);
         //计算Y轴显示范围
         if (d->upYrange) {
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
@@ -935,10 +933,12 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_YUV(CyMedia::Im
     }
     if (false == d->mMaskIsfullzero) {
         //计算参数
+        std::vector<int> maxXrange(3);
         CyMediaCalc::computerThreeUniformity(
             d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-            d->mRGBTestData.ave, d->mRGBTestData.max,
-            d->mRGBTestData.std, d->mRGBTestData.Uniformity);
+            d->mRGBTestData.ave, (1 << info.bit) - 1,
+            d->mRGBTestData.std, d->mRGBTestData.Uniformity, maxXrange);
+        calcRe.calcXRangePara = (maxXrange[0] > maxXrange[1]) ? maxXrange[0] : qMax(maxXrange[1], maxXrange[2]);
         //计算Y轴显示范围
         if (d->upYrange) {
             for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {

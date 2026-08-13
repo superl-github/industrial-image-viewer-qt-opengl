@@ -208,18 +208,20 @@ namespace CyMediaCalc {
             end = start + 10;
     }
 
-    void computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity) {
-        return CyMediaCalc_Mono::computerUniformity(histogram, ave, maxColor, std, uniformity);
+    void computerUniformity(const std::vector<double>& histogram, const double& ave, double maxBitColor, double* std, double* uniformity, int* hisXRangeMax) {
+        return CyMediaCalc_Mono::computerUniformity(histogram, ave, maxBitColor, std, uniformity, hisXRangeMax);
     }
 
-    void computerThreeUniformity(std::vector<double>& histogram_1, std::vector<double>& histogram_2, std::vector<double>& histogram_3, std::vector<double>& ave, std::vector<double>& maxColor, std::vector<double>& std, std::vector<double>& uniformity) {
+    void computerThreeUniformity(const std::vector<double>& histogram_1, const std::vector<double>& histogram_2, const std::vector<double>& histogram_3, 
+        const std::vector<double>& ave, double maxBitColor, 
+        std::vector<double>& std, std::vector<double>& uniformity, std::vector<int>& hisXRangeMax) {
         if (std.size() < 3)
             std.resize(3);
         if (uniformity.size() < 3)
             uniformity.resize(3);
-        CyMediaCalc_Mono::computerUniformity(histogram_1, ave[0], maxColor[0], &std[0], &uniformity[0]);
-        CyMediaCalc_Mono::computerUniformity(histogram_2, ave[1], maxColor[1], &std[1], &uniformity[1]);
-        CyMediaCalc_Mono::computerUniformity(histogram_3, ave[2], maxColor[2], &std[2], &uniformity[2]);
+        CyMediaCalc_Mono::computerUniformity(histogram_1, ave[0], maxBitColor, &std[0], &uniformity[0], &hisXRangeMax[0]);
+        CyMediaCalc_Mono::computerUniformity(histogram_2, ave[1], maxBitColor, &std[1], &uniformity[1], &hisXRangeMax[1]);
+        CyMediaCalc_Mono::computerUniformity(histogram_3, ave[2], maxBitColor, &std[2], &uniformity[2], &hisXRangeMax[2]);
     }
 
     bool monoUnPack(const ImageShowInfo& info, const uint8_t* data, uint8_t* out_data) {

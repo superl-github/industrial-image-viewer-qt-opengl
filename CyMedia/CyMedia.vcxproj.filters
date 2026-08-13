@@ -76,6 +76,9 @@
     <ClCompile Include="CyMediaDis\CyMediaDisLog.cpp">
       <Filter>CyMediaDis</Filter>
     </ClCompile>
+    <ClCompile Include="CyMediaParse\CyMediaVideoParseBase.cpp">
+      <Filter>CyMediaParse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
@@ -238,6 +241,9 @@
     </ClInclude>
     <ClInclude Include="CyMediaDis\CyMediaDisLog.h">
       <Filter>CyMediaDis</Filter>
+    </ClInclude>
+    <ClInclude Include="CyMediaParse\CyMediaFormatRegistry.h">
+      <Filter>CyMediaParse</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -46,11 +46,11 @@ namespace CyMedia {
 
     std::string_view CyMediaImageParse::imageTypeStr(CyMedia::ImageSuffix type) {
         switch (type) {
-            case CyMedia::IMAGE_SUFFIX_RAW: return "raw";
-            case CyMedia::IMAGE_SUFFIX_BMP: return "bmp";
-            case CyMedia::IMAGE_SUFFIX_TIFF: return "tiff";
-            case CyMedia::IMAGE_SUFFIX_PNG:   return "png";
-            case CyMedia::IMAGE_SUFFIX_JPEG:  return "jpeg";
+            case ImageSuffix::RAW: return "raw";
+            case ImageSuffix::BMP: return "bmp";
+            case ImageSuffix::TIFF: return "tiff";
+            case ImageSuffix::PNG:   return "png";
+            case ImageSuffix::JPEG:  return "jpeg";
         }
         return "Undefined";
     }
@@ -59,18 +59,18 @@ namespace CyMedia {
     CyMedia::ImageSuffix CyMediaImageParse::getTypeByPath(const std::string& filepath) {
         size_t dot = filepath.find_last_of('.');
         if (dot == std::string::npos)
-            return CyMedia::IMAGE_SUFFIX_INVALID;
+            return ImageSuffix::INVALID;
         
         std::string ext = filepath.substr(filepath.find_last_of('.') + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
         
-        if (ext == "raw")       return CyMedia::IMAGE_SUFFIX_RAW;
-        if (ext == "bmp")       return CyMedia::IMAGE_SUFFIX_BMP;
-        if (ext == "tiff" || ext == "tif") return CyMedia::IMAGE_SUFFIX_TIFF;
-        if (ext == "png")       return CyMedia::IMAGE_SUFFIX_PNG;
-        if (ext == "jpg" || ext == "jpeg") return CyMedia::IMAGE_SUFFIX_JPEG;
+        if (ext == "raw")       return ImageSuffix::RAW;
+        if (ext == "bmp")       return ImageSuffix::BMP;
+        if (ext == "tiff" || ext == "tif") return ImageSuffix::TIFF;
+        if (ext == "png")       return ImageSuffix::PNG;
+        if (ext == "jpg" || ext == "jpeg") return ImageSuffix::JPEG;
 
-        return CyMedia::IMAGE_SUFFIX_INVALID;
+        return ImageSuffix::INVALID;
     }
 
 
@@ -79,7 +79,7 @@ namespace CyMedia {
             return  1;
         }
         //RAW
-        if (fileType == IMAGE_SUFFIX_RAW) {
+        if (fileType == ImageSuffix::RAW) {
             uint32_t fileSize = std::filesystem::file_size(filePath);
             int headSize = sizeof(CyMedia::ImageShowInfo);
             if (fileSize < headSize) return 1;
@@ -160,7 +160,7 @@ namespace CyMedia {
         auto fileType = getTypeByPath(filePath.string());
 
         //RAW
-        if (fileType == CyMedia::IMAGE_SUFFIX_RAW) {
+        if (fileType == ImageSuffix::RAW) {
             //确保父目录存在，如果不存在则自动创建
             std::filesystem::path path(filePath);
             if (path.has_parent_path()) {
@@ -188,9 +188,9 @@ namespace CyMedia {
             return 2;//stb_image只支持8位 TODO 后续压缩处理
         }
         // 不支持的保存格式
-        if (fileType != IMAGE_SUFFIX_BMP &&
-            fileType != IMAGE_SUFFIX_PNG &&
-            fileType != IMAGE_SUFFIX_JPEG) {
+        if (fileType != ImageSuffix::BMP &&
+            fileType != ImageSuffix::PNG &&
+            fileType != ImageSuffix::JPEG) {
             return 2;
         }
 
@@ -297,13 +297,13 @@ namespace CyMedia {
         int w = info.width, h = info.height;
         int result = 0;
 
-        if (fileType == IMAGE_SUFFIX_BMP) {
+        if (fileType == ImageSuffix::BMP) {
             result = stbi_write_bmp_to_func(my_stbi_write_func, fp, w, h, channels, writeData);
         }
-        else if (fileType == IMAGE_SUFFIX_PNG) {
+        else if (fileType == ImageSuffix::PNG) {
             result = stbi_write_png_to_func(my_stbi_write_func, fp, w, h, channels, writeData, 0);
         }
-        else if (fileType == IMAGE_SUFFIX_JPEG) {
+        else if (fileType == ImageSuffix::JPEG) {
             result = stbi_write_jpg_to_func(my_stbi_write_func, fp, w, h, channels, writeData, 90);
         }
 

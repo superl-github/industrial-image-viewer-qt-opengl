@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file CyMediaBaseDef.h
  * @brief CyMedia 库的核心基础类型、枚举、结构体及全局定义。
  * @details 本文件定义了整个库所依赖的基础数据类型，包括像素格式、图像信息结构、
@@ -186,21 +186,32 @@ namespace CyMedia {
     /**
      * @brief 图像文件后缀类型。
      */
-    enum ImageSuffix {
-        IMAGE_SUFFIX_RAW = 0,  ///< .raw
-        IMAGE_SUFFIX_BMP,      ///< .bmp
-        IMAGE_SUFFIX_TIFF,     ///< .tiff/.tif
-        IMAGE_SUFFIX_PNG,      ///< .png
-        IMAGE_SUFFIX_JPEG,     ///< .jpg/.jpeg
-        IMAGE_SUFFIX_INVALID   ///< 无效或未识别的格式
+    enum class ImageSuffix : uint32_t {
+        RAW = 0,  ///< .raw
+        BMP,      ///< .bmp
+        TIFF,     ///< .tiff/.tif
+        PNG,      ///< .png
+        JPEG,     ///< .jpg/.jpeg
+        INVALID,  ///< 无效或未识别的格式
     };
 
     /**
      * @brief 视频文件后缀类型。
      */
-    enum VideoSuffix {
-        VIDEO_SUFFIX_RAW = 0,  ///< .raw
-        VIDEO_SUFFIX_INVALID   ///< 无效或未识别的格式
+    enum class VideoSuffix : uint32_t {
+        RAWV = 0,   ///< .raw
+        AVI,        ///< .avi
+        MP4,        ///< .mp4
+        INVALID,    ///< 无效或未识别的格式
+    };
+
+    enum class ParseResult : uint32_t {
+        OK = 0,
+        FILE_OPEN_FAIL,
+        FORMAT_ERROR,
+        UNSIPPORTED,
+        INVALID_PARAM,
+        IO_ERROR
     };
 
     //==================== 核心数据结构 ====================

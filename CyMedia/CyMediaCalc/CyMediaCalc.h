@@ -173,27 +173,27 @@ namespace CyMediaCalc {
 
     /**
      * @brief 计算单通道直方图的均匀度指标。
-     * @param histogram  输入直方图。
-     * @param ave        输出平均值（所有柱值的均值）。
-     * @param maxColor   输出最大柱值。
-     * @param std        输出标准差（可为 nullptr）。
-     * @param uniformity 输出均匀度（可为 nullptr）。
+     * @param[in] histogram   输入直方图。
+     * @param[in] ave         输出平均值（所有柱值的均值）。
+     * @param[in] maxBitColor   对应bit的最大像素值。
+     * @param[out] std         输出标准差（可为 nullptr）。
+     * @param[out] uniformity  输出均匀度（可为 nullptr）。
      */
-    void CYMEDIA_LIB computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity);
+    void CYMEDIA_LIB computerUniformity(const std::vector<double>& histogram, const double& ave, double maxBitColor, double* std, double* uniformity, int* hisXRangeMax);
     /**
      * @brief 计算三个通道直方图的均匀度指标（向量化输出）。
-     * @param histogram_1  第一通道直方图（如 R 或 Gray）。
-     * @param histogram_2  第二通道直方图（如 G）。
-     * @param histogram_3  第三通道直方图（如 B）。
-     * @param ave          输出各通道平均值（向量大小需 >=3）。
-     * @param maxColor     输出各通道最大柱值。
-     * @param std          输出各通道标准差。
-     * @param uniformity   输出各通道均匀度。
+     * @param[in] histogram_1  第一通道直方图（如 R 或 Gray）。
+     * @param[in] histogram_2  第二通道直方图（如 G）。
+     * @param[in] histogram_3  第三通道直方图（如 B）。
+     * @param[in] ave          输出各通道平均值（向量大小需 >=3）。
+     * @param[in] maxBitColor  对应bit的最大像素值。
+     * @param[out] std          输出各通道标准差。
+     * @param[out] uniformity   输出各通道均匀度。
      */
     void CYMEDIA_LIB computerThreeUniformity(
-        std::vector<double>& histogram_1, std::vector<double>& histogram_2, std::vector<double>& histogram_3,
-        std::vector<double>& ave, std::vector<double>& maxColor, 
-        std::vector<double>& std, std::vector<double>& uniformity);
+        const std::vector<double>& histogram_1, const std::vector<double>& histogram_2, const std::vector<double>& histogram_3,
+        const std::vector<double>& ave, double maxBitColor,
+        std::vector<double>& std, std::vector<double>& uniformity, std::vector<int>& hisXRangeMax);
 
 
     //==================== 图像转换 ====================

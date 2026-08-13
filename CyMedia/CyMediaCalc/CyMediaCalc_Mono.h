@@ -17,7 +17,7 @@ namespace CyMediaCalc_Mono {
         std::vector<double>& histogram,
         double* maxPixel, double* minPixel, double* avePixel);
 
-    void computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity);
+    void computerUniformity(const std::vector<double>& histogram, const double& ave, double& maxBitColor, double* std, double* uniformity, int* hisXRangeMax);
 
     //图像转换
     bool Mono10P2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata);

@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisTest.h"
+#include "CyMediaDisTest.h"
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
 #include "CyMediaDis/CyMediaDisGrayTest.h"
@@ -157,12 +157,20 @@ void CyMediaDisTest::rePlayImageCallBack(const CyMedia::ImageShowInfo& info, con
     }
 }
 
+void CyMediaDisTest::cyMediaLogCallBack(CyMedia::LogLevel level, const std::string& msg, void* puser) {
+    printf("[CyMediaDis] %s\n", msg.c_str());
+}
+
 void CyMediaDisTest::initGUI() {
     m_view = new CyMedia::CyMediaDis(this);
     m_view->setAcceptDrops(acceptDrops());
     m_view->setSceneAcceptDrop(acceptDrops());
     m_view->setDirectUpImage(false);
     m_view->setYUVMethod(CyMedia::YUVTRANS_Y);
+    m_view->setLogCallback(&CyMediaDisTest::cyMediaLogCallBack, this);
+    m_view->setlogLevel(CyMedia::LogLevel::DEBUG);
+    m_view->setThumbnailAutoEnable(false);
+    m_view->setThumbnailEnable(false);
     connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, &CyMediaDisTest::onViewUpPosPix);
     connect(m_view, &CyMedia::CyMediaDis::imageSizeChanged, this, &CyMediaDisTest::onImageSizeChanged);
     connect(m_view, &CyMedia::CyMediaDis::urlsDrop, this, &CyMediaDisTest::urlsDropOpe);
@@ -775,12 +783,13 @@ void CyMediaDisTest::onPlayBtnClick() {
 
 void CyMediaDisTest::setPause(bool pause) {
     if (m_playStatus != CyMediaDisTest::ending) {
-        m_videoParse->setPause(pause);
         if (pause) {
             m_playStatus = CyMediaDisTest::pause;
+            m_videoParse->pause();
         }
         else {
             m_playStatus = CyMediaDisTest::playing;
+            m_videoParse->play();
         }
     }
 }
@@ -854,7 +863,7 @@ void CyMediaDisTest::onUplaySlider(int num, bool isFinish) {
     ui_PlaySlider->setValue(num);
     if (isFinish) {
         m_playStatus = finish;
-        ui_playBtn->setIcon(QIcon(":/CyMediaDisTest/ICon/replay.png"));
+        ui_playBtn->setIcon(QIcon(":/CyMediaDisTest/Icon/replay.png"));
         //自动重播
         //QTimer::singleShot(0, this, &customCyDisplay::onPlayBtnClick);
     }
@@ -866,14 +875,14 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
     //是否是视频
     printf("判断视频格式\n");
     auto videoType = CyMedia::VideoParser::getvideoTypeByPath(filePath.toUtf8().toStdString());
-    if (videoType == CyMedia::VIDEO_SUFFIX_RAW) {
+    if (videoType == CyMedia::VideoSuffix::RAWV) {
         onOpenRawFile(filePath);
         return;
     }
     //处理图像
     printf("判断图像格式\n");
     auto imageType = CyMedia::CyMediaImageParse::getTypeByPath(filePath.toUtf8().toStdString());
-    if (imageType == CyMedia::IMAGE_SUFFIX_INVALID) {
+    if (imageType == CyMedia::ImageSuffix::INVALID) {
         QMessageBox::warning(
             this,
             tr("error"),
@@ -883,7 +892,7 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
         return;
     }
     printf("打开Raw文件\n");
-    if (imageType == CyMedia::IMAGE_SUFFIX_RAW) {
+    if (imageType == CyMedia::ImageSuffix::RAW) {
         onOpenRawFile(filePath);
         return;
     }
@@ -920,12 +929,12 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
 void CyMediaDisTest::onOpenRawFile(QString filePath) {
     //先按照有头视频解析
     printf("按有头视频解析\n");
-    int openRe = onOpenRawVideo(filePath, false);
-    if (openRe == 0) {
+    auto openVideoRe = onOpenRawVideo(filePath, false);
+    if (openVideoRe == CyMedia::ParseResult::OK) {
         return;
     }
     //文件错误
-    else if (openRe == 1) {
+    else if (openVideoRe == CyMedia::ParseResult::FILE_OPEN_FAIL) {
         QMessageBox::warning(
             this,
             tr("error"),
@@ -934,16 +943,12 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
         );
         return;
     }
-    //格式解析错误
-    else if (openRe == 2) {
-        ;
-    }
     //按照有头的图像解析
     printf("按有头图像解析\n");
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
     QString errStr;
-    int openRet = m_image_func->openImage(filePath.toStdWString(), CyMedia::IMAGE_SUFFIX_RAW, info, data);
+    int openRet = m_image_func->openImage(filePath.toStdWString(), CyMedia::ImageSuffix::RAW, info, data);
     //未找到头
     if (openRet == 3) {
         printf("未找到头，获取用户输入信息\n");
@@ -1006,11 +1011,11 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
             m_VideoInfo.frameInfo = info;
             m_VideoInfo.dataOffset = offset;
             m_VideoInfo.fps = m_rawHeaderW->videoFps();
-            openRet = onOpenRawVideo(filePath, true);
-            if (openRet == 0) {
+            openVideoRe = onOpenRawVideo(filePath, true);
+            if (openVideoRe == CyMedia::ParseResult::OK) {
                 return;
             }
-            else if (openRet == 1) {
+            else if (openVideoRe == CyMedia::ParseResult::FILE_OPEN_FAIL || openVideoRe == CyMedia::ParseResult::IO_ERROR) {
                 QMessageBox::warning(
                     this,
                     tr("error"),
@@ -1019,7 +1024,7 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
                 );
                 return;
             }
-            else if (openRet == 2) {
+            else if (openVideoRe == CyMedia::ParseResult::FORMAT_ERROR) {
                 QMessageBox::warning(
                     this,
                     tr("error"),
@@ -1057,13 +1062,13 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
     m_view->upImageData(info, data.data());
 }
 
-int CyMediaDisTest::onOpenRawVideo(QString filepath, bool format) {
+CyMedia::ParseResult CyMediaDisTest::onOpenRawVideo(QString filepath, bool format) {
     m_bVideoFormat = format;
     printf("CyMediaDisTest::onOpenRawVideo\n");
     const std::filesystem::path videoPath = std::filesystem::u8path(filepath.toUtf8().toStdString());
     printf("m_videoParse->open\n");
-    int opeRe = m_videoParse->open(videoPath, m_VideoInfo, format);
-    if (opeRe == 0) {
+    auto opeRe = m_videoParse->open(videoPath, m_VideoInfo, format);
+    if (opeRe == CyMedia::ParseResult::OK) {
         if (false == format) {
             printf("解析有头视频成功: %d * %d * %d bit format:%d\n", 
                 m_VideoInfo.frameInfo.width,

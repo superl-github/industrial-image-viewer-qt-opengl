@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaTestCommon.h"
@@ -35,6 +35,7 @@ public:
     void openFile(QString filePath);
 
     static void rePlayImageCallBack(const CyMedia::ImageShowInfo& info, const uint8_t* data, int nCount, void* userData);
+    static void cyMediaLogCallBack(CyMedia::LogLevel level, const std::string& msg, void* puser);
 
 private:
     void initGUI();
@@ -80,7 +81,7 @@ private:
 private:
     void onFileOpen(QString filepath);
     void onOpenRawFile(QString filePath);
-    int onOpenRawVideo(QString filepath, bool format);
+    CyMedia::ParseResult onOpenRawVideo(QString filepath, bool format);
     void onViewUpPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR);
     void onImageSizeChanged(quint32 w, quint32 h, int bit);
 

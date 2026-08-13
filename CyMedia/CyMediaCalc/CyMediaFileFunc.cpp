@@ -11,9 +11,9 @@ namespace CyMedia {
 
     QString CyMdiaFileFunc::fileTypeStr(CyMedia::ImageSuffix type) {
         switch (type) {
-        case CyMedia::IMAGE_SUFFIX_RAW: return "raw";
-        case CyMedia::IMAGE_SUFFIX_BMP: return "bmp";
-        case CyMedia::IMAGE_SUFFIX_TIFF: return "tiff";
+        case ImageSuffix::RAW: return "raw";
+        case ImageSuffix::BMP: return "bmp";
+        case ImageSuffix::TIFF: return "tiff";
         }
         return "Undefined";
     }
@@ -23,16 +23,16 @@ namespace CyMedia {
         QFileInfo fileInfo(filepath);
         QString suffix = fileInfo.suffix().toLower();
         if (suffix == "raw") {
-            return IMAGE_SUFFIX_RAW;
+            return ImageSuffix::RAW;
         }
         else if (suffix == "bmp") {
-            return IMAGE_SUFFIX_BMP;
+            return ImageSuffix::BMP;
         }
         else if (suffix == "tiff" || suffix == "tif") {
-            return IMAGE_SUFFIX_TIFF;
+            return ImageSuffix::TIFF;
         }
 
-        return IMAGE_SUFFIX_INVALID;
+        return ImageSuffix::INVALID;
     }
 
 
@@ -40,7 +40,7 @@ namespace CyMedia {
         QFile tFile(filePath);
         if (false == tFile.exists()) return 1;
         switch (fileType) {
-            case CyMedia::IMAGE_SUFFIX_RAW: {
+            case ImageSuffix::RAW: {
                 if (false == tFile.open(QIODevice::ReadOnly)) {
                     return 1;
                 }
@@ -69,19 +69,19 @@ namespace CyMedia {
                 return 1;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_BMP: {
+            case ImageSuffix::BMP: {
                 return 2;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_TIFF: {
+            case ImageSuffix::TIFF: {
                 return 2;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_PNG: {
+            case ImageSuffix::PNG: {
                 return 2;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_JPEG: {
+            case ImageSuffix::JPEG: {
                 return 2;
             }break;
         }
@@ -109,7 +109,7 @@ namespace CyMedia {
     int CyMdiaFileFunc::saveImageToFile(QString filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, bool addRawHeader) {
         auto fileType = getTypeByPath(filePath);
         switch (fileType) {
-            case CyMedia::IMAGE_SUFFIX_RAW: {
+            case ImageSuffix::RAW: {
                 QFile tFile(filePath);
                 if (false == tFile.open(QIODevice::ReadOnly)) return 1;
                 tFile.write((char*)(&info));
@@ -118,19 +118,19 @@ namespace CyMedia {
                 return 0;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_BMP: {
+            case ImageSuffix::BMP: {
                 return 3;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_TIFF: {
+            case ImageSuffix::TIFF: {
                 return 3;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_PNG: {
+            case ImageSuffix::PNG: {
                 return 3;
             }break;
 
-            case CyMedia::IMAGE_SUFFIX_JPEG: {
+            case ImageSuffix::JPEG: {
                 return 3;
             }break;
         }

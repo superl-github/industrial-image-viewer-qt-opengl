@@ -2,6 +2,7 @@
 #if defined _MSC_VER
     #include <ppl.h>
     #include <thread>
+    #include <numeric>
 #elif defined _OPENMP
 #   include <omp.h>
 #endif
@@ -76,6 +77,14 @@ namespace CyMediaCalc_Mono {
         }
 
         size_t pixelCount = static_cast<size_t>(info.width) * info.height;
+        size_t calcCount = pixelCount;
+        if (useMask) {
+            calcCount = 0;
+            for (auto& onePixel : *mask) {
+                calcCount += onePixel;
+            }
+            calcCount /= 255;
+        }
 
         // 确定最大灰度值（决定直方图 bins 数）
         uint32_t maxVal = 0;
@@ -98,78 +107,71 @@ namespace CyMediaCalc_Mono {
         unsigned int nThreads = std::thread::hardware_concurrency();
         if (nThreads == 0) nThreads = 4;
         size_t chunkSize = std::max(pixelCount / (nThreads * 4), size_t(1024)); // 每块至少 1k 像素
-
-        // 为每个线程分配局部直方图（减少 false sharing）
-        std::vector<std::vector<size_t>> localHists(nThreads);
-        std::vector<uint32_t> localMaxs;
-        std::vector<uint32_t> localMins;
-        std::vector<double> localAves;
-        for (auto& h : localHists) {
-            h.assign(numBins, 0);
-        }
-        localMaxs.assign(nThreads, 0.0);
-        localMins.assign(nThreads, maxVal);
-        localAves.assign(nThreads, 0.0);
         // 并行处理像素块
 #ifdef _MSC_VER
+        concurrency::combinable<std::vector<size_t>> localHist(
+            [&] { return std::vector<size_t>(numBins, 0); }
+        );
+        concurrency::combinable<uint64_t> localCount([] { return uint64_t(0); });
+        concurrency::combinable<double>   localSum([] { return 0.0; });
+        concurrency::combinable<uint32_t> localMax([] { return uint32_t(0); });
+        concurrency::combinable<uint32_t> localMin([maxVal] { return maxVal; });
+
         concurrency::parallel_for(size_t(0), pixelCount, chunkSize, [&](size_t start) {
             size_t end = std::min(start + chunkSize, pixelCount);
-            unsigned int tid = concurrency::Context::CurrentContext()->GetVirtualProcessorId() % nThreads;
-            auto& localHist = localHists[tid];
-            auto& localMax = localMaxs[tid];
-            auto& localMin = localMins[tid];
-            auto& localAve = localAves[tid];
+
+            auto& hist = localHist.local();
+            uint64_t& cnt = localCount.local();
+            double& sum = localSum.local();
+            uint32_t& lmax = localMax.local();
+            uint32_t& lmin = localMin.local();
 
             if (useMask && mask) {
                 for (size_t i = start; i < end; ++i) {
                     if ((*mask)[i]) {
                         uint32_t gray = getMonoPixelValue(info, data, i);
-                        if (gray > maxVal) gray = maxVal; // 安全 clamp
-                        localHist[gray]++;
+                        if (gray > maxVal) gray = maxVal;
 
-                        localAve += gray;
-                        if (localMax < gray) {
-                            localMax = gray;
-                        }
-                        if (localMin > gray) {
-                            localMin = gray;
-                        }
+                        hist[gray]++;
+                        cnt++;
+                        sum += gray;
+                        if (lmax < gray) lmax = gray;
+                        if (lmin > gray) lmin = gray;
                     }
                 }
             }
             else {
                 for (size_t i = start; i < end; ++i) {
                     uint32_t gray = getMonoPixelValue(info, data, i);
-                    if (gray > maxVal) gray = maxVal; // 安全 clamp
-                    localHist[gray]++;
+                    if (gray > maxVal) gray = maxVal;
 
-                    localAve += gray;
-                    if (localMax < gray) {
-                        localMax = gray;
-                    }
-                    if (localMin > gray) {
-                        localMin = gray;
-                    }
+                    hist[gray]++;
+                    cnt++;
+                    sum += gray;
+                    if (lmax < gray) lmax = gray;
+                    if (lmin > gray) lmin = gray;
                 }
             }
             });
 
-        // 合并局部直方图
-        for (const auto& local : localHists) {
+        // 合并直方图（使用 combine_each）
+        histogram.assign(numBins, 0.0);
+        localHist.combine_each([&](const std::vector<size_t>& h) {
             for (size_t i = 0; i < numBins; ++i) {
-                histogram[i] += local[i];
+                histogram[i] += static_cast<double>(h[i]);
             }
-        }
-        //合并统计值
-        for (int i = 0; i < nThreads; i++) {
-            tAve += localAves[i];
-            if (tMax < localMaxs[i])
-                tMax = localMaxs[i];
-            if (tMin > localMins[i])
-                tMin = localMins[i];
+            });
 
-        }
-        tAve /= pixelCount;
+        // 合并统计值（使用 combine_each）
+        uint64_t validCount = 0;
+        double totalSum = 0.0;
+
+        localCount.combine_each([&](uint64_t c) { validCount += c; });
+        localSum.combine_each([&](double s) { totalSum += s; });
+        localMax.combine_each([&](uint32_t m) { if (m > tMax) tMax = m; });
+        localMin.combine_each([&](uint32_t m) { if (m < tMin) tMin = m; });
+
+        tAve = validCount ? totalSum / validCount : 0.0;
 #else
         // 遍历所有像素
         if (useMask && mask) {
@@ -182,7 +184,7 @@ namespace CyMediaCalc_Mono {
 
                     tAve += gray;
                     if (tMax < gray) {
-                        tMax = gray
+                        tMax = gray;
                     }
                     if (tMin > gray) {
                         tMin = gray;
@@ -199,14 +201,14 @@ namespace CyMediaCalc_Mono {
 
                 tAve += gray;
                 if (tMax < gray) {
-                    tMax = gray
+                    tMax = gray;
                 }
                 if (tMin > gray) {
                     tMin = gray;
                 }
             }
         }
-        tAve /= pixelCount;
+        tAve /= calcCount;
 #endif
         if (avePixel) *avePixel = tAve;
         if (maxPixel) *maxPixel = tMax;
@@ -215,15 +217,17 @@ namespace CyMediaCalc_Mono {
         return true;
     }
 
-    void computerUniformity(std::vector<double>& histogram, double& ave, double& maxColor, double* std, double* uniformity) {
+    void computerUniformity(const std::vector<double>& histogram, const double& ave, double& maxBitColor, double* std, double* uniformity, int* hisXRangeMax) {
         double pixcelCount = 0.0;
         double d = 0.0;
         double dstd = 0.0;
         double dSn = 0.0;
+        int maxAvailableHisI = 0;
         for (int hisI = 0; hisI < histogram.size(); hisI++) {
             if (histogram[hisI] <= 0.0) {
                 continue;
             }
+            maxAvailableHisI = hisI;
             d = (hisI - ave);
             dSn += histogram[hisI] * (d * d);
             pixcelCount += histogram[hisI];
@@ -232,13 +236,13 @@ namespace CyMediaCalc_Mono {
         dSn = sqrt(dSn / pixcelCount);
         dstd = dSn;
         if (dSn != 0.0) {
-            dSn = maxColor / dSn;
+            dSn = maxBitColor / dSn;
             dSn = 20 * log10(dSn);
         }
 
         if (std) *std = dstd;
         if (uniformity) *uniformity = dSn;
-
+        if (hisXRangeMax) *hisXRangeMax = maxAvailableHisI;
     }
 
     bool Mono10P2MonoConver(const ImageShowInfo& info, const uint8_t* data, uint16_t* outdata) {

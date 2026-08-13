@@ -253,6 +253,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaImageParse.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaVideoParse.cpp" />
+    <ClCompile Include="CyMediaParse\CyMediaVideoParseBase.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaVideoParseRaw.cpp" />
     <QtMoc Include="CyMediaDis\cycustomwidget.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -359,6 +360,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
     <ClInclude Include="CyMediaCalc\CyMediaFileFunc.h" />
     <ClInclude Include="CyMediaDis\CyMediaDisLog.h" />
+    <ClInclude Include="CyMediaParse\CyMediaFormatRegistry.h" />
     <ClInclude Include="CyMediaParse\CyMediaImageParse.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParse.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParseBase.h" />

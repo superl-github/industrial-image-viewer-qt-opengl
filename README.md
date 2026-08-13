@@ -11,8 +11,11 @@ Image-Video-On-QGraphicsView
 - 现在无图像时操作镜像无效
 - 优化灰度拉伸窗口布局
 - 修复交替图像信息切换时的显示错误问题
+- 修复窗口未显示时调用CyMediaDis::setThumbnailEnable程序崩溃
+- 修复灰度统计的显示范围计算和平均值，均匀度计算错误(并行运算竞争导致)
+- 优化videoParse
 
-**未暂存
+**未暂存**
 
 - 
 

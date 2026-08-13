@@ -88,6 +88,7 @@ namespace CyMediaCalc_Bayer {
         
         int32_t bitMax = (1U << info.bit) - 1;
         int32_t pixelCount = info.width * info.height;
+        int32_t validCount = 0;
 
         //初始化容器
         Rhistogram.assign(bitMax, 0.0);
@@ -140,11 +141,13 @@ namespace CyMediaCalc_Bayer {
                                 if (pMin[2] > px.b) {
                                     pMin[2] = px.b;
                                 }
+                                validCount++;
                             }
                         }
                     }
                 }
                 else {
+                    validCount = pixelCount;
                     for (uint32_t y = 0; y < info.height; ++y) {
                         for (uint32_t x = 0; x < info.width; ++x) {
                             RgbPixel px = calcCoordinateColor(info, data, x, y, func);
@@ -178,9 +181,9 @@ namespace CyMediaCalc_Bayer {
                         }
                     }
                 }
-                pAve[0] /= pixelCount;
-                pAve[1] /= pixelCount;
-                pAve[2] /= pixelCount;
+                pAve[0] /= validCount;
+                pAve[1] /= validCount;
+                pAve[2] /= validCount;
             }break;
 
             case CyMedia::DEMOSAIC_AHD: {
@@ -597,6 +600,7 @@ namespace CyMediaCalc_Bayer {
         }
 
         int32_t pixelCount = info.width * info.height;
+        int32_t validCount = 0;
 
         double* pRhi = Rhistogram.data();
         double* pGhi = Ghistogram.data();
@@ -640,11 +644,14 @@ namespace CyMediaCalc_Bayer {
                         if (pMin[2] > px.b) {
                             pMin[2] = px.b;
                         }
+
+                        validCount++;
                     }
                 }
             }
         }
         else {
+            validCount = pixelCount;
             for (int32_t y = 0; y < info.height; ++y) {
                 for (int32_t x = 0; x < info.width; ++x) {
                     px = demosaicPixelAHD(R, G, B, info.width, info.height, info.format, x, y);
@@ -679,9 +686,9 @@ namespace CyMediaCalc_Bayer {
             }
         }
         
-        pAve[0] /= pixelCount;
-        pAve[1] /= pixelCount;
-        pAve[2] /= pixelCount;
+        pAve[0] /= validCount;
+        pAve[1] /= validCount;
+        pAve[2] /= validCount;
         return true;
     }
 

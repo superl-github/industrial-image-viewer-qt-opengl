@@ -1,5 +1,5 @@
-﻿#include "CyMediaVideoParse.h"
-#include "CyMediaVideoParseRaw.h"
+#include "CyMediaVideoParse.h"
+#include "CyMediaFormatRegistry.h"
 
 #include <algorithm>
 #include <cctype>
@@ -28,7 +28,9 @@ namespace CyMedia {
 
     std::string VideoParser::videoTypeStr(CyMedia::VideoSuffix type) {
         switch (type) {
-            case CyMedia::VIDEO_SUFFIX_RAW: return "raw";
+            case CyMedia::VideoSuffix::RAWV: return "raw";
+            case CyMedia::VideoSuffix::AVI: return "avi";
+            case CyMedia::VideoSuffix::MP4: return "mp4";
         }
         return "Undefined";
     }
@@ -38,33 +40,32 @@ namespace CyMedia {
         std::string ext = filePath.substr(filePath.find_last_of('.') + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
         if (ext == "raw" || ext == "rawv") {
-            return VIDEO_SUFFIX_RAW;
+            return VideoSuffix::RAWV;
+        }
+        else if (ext == "avi") {
+            return VideoSuffix::AVI;
+        }
+        else if (ext == "mp4") {
+            return VideoSuffix::MP4;
         }
 
-        return VIDEO_SUFFIX_INVALID;
+        return VideoSuffix::INVALID;
     }
 
 
-    int VideoParser::open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format/* = false*/) {
+    ParseResult VideoParser::open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format/* = false*/) {
         close(); // 释放旧的解析器
-
-        auto videoType = getvideoTypeByPath(filePath.string());
-
-        if (videoType == VIDEO_SUFFIX_RAW) {
-            d->m_impl = std::make_unique<VideoParseRaw>();
-        }
-        else {
-            return 3; // 不支持的格式
-        }
-
-        return d->m_impl->open(filePath, parseInfo, format);
+        auto creator = FormatRegistry::instance().find(getvideoTypeByPath(filePath.string()));
+           if (!creator) return ParseResult::UNSIPPORTED;
+           d->m_impl = creator();
+           return d->m_impl->open(filePath, parseInfo, format);
     }
 
 
     void VideoParser::close() {
         if (d->m_impl) {
             d->m_impl->close();
-            d->m_impl.reset();
+            d->m_impl = nullptr;
         }
     }
 
@@ -105,8 +106,8 @@ namespace CyMedia {
     }
 
 
-    void VideoParser::setPause(bool pause) {
-        if (d->m_impl) d->m_impl->setPause(pause);
+    void VideoParser::pause() {
+        if (d->m_impl) d->m_impl->pause();
     }
 
 

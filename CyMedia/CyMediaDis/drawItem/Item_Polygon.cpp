@@ -1,4 +1,4 @@
-﻿#include "Item_Polygon.h"
+#include "Item_Polygon.h"
 #include <QPen>
 #include <QBrush>
 #include <QDialog>
@@ -290,9 +290,13 @@ namespace CyDisDrawItem {
                 CyMediaDisPolygonItem_Menu_geo menuW;
                 menuW.flushTrans();
                 menuW.setWindowTitle(getContextStr(type));
+                auto size = scene()->sceneRect().size();
                 menuW.setPara(
                     boundingRectInScene(),
-                    { 0.0, 0.0, scene()->sceneRect().width(), scene()->sceneRect().height() });
+                    QRect(size.width() - m_MinSize.width(),
+                        size.height() - m_MinSize.height(),
+                        size.width(),
+                        size.height()));
                 auto sel = menuW.exec();
                 if (sel == menuW.Accepted) {
                     auto setRect = menuW.getSetRect();
