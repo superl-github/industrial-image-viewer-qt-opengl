@@ -162,7 +162,7 @@
     </message>
     <message>
         <source>Fps</source>
-        <translation type="unfinished"></translation>
+        <translation>帧率(如果视频)</translation>
     </message>
 </context>
 <context>
