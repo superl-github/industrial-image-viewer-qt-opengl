@@ -184,8 +184,14 @@ bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, Cy
     }
 
     //更新计算掩码
-    upMask({info.width, info.height});
-
+    if (d->mDrawType == CyDisDrawItem::ItemType::Invalid) {
+        d->mMaskHaveData = false;
+    }
+    else {
+        upMask({ info.width, info.height });
+        //选择了图形项目但未绘制
+        if (false == d->mMaskHaveData) return false;
+    }
     //计算直方图
     calcImageHisFlag cancHisFlag;
     double calcHisMinX = .0;

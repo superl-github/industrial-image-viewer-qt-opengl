@@ -1,6 +1,26 @@
 /*****************************************************************//**
  * @class CyMediaDisViewThumbnail
  * @brief 缩略图导航小窗口，显示图像总览并支持视口定位。
+ * @ingroup Display
+ * 
+ * @author LLF
+ * @date   July 2026
+ * @version 1.0
+ *********************************************************************/
+#pragma once
+#include "CyMediaBaseDef.h"
+
+#include <QOpenGLWidget>
+#include <QOpenGLFunctions>
+#include <QWidget>
+#include <QGraphicsScene>
+#include <QTransform>
+
+class CyMediaDisView;
+class QOpenGLVertexArrayObject;
+/**
+ * @class CyMediaDisViewThumbnail
+ * @brief 缩略图导航小窗口，显示图像总览并支持视口定位。
  * @details
  *  本类是一个浮动在 `CyMediaDisView` 之上的 QWidget，用于：
  *  - 显示图像的全景缩略图（自动从原始数据生成并缩放）。
@@ -14,23 +34,8 @@
  *  外观可定制：背景色、选择框颜色、边框颜色及是否绘制边框。
  *
  *  @note 缩略图仅在主视图缩放超过视口大小时自动显示，否则隐藏。
- *  @see CyMediaDisView
- * 
- *  @author LLF
- *  @date   July 2026
- *  @version 1.0
- *********************************************************************/
-#pragma once
-#include "CyMediaBaseDef.h"
-
-#include <QOpenGLWidget>
-#include <QOpenGLFunctions>
-#include <QWidget>
-#include <QGraphicsScene>
-#include <QTransform>
-
-class CyMediaDisView;
-class QOpenGLVertexArrayObject;
+ *  @see CyMediaDisView.
+ */
 class CyMediaDisViewThumbnail : public QOpenGLWidget, public QOpenGLFunctions {
     Q_OBJECT
 public:

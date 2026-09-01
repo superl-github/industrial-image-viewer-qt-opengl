@@ -125,13 +125,17 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
 copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
 copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <QtMoc>
@@ -149,13 +153,17 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
 copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
 copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
+    <Link>
+      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>avcodec-63.lib;avdevice-63.lib;avfilter-12.lib;avformat-63.lib;avutil-61.lib;swresample-7.lib;swscale-10.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -163,6 +171,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <QtMoc>
       <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
@@ -174,6 +183,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
 copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -181,6 +194,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <QtMoc>
       <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
@@ -192,6 +206,10 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
 copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>avcodec-63.lib;avdevice-63.lib;avfilter-12.lib;avformat-63.lib;avutil-61.lib;swresample-7.lib;swscale-10.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ClCompile>
@@ -254,6 +272,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClCompile Include="CyMediaParse\CyMediaImageParse.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaVideoParse.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaVideoParseBase.cpp" />
+    <ClCompile Include="CyMediaParse\CyMediaVideoParseFfmpeg.cpp" />
     <ClCompile Include="CyMediaParse\CyMediaVideoParseRaw.cpp" />
     <QtMoc Include="CyMediaDis\cycustomwidget.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -364,6 +383,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <ClInclude Include="CyMediaParse\CyMediaImageParse.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParse.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParseBase.h" />
+    <ClInclude Include="CyMediaParse\CyMediaVideoParseFfmpeg.h" />
     <ClInclude Include="CyMediaParse\CyMediaVideoParseRaw.h" />
     <ClInclude Include="CyMediaParse\stb_image.h" />
     <ClInclude Include="CyMediaParse\stb_image_write.h" />

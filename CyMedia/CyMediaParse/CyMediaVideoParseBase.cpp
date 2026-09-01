@@ -1,7 +1,11 @@
 #include "CyMediaVideoParseBase.h"
 #include <algorithm>
 #include <cmath>
-
+#include <queue>      
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <vector>
 
 namespace CyMedia {
     VideoParseBase::~VideoParseBase() {
@@ -14,6 +18,11 @@ namespace CyMedia {
         if (ret != ParseResult::OK) return ret;
 
         m_parseInfo = info;
+
+        if (m_framerate <= 0.0f) {
+            m_framerate = 25.0f;
+        }
+
         m_isOpen = true;
         m_currentPos = 1;
         m_playing = false;
@@ -25,6 +34,10 @@ namespace CyMedia {
         // 启动后台线程（始终创建，通过 CV 休眠等待）
         m_threadExit = false;
         m_thread = std::thread(&VideoParseBase::playbackThread, this);
+
+        m_callbackThreadExit = false;
+        m_callbackThread = std::thread(&VideoParseBase::callbackDispatchThread, this);
+
         return ParseResult::OK;
     }
 
@@ -37,6 +50,20 @@ namespace CyMedia {
         m_playCv.notify_all();
 
         if (m_thread.joinable()) m_thread.join();
+
+
+        // ========== 停止回调分发线程 ==========
+        {
+            std::lock_guard<std::mutex> qlk(m_frameQueueMtx);
+            m_callbackThreadExit = true;
+            // 清空队列，无需处理残留帧
+            while (!m_frameQueue.empty()) m_frameQueue.pop();
+        }
+        m_frameQueueCv.notify_all();
+        if (m_callbackThread.joinable()) {
+            m_callbackThread.join();
+        }
+
 
         { std::lock_guard<std::mutex> lk(m_ioMutex); onClose(); }
 
@@ -75,11 +102,33 @@ namespace CyMedia {
         m_callback = cb; m_userData = ud;
     }
 
+    void VideoParseBase::setAlignTarget(uint32_t targetFrame) {
+        m_alignTarget = targetFrame;
+        m_needAlign = true;
+    }
+
     void VideoParseBase::play() {
-        if (!m_isOpen) return;
-        {
+        if (!m_isOpen) return; {
             std::lock_guard<std::mutex> lk(m_playMutex);
-            m_playing = true; 
+            if (m_needAlign) {
+                uint64_t target = m_alignTarget.load();
+                if (target > 0) {
+                    // 优先用上层传入的显示位置对齐
+                    if (m_currentPos > target + 1) {
+                        m_currentPos = target + 1;
+                    }
+                }
+                else {
+                    // 没有外部目标时，回退到用回调位置对齐
+                    uint64_t cbPos = m_lastCallbackPos.load();
+                    if (cbPos > 0 && m_currentPos > cbPos + 1) {
+                        m_currentPos = cbPos + 1;
+                    }
+                }
+                m_needAlign = false;
+                m_alignTarget = 0;  // 用完清零，只生效一次
+            }
+            m_playing = true;
             m_paused = false;
         }
         m_playCv.notify_one();
@@ -89,6 +138,12 @@ namespace CyMedia {
         if (m_paused) return;
         { std::lock_guard<std::mutex> lk(m_playMutex); m_paused = true; }
         m_playCv.notify_one();
+        m_needAlign = true;  // 标记：下次 play 需要帧号对齐
+        // 清空队列：暂停后不再回调残留帧，保证 m_lastCallbackPos 就是暂停位置
+        {
+            std::lock_guard<std::mutex> lk(m_frameQueueMtx);
+            while (!m_frameQueue.empty()) m_frameQueue.pop();
+        }
     }
 
     bool VideoParseBase::isPaused() const {
@@ -98,6 +153,12 @@ namespace CyMedia {
     bool VideoParseBase::seek(uint64_t pos) {
         if (!m_isOpen || pos < 1 || pos > m_totalFrames) return false;
         m_currentPos = pos;
+        m_needAlign = false;
+        {
+            std::lock_guard<std::mutex> lk(m_frameQueueMtx);
+            while (!m_frameQueue.empty()) m_frameQueue.pop();
+        }
+
         return true;
     }
 
@@ -115,7 +176,7 @@ namespace CyMedia {
             {
                 std::unique_lock<std::mutex> lk(m_playMutex);
                 m_playCv.wait(lk, [this] {
-                    return m_threadExit || (m_playing && !m_paused); 
+                    return m_threadExit || (m_playing && !m_paused);
                     });
             }
             if (m_threadExit) break;
@@ -137,19 +198,89 @@ namespace CyMedia {
                 std::lock_guard<std::mutex> lk(m_ioMutex);
                 ok = onReadFrame(pos, m_asyncBuffer.data());
             }
-
+            FrameQueueItem newItem;
+            newItem.info = m_frameInfo;
+            newItem.framePos = pos;
             if (ok) {
-                FrameCallback cb = nullptr; void* ud = nullptr;
-                {
-                    std::lock_guard<std::mutex> lk(m_cbMutex);
-                    cb = m_callback; ud = m_userData;
-                }
-                if (cb) cb(m_frameInfo, m_asyncBuffer.data(), pos, ud);
-                m_currentPos = pos + 1;
+                newItem.frameData = m_asyncBuffer; // 完整拷贝帧数据，脱离原缓冲区
             }
+            {
+                    std::lock_guard<std::mutex> lk(m_frameQueueMtx);
+                    // 队列满则丢弃最旧的帧，保证实时性，不阻塞解码线程
+                    while (m_frameQueue.size() >= m_maxQueueSize) {
+                        m_frameQueue.pop();
+                    }
+                    m_frameQueue.push(std::move(newItem));
+                }
+                m_frameQueueCv.notify_one(); // 唤醒回调线程
+            m_currentPos = pos + 1;
+            // ==============================================
 
             // 精确帧率睡眠
             std::this_thread::sleep_until(deadline);
         }
     }
+
+    void VideoParseBase::callbackDispatchThread() {
+        // 回调帧率控制：记录下次回调的时间点
+        auto nextCallbackTime = std::chrono::steady_clock::now();
+
+        while (!m_callbackThreadExit) {
+            FrameQueueItem item;
+            bool hasItem = false;
+            // 等待队列数据或退出信号
+            {
+                std::unique_lock<std::mutex> lk(m_frameQueueMtx);
+                m_frameQueueCv.wait(lk, [this]() {
+                    return m_callbackThreadExit || !m_frameQueue.empty();
+                    });
+                if (m_callbackThreadExit) break;
+                if (!m_frameQueue.empty()) {
+                    item = std::move(m_frameQueue.front());
+                    m_frameQueue.pop();
+                    hasItem = true;
+                }
+            }
+            if (!hasItem) {
+                // 队列空了（暂停清队列等），重置计时器，避免恢复后追赶式回调
+                nextCallbackTime = std::chrono::steady_clock::now();
+                continue;
+            }
+            // ========== 按帧率控制回调间隔 ==========
+            auto interval = std::chrono::microseconds(
+                static_cast<int64_t>(1'000'000.0 / (m_framerate * m_speed.load())));
+            nextCallbackTime += interval;
+            auto now = std::chrono::steady_clock::now();
+            if (now > nextCallbackTime) {
+                // 回调函数执行太慢，已经落后于预定时间，重置基准
+                // 避免 sleep_until 立刻返回导致疯狂追赶
+                nextCallbackTime = now;
+            }
+            std::this_thread::sleep_until(nextCallbackTime);
+            // ==============================================
+
+            // 取出回调函数
+            FrameCallback cb = nullptr;
+            void* ud = nullptr;
+            {
+                std::lock_guard<std::mutex> lk(m_cbMutex);
+                cb = m_callback;
+                ud = m_userData;
+            }
+            // 执行业务回调
+            if (cb) {
+                // ===== 帧率验证打印 =====
+                static auto lastCbTime = std::chrono::steady_clock::now();
+                static uint64_t lastCbFrame = 0;
+                auto now = std::chrono::steady_clock::now();
+                int deltaMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCbTime).count();
+                lastCbTime = now;
+                //printf("[回调帧率] frame=%llu 距上次=%dms 理论=%.0fms\n", (unsigned long long)item.framePos, deltaMs, 1000.0 / m_framerate);
+                cb(item.info, item.frameData.data(), static_cast<int>(item.framePos), ud);
+                m_lastCallbackPos = item.framePos;
+            }
+        }
+    }
 }
+
+

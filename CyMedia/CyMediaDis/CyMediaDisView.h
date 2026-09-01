@@ -1,6 +1,26 @@
 /*****************************************************************//**
  * @file   CyMediaDisView.h
- * @brief  高性能图像显示控件（基于 QGraphicsView + OpenGL）
+ * @brief  CyMediaDisView头文件
+ * @ingroup Display
+ * 
+ * @details
+ *  高性能图像显示控件类
+ * 
+ * @author LLF
+ * @date   July 2026
+ * @version 1.2.3
+ *********************************************************************/
+#pragma once
+#include "../CyMediaBaseDef.h"
+
+#include <QGraphicsView>
+#include <QWheelEvent>
+
+class CyMediaDisViewBckDraw;
+class CyMediaDisViewThumbnail;
+/**
+ * @class CyMediaDisView
+ * brief  高性能图像显示控件（基于 QGraphicsView + OpenGL）
  * @details
  *  本控件集成了完整的图像显示、交互与辅助功能，适用于需要实时显示
  *  高分辨率或特殊格式图像（如 Bayer、YUV、16位灰度等）的应用程序。
@@ -44,19 +64,7 @@
  *
  *  @note 采用全局共享上下文方案，需要在初始化QApplication前，QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
  *  @see CyMediaDisViewBckDraw, CyMediaDisViewThumbnail
- * 
- *  @author LLF
- *  @date   July 2026
- *  @version 1.0
- *********************************************************************/
-#pragma once
-#include "../CyMediaBaseDef.h"
-
-#include <QGraphicsView>
-#include <QWheelEvent>
-
-class CyMediaDisViewBckDraw;
-class CyMediaDisViewThumbnail;
+ */
 class CyMediaDisView : public QGraphicsView {
     Q_OBJECT
 

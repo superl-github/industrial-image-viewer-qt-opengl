@@ -1,4 +1,4 @@
-﻿
+
 #include "CyMediaDisView.h"
 #include "../CyMediaCalc/CyMediaCalc.h"
 #include "CyMediaDisViewBckDraw.h"
@@ -379,6 +379,7 @@ void CyMediaDisView::setThumbnailEnable(bool enable) {
 }
 
 bool CyMediaDisView::thumbnailVisible() {
+    if (!m_Thumbnail) return false;
     return m_Thumbnail->isVisible();
 }
 

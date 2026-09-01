@@ -90,21 +90,20 @@ namespace CyDisDrawItem {
         switch (event->type()) {
             case QEvent::MouseButtonPress: {
                 if (mouseEvent->button() == Qt::LeftButton) {
-                    // 替换模式，移除之前的绘制结果
-                    if (m_replaceMode) {
-                        if (m_lastItem) {
-                            m_manager->removeItem(m_lastItem, false);
-                            lastItemRemoveWithNoSignal = true;
-                            m_lastItem = nullptr;
-                        }
-                    }
-
                     // 判断是否需要阈值
                     bool needThreshold = ItemFactory::requireDragThreshold(m_mode);
                     if (!needThreshold) {
                         // 不需要阈值，直接创建预览Item
                         m_previewItem = ItemFactory::createItem(m_mode);
                         if (m_previewItem) {
+                            // 替换模式，移除之前的绘制结果
+                            if (m_replaceMode) {
+                                if (m_lastItem) {
+                                    m_manager->removeItem(m_lastItem, false);
+                                    lastItemRemoveWithNoSignal = true;
+                                    m_lastItem = nullptr;
+                                }
+                            }
                             m_bIsDrawing = true;
                             m_previewItem->setSelectedContourColor(mThemeColor);
                             m_previewItem->setPreviewMode(true);
@@ -137,6 +136,14 @@ namespace CyDisDrawItem {
                         // 超过阈值，创建预览Item
                         m_previewItem = ItemFactory::createItem(m_mode);
                         if (m_previewItem) {
+                            // 替换模式，移除之前的绘制结果
+                            if (m_replaceMode) {
+                                if (m_lastItem) {
+                                    m_manager->removeItem(m_lastItem, false);
+                                    lastItemRemoveWithNoSignal = true;
+                                    m_lastItem = nullptr;
+                                }
+                            }
                             m_bIsDrawing = true;
                             m_previewItem->setSelectedContourColor(mThemeColor);
                             m_previewItem->setPreviewMode(true);

@@ -26,7 +26,7 @@ namespace CyMedia {
     }
 
     ParseResult VideoParseRaw::onOpen(const std::filesystem::path& filePath, VideoParseInfo& parseInfo, bool format) {
-        m_file.open(filePath, std::ios::in | std::ios::binary);
+        m_file.open(filePath.wstring(), std::ios::in | std::ios::binary);
         if (!m_file.is_open()) return ParseResult::FILE_OPEN_FAIL;
 
         m_file.seekg(0, std::ios::end);
@@ -101,5 +101,4 @@ namespace CyMedia {
         m_file.read(reinterpret_cast<char*>(buffer), m_frameDataSize);
         return !m_file.fail();
     }
-    REGISTER_VIDEO_FORMAT(VideoSuffix::RAWV, VideoParseRaw);
 }

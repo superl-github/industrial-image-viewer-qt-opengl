@@ -5,6 +5,7 @@
 #include "CyMediaCalc_YUV.h"
 
 #include <cstdlib>
+#include <algorithm>
 
 #if defined _MSC_VER
 #include <ppl.h>
@@ -135,7 +136,7 @@ namespace CyMediaCalc {
     }
 
     bool computeRGBHistogram(uint8_t* pData, ImageShowInfo& imageinfo, std::vector<uint8_t>* calcMask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram, std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel) {
-        if (imageinfo.format != RGB)
+        if (imageinfo.format != RGB && imageinfo.format != BGR)
             return false;
         return CyMediaCalc_RGB::computeHistogram(imageinfo, pData, calcMask, useMask, Rhistogram, Ghistogram, Bhistogram,
             maxPixel, minPixel, avePixel);
@@ -175,37 +176,62 @@ namespace CyMediaCalc {
         return CyMediaCalc_YUV::computeHistogram_Stretch(imageinfo, pData, histogram, func, type);
     }
 
-    void computeGrayStretchPara(std::vector<double>& histogram, int32_t& start, int32_t& end) {
-        //直方图平均值
-        double hisAve = 0.0;
-        uint32_t t_StretchSFlag = 0, t_StretchEFlag = 0;
-        start = 0;
-        end = histogram.size() - 1;
-        for (auto& oneValue : histogram) {
-            hisAve += oneValue;
+    void computeGrayStretchPara(const std::vector<double>& histogram, int32_t& start, int32_t& end) {
+        const size_t n = histogram.size();
+        if (n <= 1) { start = 0; end = 0; return; }
+        // 计算总像素数
+        double total = 0.0;
+        for (double v : histogram) {
+            if (v > 0.0) total += v;
         }
-        hisAve = hisAve / histogram.size();
-        //起始值计算
-        t_StretchSFlag = hisAve * 0.15 + 0.4;
-        for (int hisI = 1; hisI < histogram.size(); hisI++) {
-            if (histogram[hisI] > t_StretchSFlag) {
-                start = hisI;
+        if (total <= 0.0) { start = 0; end = static_cast<int32_t>(n) - 1; return; }
+        // 两端各裁剪 1% 像素。
+        const double lowCut = 0.01;
+        const double highCut = 0.01;
+        const double lowLimit = total * lowCut;
+        const double highLimit = total * highCut;
+        // 从低灰度端累计，找到起始灰度
+        size_t s = 0;
+        double acc = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            acc += histogram[i];
+            if (acc >= lowLimit) {
+                s = i;
                 break;
             }
         }
-        //末尾值计算
-        t_StretchEFlag = hisAve * 0.15 + 0.4;
-        for (int hisI = histogram.size() - 2; hisI > start; hisI--) {
-            if (histogram[hisI] >= t_StretchEFlag) {
-                end = hisI;
+        // 从高灰度端累计，找到结束灰度
+        size_t e = n - 1;
+        acc = 0.0;
+        for (size_t i = n; i > 0; --i) {
+            const size_t idx = i - 1;
+            acc += histogram[idx];
+            if (acc >= highLimit) {
+                e = idx;
                 break;
             }
         }
-        //边际校正
-        if (start >= histogram.size())
-            end = histogram.size();
-        if (end <= start)
-            end = start + 10;
+        // 最小范围保护：
+        // 避免 start/end 过于接近，导致线性拉伸后噪声被过度放大
+        const size_t minSpan = std::max<size_t>(2, static_cast<size_t>(n * 0.02));
+        if (e <= s) {
+            s = 0;
+            e = n - 1;
+        }
+        if (e - s < minSpan) {
+            const size_t center = (s + e) / 2;
+            const size_t half = minSpan / 2;
+
+            s = (center > half) ? center - half : 0;
+            e = std::min<size_t>(s + minSpan, n - 1);
+
+            if (e - s < minSpan) {
+                s = 0;
+                e = n - 1;
+            }
+        }
+        start = static_cast<int32_t>(s);
+        end = static_cast<int32_t>(e);
     }
 
     void computerUniformity(const std::vector<double>& histogram, const double& ave, double maxBitColor, double* std, double* uniformity, int* hisXRangeMax) {
@@ -255,6 +281,10 @@ namespace CyMediaCalc {
 
     bool YUV2RGB(const ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, YUVTransMethod func /*= YUVTRANS_NORMAL*/) {
         return CyMediaCalc_YUV::YUV2RGBConver(info, data, out_data, func);
+    }
+
+    bool CYMEDIA_LIB JPG2RGB(const CyMedia::ImageShowInfo& info, const void* data, void* out_data, bool& isGray) {
+        return CyMediaCalc_RGB::JPG2RGB(info, data, out_data, isGray);
     }
 
     void copyAlignImage(void* pSrc, void* pAlign, int srcWidth, int srcHeight, int AlignWidth, int AlignHeight, int pixelSize) {

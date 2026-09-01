@@ -18,7 +18,7 @@
 // //======out======
 // out vec4 fragColor;
 
-#define FOURCC_NV12 18
+#define FOURCC_NV12 19
 
 vec3 yuv2rgb(float y, float u, float v) {
     float Y = y;

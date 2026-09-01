@@ -53,12 +53,6 @@ namespace CyMedia {
      */
     const float THRESHOLD_F_INV = 6.0f / 29.0f;
 
-    /**
-     * @defgroup CyMediaBaseTypes CyMedia 基础类型定义
-     * @brief 包含所有核心数据结构、枚举和类型别名。
-     * @{
-     */
-
     //==================== 公共枚举定义 ====================
     /**
      * @brief 支持的语言类型。
@@ -98,6 +92,7 @@ namespace CyMedia {
 
         RGB,            ///< RGB 彩色（顺序 R-G-B）
         RGBA,           ///< RGBA 彩色（带 Alpha 通道）
+        BGR,            ///< BGR 彩色 (顺序 R-G-B)
 
         BAYERRG,        ///< Bayer 阵列 RGGB 排列
         BAYERGR,        ///< Bayer 阵列 GRBG 排列
@@ -113,6 +108,9 @@ namespace CyMedia {
         FOURCC_YV12,       ///< YVU 4:2:0 Planar 格式 (Y, V, U 三个平面)
         FOURCC_NV12,       ///< YUV 4:2:0 Semi-Planar 格式 (Y 平面 + UV 交错平面)
         FOURCC_NV21,       ///< YVU 4:2:0 Semi-Planar 格式 (Y 平面 + VU 交错平面)
+
+        //==================== Other ==============================
+        MJPG,
     };
 
     /**
@@ -221,9 +219,9 @@ namespace CyMedia {
      * @details 用于统一传递 Bayer 去马赛克、YUV 转换和拉伸策略。
      */
     struct ImageColorOpe {
-        CyMedia::DemosaicingMethod bayerFunc;
-        CyMedia::YUVTransMethod YUVFunc;
-        StretchType stretchType;
+        CyMedia::DemosaicingMethod bayerFunc = DEMOSAIC_NONE;
+        CyMedia::YUVTransMethod YUVFunc = BT601;
+        StretchType stretchType = stretch_None;
         int stretch_S = 0;
         int stretch_E = 0;
     };
@@ -410,7 +408,7 @@ namespace CyMedia {
         }
         /** @brief 判断是否为 RGB 格式。 */
         bool isRGB() const {
-            return format == RGB;
+            return format == RGB || format == BGR;
         }
         /** @brief 判断是否为 RGBA 格式。 */
         bool isRGBA() const {
@@ -496,7 +494,6 @@ namespace CyMedia {
         float b = 0;
         float a = 0;
     }RgbaPixelF;
-    /** @} */
     
 #pragma pack(pop)
     //==================== 回调函数类型 ====================

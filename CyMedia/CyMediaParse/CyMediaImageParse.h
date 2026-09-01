@@ -1,3 +1,13 @@
+/**
+* @file CyMediaImageParse.h
+* @brief CyMediaImageParse头文件，对外API
+* @ingroup FileParse
+*
+* @details 提供图像文件解析、保存数据到文件等功能。
+* 
+* @author LLF
+* @version 1.0
+*/
 #pragma once
 #include "CyMediaBaseDef.h"
 
@@ -5,6 +15,16 @@
 #include <filesystem>
 
 namespace CyMedia {
+    struct ImageSaveOpe {
+        bool rawAddHead = true;
+    };
+
+    /**
+     * @brief CyMedia 图像解析类。
+     * @details 
+     *  支持`CyMedia::ImageSuffix`列举的格式的文件解析为与`CyMedia::ImageShowInfo`符合的图像数据。
+     *  支持`CyMedia::ImageShowInfo`图像数据保存为`CyMedia::ImageSuffix`格式的文件
+     */
     class CYMEDIA_LIB CyMediaImageParse {
     public:
         CyMediaImageParse();
@@ -51,6 +71,6 @@ namespace CyMedia {
          * @ref
          * @return int 0:success 1:file error 2:Invalid file format
         ***/
-        static int saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, bool addRawHeader);
+        static int saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, ImageSaveOpe saveOpe);
     };
 };

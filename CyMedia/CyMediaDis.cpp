@@ -1,4 +1,4 @@
-﻿#include "CyMediaDis.h"
+#include "CyMediaDis.h"
 #include "CyMediaDis/CyMediaDisLog.h"
 
 #include "CyMediaDis/CyMediaRecTimeW.h"
@@ -307,6 +307,7 @@ namespace CyMedia {
 
             case CyMedia::RGB: return QString("RGB");
             case CyMedia::RGBA: return QString("RGBA");
+            case CyMedia::BGR: return QString("BGR");
 
             case CyMedia::BAYERGR: return QString("BAYER GRBG");
             case CyMedia::BAYERBG: return QString("BAYER BGGR");
@@ -321,6 +322,8 @@ namespace CyMedia {
             case CyMedia::FOURCC_YV12: return QString("YVU420P");
             case CyMedia::FOURCC_NV12: return QString("YUV420SP");
             case CyMedia::FOURCC_NV21: return QString("YVU420SP");
+
+            case CyMedia::MJPG: return QString("JPG");
             
             default: return QString("UNKNOW");
         }
@@ -1161,6 +1164,32 @@ namespace CyMedia {
                 *srcData = opePara.pAnalyImage;
             }
         }
+        else if (srcInfo.format == MJPG) {
+            //转RGB
+            uint32_t RGBLen = srcInfo.width * srcInfo.height * 3;
+            if (!opePara.pAnalyImage) {
+                opePara.pAnalyImage = new unsigned char[RGBLen];
+                opePara.analyImageLen = RGBLen;
+            }
+            else if (opePara.analyImageLen != RGBLen) {
+                delete[]opePara.pAnalyImage;
+                opePara.pAnalyImage = new unsigned char[RGBLen];
+                opePara.analyImageLen = RGBLen;
+            }
+            //QElapsedTimer timer; timer.start();
+            bool isGray;
+            CyMediaCalc::JPG2RGB(srcInfo, *srcData, opePara.pAnalyImage, isGray);
+            if (isGray) {
+                srcInfo.length = srcInfo.width * srcInfo.height;
+                srcInfo.format = CyMedia::MONO;
+            }
+            else {
+                srcInfo.length = opePara.analyImageLen;
+                srcInfo.format = CyMedia::RGB;
+            }
+            *srcData = opePara.pAnalyImage;
+            //printf("MJPG转RGB耗时%llddms\n", timer.elapsed());
+        }
         else {
             switch (srcInfo.format) {
                 case CyMedia::MONO10P_GVSP:
@@ -1507,6 +1536,10 @@ namespace CyMedia {
         connect(mGrayTestWidget, &CyMediaDisGrayTest::needImage, this, &CyMediaDis::privateData::onGrayToolNeedImage);
         connect(mGrayTestWidget, &CyMediaDisGrayTest::testModeChange, this, [this](int drawType, CyMediaDisGrayTest::testModeChangeType emitType) {
             setDrawMode(CyDisDrawItem::ItemType(drawType));
+            //清除上一个
+            if (drawType == CyDisDrawItem::ItemType::Invalid) {
+                drawmanager->removeItem(mGrayTestWidget->getCurrentItem());
+            }
             switch (emitType) {
                 case CyMediaDisGrayTest::ModeChange_normal:{
                     onGrayToolNeedImage(); 
@@ -1832,11 +1865,10 @@ namespace CyMedia {
                         ;
                     }break;
 
-                    case CyMedia::RGB: {
+                    case CyMedia::RGB:
+                    case CyMedia::RGBA: 
+                    case CyMedia::BGR: {
                         d->ui_special_value_box->setCurrentIndex(0);
-                    }break;
-
-                    case CyMedia::RGBA: {
                         d->ui_special_value_box->setCurrentIndex(0);
                     }break;
 

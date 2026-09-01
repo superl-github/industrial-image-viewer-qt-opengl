@@ -6,6 +6,13 @@ Image-Video-On-QGraphicsView
 
   It was developed to meet the need for interfacing with **camera image streams**, so it uses OpenGL rendering and image processing to ensure speed as much as possible. Using QGraphicsView eliminates a lot of external work, such as image matrices and additional attachments.
 
+**V 1.2.4 **
+
+- 优化自动拉伸范围计算
+- 增加BGR格式支持
+- calc增加JPG2RGB
+- 修复RGB保存图像未给予图像数据的问题
+
 **V 1.2.3**
 
 - 现在无图像时操作镜像无效
@@ -30,7 +37,7 @@ Image-Video-On-QGraphicsView
 - 修复CyMediaCalc::YUV2RGB声明和定义不一致
 - 更新翻译文件
 
-**V 1.2.0 **
+**V 1.2.0**
 
 - 添加版本信息
 - 完善注释

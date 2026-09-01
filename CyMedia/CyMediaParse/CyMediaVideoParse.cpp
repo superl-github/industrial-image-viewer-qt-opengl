@@ -7,6 +7,9 @@
 #include <QFile>
 #include <QFileInfo>
 
+#include "CyMediaVideoParseFfmpeg.h"
+#include "CyMediaVideoParseRaw.h"
+
 
 namespace CyMedia {
     class VideoParser::Private {
@@ -129,4 +132,8 @@ namespace CyMedia {
     void VideoParser::setSpeed(float speed) {
         if (d->m_impl) d->m_impl->setSpeed(speed);
     }
+
+    REGISTER_VIDEO_FORMAT(VideoSuffix::RAWV, VideoParseRaw);
+    REGISTER_VIDEO_FORMAT_EX(VideoSuffix::AVI, VideoParseFfmpeg, aviParse);
+    REGISTER_VIDEO_FORMAT_EX(VideoSuffix::MP4, VideoParseFfmpeg, mp4Parse);
 }

@@ -173,6 +173,7 @@ namespace CyDisDrawItem {
         void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
         void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+        void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
 
     private:
         static const int m_handleSize = 8;

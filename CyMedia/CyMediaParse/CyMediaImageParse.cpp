@@ -156,7 +156,7 @@ namespace CyMedia {
     }
 
 
-    int CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, bool addRawHeader) {
+    int CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, ImageSaveOpe saveOpe) {
         auto fileType = getTypeByPath(filePath.string());
 
         //RAW
@@ -172,14 +172,13 @@ namespace CyMedia {
                 return 1;
             }
             //写入头信息
-            file.write((char*)(&info), sizeof(CyMedia::ImageShowInfo));
-            if (!file)
-                return 1;
+            if (saveOpe.rawAddHead) {
+                file.write((char*)(&info), sizeof(CyMedia::ImageShowInfo));
+                if (!file) return 1;
+            }
             //写入数据
             file.write((char*)data, info.length);
-            if (!file) {
-                return 1;
-            }
+            if (!file) return 1;
             return file.good() ? 0 : 1;
         }
         
@@ -244,16 +243,10 @@ namespace CyMedia {
 
             case CyMedia::RGB: {
                 channels = 3;
-                opeImageData = new uint8_t[info.width * info.height * 3];
-
-                writeData = opeImageData;
             }break;
 
             case CyMedia::RGBA: {
                 channels = 4;
-                opeImageData = new uint8_t[info.width * info.height * 3];
-
-                writeData = opeImageData;
             }break;
 
             case CyMedia::BAYERRG:

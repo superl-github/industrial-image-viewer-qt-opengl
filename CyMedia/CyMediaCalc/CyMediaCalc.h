@@ -169,7 +169,7 @@ namespace CyMediaCalc {
      * @param start     输出拉伸起始灰度级（索引）。
      * @param end       输出拉伸结束灰度级（索引）。
      */
-    void CYMEDIA_LIB computeGrayStretchPara(std::vector<double>& histogram, int32_t& start, int32_t& end);
+    void CYMEDIA_LIB computeGrayStretchPara(const std::vector<double>& histogram, int32_t& start, int32_t& end);
 
     /**
      * @brief 计算单通道直方图的均匀度指标。
@@ -237,7 +237,7 @@ namespace CyMediaCalc {
     bool CYMEDIA_LIB bayer2RGB_8(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, DemosaicingMethod func = DEMOSAIC_BILINEAR);
 
     /**
-     * @brief 将 YUV 格式图像转换为 RGB 24 位图像。
+     * @brief 将 YUV 格式图像转换为 RGB24 图像。
      * @param info     图像信息（须为 YUV 格式）。
      * @param data     输入 YUV 数据。
      * @param out_data 输出 RGB 数据（width*height*3 字节）。
@@ -245,6 +245,16 @@ namespace CyMediaCalc {
      * @return 成功返回 true，否则 false。
      */
     bool CYMEDIA_LIB YUV2RGB(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, YUVTransMethod func = BT601);
+
+    /**
+     * @brief 将 JPG 格式数据转换为 RGB24 图像。
+     * @param info     图像信息（须为 JPG 格式）。
+     * @param data     输入 JPG 数据。
+     * @param out_data 输出数据，外部分配width*height*3 字节，若图像为灰度图，则只填充单通道
+     * @param isGray   jpg图像是否为灰度图
+     * @return 成功返回 true，否则 false。
+     */
+    bool CYMEDIA_LIB JPG2RGB(const CyMedia::ImageShowInfo& info, const void* data, void* out_data, bool& isGray);
 
     /**
      * @brief 将源图像数据按行列对齐复制到目标缓冲区。

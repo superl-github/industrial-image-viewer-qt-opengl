@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <functional>
+#include <queue>
 
 namespace CyMedia {
     /**
@@ -90,6 +91,9 @@ namespace CyMedia {
          */
         void play();
 
+
+
+        void setAlignTarget(uint32_t targetFrame);
         /**
          * @brief 暂停推流。
          */
@@ -122,6 +126,8 @@ namespace CyMedia {
          */
         void setSpeed(float speed);
 
+      
+
     protected:
         // ===== 子类必须实现的纯虚接口 =====
         virtual ParseResult onOpen(const std::filesystem::path& filePath,
@@ -145,11 +151,36 @@ namespace CyMedia {
     private:
         void playbackThread();
 
+            // ========== 新增：回调分发线程与队列 ==========
+            void callbackDispatchThread();
+            // 队列条目：完整拷贝帧数据，脱离解码线程缓冲区生命周期
+            struct FrameQueueItem
+            {
+                ImageShowInfo info;
+                std::vector<uint8_t> frameData;
+                uint64_t framePos;
+            };
+
+            std::queue<FrameQueueItem> m_frameQueue;
+            mutable std::mutex m_frameQueueMtx;
+            std::condition_variable m_frameQueueCv;
+            size_t m_maxQueueSize = 4;   // 最大缓存4帧，超过自动丢旧帧
+            std::thread m_callbackThread;
+            std::atomic<bool> m_callbackThreadExit{ false };
+            // ==============================================
+
+         
+
+
+
         // 播放状态
         std::atomic<bool>     m_isOpen{ false };
         std::atomic<bool>     m_playing{ false };
         std::atomic<bool>     m_paused{ true };
         std::atomic<uint64_t> m_currentPos{ 1 };
+        std::atomic<uint64_t> m_lastCallbackPos{ 0 };  // 最后一个成功回调的帧号
+        std::atomic<uint32_t> m_alignTarget{ 0 };  // 上层指定的对齐目标，0=不使用
+        std::atomic<bool>     m_needAlign{ false };     // 暂停后恢复播放时需要对齐
         std::atomic<float>    m_speed{ 1.0f };
 
         // 回调

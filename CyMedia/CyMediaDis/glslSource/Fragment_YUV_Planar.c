@@ -18,9 +18,9 @@
 // //======out======
 // out vec4 fragColor;
 
-#define FOURCC_I420 16
-#define FOURCC_YV12 17
-#define FOURCC_I422 14
+#define FOURCC_I422 15
+#define FOURCC_YV12 16
+#define FOURCC_I420 17
 
 // YUV→RGB (BT.601)
 vec3 yuv2rgb(float y, float u, float v) {

@@ -37,4 +37,12 @@ namespace CyMedia {
         return true; \
     }()
 
+    // 同一个类注册多个后缀时用这个，RegName 必须唯一
+#define REGISTER_VIDEO_FORMAT_EX(suffix, ClassName, RegName) \
+    static const bool _reg_##RegName = []{ \
+        FormatRegistry::instance().registerFormat( \
+            suffix, []{ return std::make_unique<ClassName>(); }); \
+        return true; \
+    }()
+
 }

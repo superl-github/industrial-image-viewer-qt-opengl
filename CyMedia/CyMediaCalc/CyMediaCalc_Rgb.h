@@ -1,4 +1,4 @@
-﻿#include "../CyMediaBaseDef.h"
+#include "../CyMediaBaseDef.h"
 #include <vector>
 
 using namespace CyMedia;
@@ -17,4 +17,7 @@ namespace CyMediaCalc_RGB {
     bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data,
         std::vector<double>& histogram,
         CyMedia::StretchType type = stretch_None);
+
+    //JPG2RGB
+    bool JPG2RGB(const CyMedia::ImageShowInfo& info, const void* data, void* out_data, bool& isGray);
 }

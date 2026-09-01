@@ -1,26 +1,11 @@
-﻿/*****************************************************************//**
+/*****************************************************************//**
  * @file CyMediaDisViewBckDraw.h
  * @brief OpenGL 图像渲染引擎，负责纹理管理、着色器编译及背景绘制。
- * @details
- *  本类作为 `CyMediaDisView` 的后端，执行实际的 OpenGL 渲染工作。
- *  主要职责：
- *  - 初始化 OpenGL 上下文、着色器（支持运行时切换 shader 变体）、VBO/VAO。
- *  - 维护双缓冲纹理（前台/后台），支持异步纹理上传（通过同步对象确保数据一致性）。
- *  - 解析多种图像格式（MONO, RGB, RGBA, Bayer, YUV 系列），并转换为纹理数据。
- *  - 提供颜色映射（ColorMap）和像素值拉伸（Stretch）功能，增强图像对比度。
- *  - 支持 Bayer 去马赛克（Bilinear/Malvar/AHD）和 YUV 转换标准（BT.601/BT.709等）。
- *  - 提供 FPS 统计（渲染帧率和纹理上传帧率）。
- *
- *  设计为可在任意线程（主线程或子线程）中调用 `upBackGround()` 更新纹理，
- *  需配合 `createSharedContext()` 创建共享 OpenGL 上下文以确保线程安全。
+ * @ingroup Display
  * 
- *  colormap文件 768字节 = 256(R) + 256(G) + 256(B)
- *  
- *  @warning 采用全局共享上下文方案，需要在初始化QApplication前，QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
- *  @see CyMediaDisView
- *  @author LLF
+ * author LLF
  *  @date   July 2026
- *  @version 1.0
+ * @version 1.0
  *********************************************************************/
 #pragma once
 #include "CyMediaBaseDef.h"
@@ -39,7 +24,28 @@
 #include <QTimer>
 #include <QDir>
 #include <QMutex>
-
+/**
+ * @class CyMediaDisViewBckDraw
+ * @brief OpenGL 图像渲染引擎，负责纹理管理、着色器编译及背景绘制。
+ * @details
+ *  本类作为 `CyMediaDisView` 的后端，执行实际的 OpenGL 渲染工作。
+ *  主要职责：
+ *  - 初始化 OpenGL 上下文、着色器（支持运行时切换 shader 变体）、VBO/VAO。
+ *  - 维护双缓冲纹理（前台/后台），支持异步纹理上传（通过同步对象确保数据一致性）。
+ *  - 解析多种图像格式（MONO, RGB, RGBA, Bayer, YUV 系列），并转换为纹理数据。
+ *  - 提供颜色映射（ColorMap）和像素值拉伸（Stretch）功能，增强图像对比度。
+ *  - 支持 Bayer 去马赛克（Bilinear/Malvar/AHD）和 YUV 转换标准（BT.601/BT.709等）。
+ *  - 提供 FPS 统计（渲染帧率和纹理上传帧率）。
+ *
+ *  设计为可在任意线程（主线程或子线程）中调用 `upBackGround()` 更新纹理，
+ *  需配合 `createSharedContext()` 创建共享 OpenGL 上下文以确保线程安全。
+ *
+ *  colormap文件 768字节 = 256(R) + 256(G) + 256(B)
+ *
+ *  @warning 采用全局共享上下文方案，需要在初始化QApplication前，QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+ * 
+ *  @see CyMediaDisView
+ */
 class CyMediaDisViewBckDraw : public QObject {
     Q_OBJECT
 public:

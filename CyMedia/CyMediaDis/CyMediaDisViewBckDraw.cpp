@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisViewBckDraw.h"
+#include "CyMediaDisViewBckDraw.h"
 #include "CyMediaDisLog.h"
 #include "CyMediaDisView.h"
 
@@ -875,37 +875,26 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
 
     //MONO/BAYER
     if (info.isMono() || info.isBayer()) {
+        pTex->textureFormat = GL_RED;
         if (info.bit <= 8) {
             pTex->textureInternalFormat = GL_R8;
-            pTex->textureFormat = GL_RED;
             pTex->textureType = GL_UNSIGNED_BYTE;
         }
         else if (info.bit <= 16) {
             pTex->textureInternalFormat = GL_R16;
-            pTex->textureFormat = GL_RED;
             pTex->textureType = GL_UNSIGNED_SHORT;
         }
         else {
             pTex->textureInternalFormat = GL_R32F;
-            pTex->textureFormat = GL_RED;
             pTex->textureType = GL_INT;
         }
         if (oversize) {
-            if (info.bit <= 8) {
-                pTex->textureInternalFormat = GL_RGBA;
-                pTex->textureFormat = GL_RGBA;
-                pTex->textureType = GL_UNSIGNED_BYTE;
-            }
-            else if (info.bit <= 16) {
-                pTex->textureInternalFormat = GL_RGBA;
-                pTex->textureFormat = GL_RGBA;
-                pTex->textureType = GL_UNSIGNED_SHORT;
-            }
-            else if (info.bit < 32) {
-                pTex->textureInternalFormat = GL_R32F;
-                pTex->textureFormat = GL_RED;
-                pTex->textureType = GL_INT;
-            }
+            pTex->textureInternalFormat = GL_RGBA;
+            pTex->textureFormat = GL_RGBA;
+            if (info.bit <= 8) pTex->textureType = GL_UNSIGNED_BYTE;
+            else if (info.bit <= 16) pTex->textureType = GL_UNSIGNED_SHORT;
+            else if (info.bit < 32) pTex->textureType = GL_INT;
+
             pTex->textureWidthMultiplier = 0.5;
             pTex->textureHeightMultiplier = 0.5;
             pTex->glslNcolor = CyMedia::MONO_OVERSIZE;
@@ -913,39 +902,21 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
     }
     // RGB
     else if (info.isRGB()) {
-        if (info.bit <= 8) {
-            pTex->textureInternalFormat = GL_RGB;
-            pTex->textureFormat = GL_RGB;
-            pTex->textureType = GL_UNSIGNED_BYTE;
-        }
-        else if (info.bit <= 16) {
-            pTex->textureInternalFormat = GL_RGB;
-            pTex->textureFormat = GL_RGB;
-            pTex->textureType = GL_UNSIGNED_SHORT;
-        }
-        else {
-            pTex->textureInternalFormat = GL_RGB;
-            pTex->textureFormat = GL_RGB;
-            pTex->textureType = GL_INT;
-        }
+        pTex->textureInternalFormat = GL_RGB;
+        pTex->textureFormat = GL_RGB; if (info.format == CyMedia::BGR) pTex->textureFormat = GL_BGR;
+
+        if (info.bit <= 8) pTex->textureType = GL_UNSIGNED_BYTE;
+        else if (info.bit <= 16) pTex->textureType = GL_UNSIGNED_SHORT;
+        else pTex->textureType = GL_INT;
     }
     // RGBA
     else if (info.isRGBA()) {
-        if (info.bit <= 8) {
-            pTex->textureInternalFormat = GL_RGBA;
-            pTex->textureFormat = GL_RGBA;
-            pTex->textureType = GL_UNSIGNED_BYTE;
-        }
-        else if (info.bit <= 16) {
-            pTex->textureInternalFormat = GL_RGBA;
-            pTex->textureFormat = GL_RGBA;
-            pTex->textureType = GL_UNSIGNED_SHORT;
-        }
-        else {
-            pTex->textureInternalFormat = GL_RGBA;
-            pTex->textureFormat = GL_RGBA;
-            pTex->textureType = GL_INT;
-        }
+        pTex->textureInternalFormat = GL_RGBA;
+        pTex->textureFormat = GL_RGBA;
+
+        if (info.bit <= 8) pTex->textureType = GL_UNSIGNED_BYTE;
+        else if (info.bit <= 16) pTex->textureType = GL_UNSIGNED_SHORT;
+        else pTex->textureType = GL_INT;
     }
     // yuv
     else if (info.isYUV()) {

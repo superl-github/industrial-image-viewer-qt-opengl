@@ -144,6 +144,8 @@ namespace CyMedia {
          */
         void setSpeed(float speed);
 
+        void setAlignTarget(uint32_t targetFrame);
+
     private:
         class Private;
         Private* d = nullptr;

@@ -1,4 +1,4 @@
-﻿#include "BaseItem.h"
+#include "BaseItem.h"
 #include <QTimer>
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
@@ -281,7 +281,7 @@ namespace CyDisDrawItem {
 
 	void BaseItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
         setCursor(Qt::ArrowCursor);
-        QGraphicsObject::hoverLeaveEvent(event);
+        QGraphicsObject::hoverEnterEvent(event);
     }
 
     void BaseItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
@@ -457,4 +457,18 @@ namespace CyDisDrawItem {
             event->accept();
         }
     }
+
+    void HandleItem::contextMenuEvent(QGraphicsSceneContextMenuEvent* event) {
+        if (!m_parent) {
+            QGraphicsItem::contextMenuEvent(event); return;
+        }
+        // 点击手柄右键，先确保父item选中，和直接点item本体行为一致
+        if (!m_parent->isSelected()) {
+            m_parent->setSelected(true);
+        }
+        // 将右键事件转发给父BaseItem，复用已经写好的contextMenuEvent逻辑
+        m_parent->contextMenuEvent(event);
+        event->accept();
+    }
+
 }

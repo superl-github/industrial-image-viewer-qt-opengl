@@ -1,5 +1,6 @@
-﻿#include "CyMediaCalc_Rgb.h"
+#include "CyMediaCalc_Rgb.h"
 #include "CyMediaCalc.h"
+#include "../CyMediaParse/stb_image.h"
 
 #include <algorithm>
 #include <cmath>
@@ -265,7 +266,7 @@ namespace CyMediaCalc_RGB {
 
     bool computeHistogram(const ImageShowInfo& info, const uint8_t* data, std::vector<uint8_t>* mask, bool useMask, std::vector<double>& Rhistogram, std::vector<double>& Ghistogram, std::vector<double>& Bhistogram,
         std::vector<double>& maxPixel, std::vector<double>& minPixel, std::vector<double>& avePixel) {
-        if (!data || info.format != RGB) {
+        if (!data || (!info.isRGB())) {
             return false;
         }
 
@@ -283,25 +284,52 @@ namespace CyMediaCalc_RGB {
 
         // 根据位深选择模板实例
         if (info.bit <= 8) {
-            computeHistogram_RGB_impl<uint8_t>(info,
-                static_cast<const uint8_t*>(data), mask, useMask,
-                Rhistogram, Ghistogram, Bhistogram,
-                maxPixel, minPixel, avePixel,
-                finalSumR, finalSumG, finalSumB, maskNum);
+            if (info.format == BGR) {
+                computeHistogram_RGB_impl<uint8_t>(info,
+                    static_cast<const uint8_t*>(data), mask, useMask,
+                    Bhistogram, Ghistogram, Rhistogram,
+                    maxPixel, minPixel, avePixel,
+                    finalSumR, finalSumG, finalSumB, maskNum);
+            }
+            else {
+                computeHistogram_RGB_impl<uint8_t>(info,
+                    static_cast<const uint8_t*>(data), mask, useMask,
+                    Rhistogram, Ghistogram, Bhistogram,
+                    maxPixel, minPixel, avePixel,
+                    finalSumR, finalSumG, finalSumB, maskNum);
+            }
         }
         else if (info.bit <= 16) {
-            computeHistogram_RGB_impl<uint16_t>(info,
-                reinterpret_cast<const uint16_t*>(data), mask, useMask,
-                Rhistogram, Ghistogram, Bhistogram,
-                maxPixel, minPixel, avePixel,
-                finalSumR, finalSumG, finalSumB, maskNum);
+            if (info.format == BGR) {
+                computeHistogram_RGB_impl<uint16_t>(info,
+                    reinterpret_cast<const uint16_t*>(data), mask, useMask,
+                    Bhistogram, Ghistogram, Rhistogram,
+                    maxPixel, minPixel, avePixel,
+                    finalSumR, finalSumG, finalSumB, maskNum);
+            }
+            else {
+                computeHistogram_RGB_impl<uint16_t>(info,
+                    reinterpret_cast<const uint16_t*>(data), mask, useMask,
+                    Rhistogram, Ghistogram, Bhistogram,
+                    maxPixel, minPixel, avePixel,
+                    finalSumR, finalSumG, finalSumB, maskNum);
+            }
         }
         else if (info.bit <= 31) {
-            computeHistogram_RGB_impl<uint32_t>(info,
-                reinterpret_cast<const uint32_t*>(data), mask, useMask,
-                Rhistogram, Ghistogram, Bhistogram,
-                maxPixel, minPixel, avePixel,
-                finalSumR, finalSumG, finalSumB, maskNum);
+            if (info.format == BGR) {
+                computeHistogram_RGB_impl<uint32_t>(info,
+                    reinterpret_cast<const uint32_t*>(data), mask, useMask,
+                    Bhistogram, Ghistogram, Rhistogram,
+                    maxPixel, minPixel, avePixel,
+                    finalSumR, finalSumG, finalSumB, maskNum);
+            }
+            else {
+                computeHistogram_RGB_impl<uint32_t>(info,
+                    reinterpret_cast<const uint32_t*>(data), mask, useMask,
+                    Rhistogram, Ghistogram, Bhistogram,
+                    maxPixel, minPixel, avePixel,
+                    finalSumR, finalSumG, finalSumB, maskNum);
+            }
         }
         else {
             return false;
@@ -314,6 +342,35 @@ namespace CyMediaCalc_RGB {
             avePixel[2] = finalSumB / maskNum;
         }
 
+        return true;
+    }
+
+    bool JPG2RGB(const CyMedia::ImageShowInfo& info, const void* data, void* out_data, bool& isGray) {
+        if (info.format != MJPG ||  !data || !out_data) return false;
+        if (info.bit != 8) return false;
+
+        //解析头信息
+        int w = 0, h = 0, orig_comp = 0;
+        if (!stbi_info_from_memory((uint8_t*)data, info.length, &w, &h, &orig_comp)) return false;
+        if (w != info.width || h != info.height) return false;
+        
+        //读取图像
+        int desired_comp = orig_comp;
+        if (orig_comp == 4) desired_comp = 3;//丢弃A通道
+        unsigned char* img = stbi_load_from_memory((uint8_t*)data, info.length, &w, &h, &orig_comp, desired_comp);
+        if (!img) return false;   // 解码失败
+        if (w != info.width || h != info.height) {
+            stbi_image_free(img); 
+            return false;
+        }
+        isGray = desired_comp == 1;
+        if (isGray) {
+            memcpy(out_data, img, w * h);
+        }
+        else {
+            memcpy(out_data, img, w * h * 3);
+        }
+        stbi_image_free(img);
         return true;
     }
 
@@ -330,77 +387,112 @@ namespace CyMediaCalc_RGB {
             }();
         //计算并行计算阈值
         const int32_t threshold = get_parallel_threshold_stretch(cpuCores, type);
-        if (totalPixels < threshold) {
-            for (int32_t i = 0; i < totalPixels; ++i) {
-                const T* pix = pData + i * 3;
-                RgbPixel rgb{ pix[0],
-                              pix[1],
-                              pix[2] };
-                int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
-                histogram[index] += 1.0;
-            }
-            return;
-        }
-
+        bool serialCalc = totalPixels < threshold;
+        if (false == serialCalc) {
 #if defined(_MSC_VER)
-        concurrency::combinable<std::vector<double>> localHists([maxBitValue]() {
-            return std::vector<double>(maxBitValue, 0.0);
-            });
+            concurrency::combinable<std::vector<double>> localHists([maxBitValue]() {
+                return std::vector<double>(maxBitValue, 0.0);
+                });
+            if (info.format == BGR) {
+                concurrency::parallel_for(0, totalPixels, [&](int32_t i) {
+                    const T* pix = pData + i * 3;
+                    RgbPixel rgb{ pix[2],
+                                  pix[1],
+                                  pix[0] };
+                    int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
 
-        concurrency::parallel_for(0, totalPixels, [&](int32_t i) {
-            const T* pix = pData + i * 3;
-            RgbPixel rgb{ pix[0],
-                          pix[1],
-                          pix[2] };
-            int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
-
-            auto& local = localHists.local();
-            local[index] += 1.0;
-            });
-
-        localHists.combine_each([&](const std::vector<double>& local) {
-            for (size_t k = 0; k < histogram.size(); ++k) {
-                histogram[k] += local[k];
+                    auto& local = localHists.local();
+                    local[index] += 1.0;
+                    });
             }
-            });
+            else {
+                concurrency::parallel_for(0, totalPixels, [&](int32_t i) {
+                    const T* pix = pData + i * 3;
+                    RgbPixel rgb{ pix[0],
+                                  pix[1],
+                                  pix[2] };
+                    int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
+
+                    auto& local = localHists.local();
+                    local[index] += 1.0;
+                    });
+            }
+
+            localHists.combine_each([&](const std::vector<double>& local) {
+                for (size_t k = 0; k < histogram.size(); ++k) {
+                    histogram[k] += local[k];
+                }
+                });
 
 #elif defined(_OPENMP)
-#pragma omp parallel
-        {
-            std::vector<double> localHist(maxBitValue, 0.0);
-#pragma omp for nowait
-            for (int32_t i = 0; i < totalPixels; ++i) {
-                if (useMask && mask && !(*mask)[i]) continue;
-
-                const T* pix = pData + i * 3;
-                RgbPixel rgb{ static_cast<int32_t>(pix[0]),
-                              static_cast<int32_t>(pix[1]),
-                              static_cast<int32_t>(pix[2]) };
-                int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
-                localHist[index] += 1.0;
-            }
-#pragma omp critical
+    #pragma omp parallel
             {
-                for (int32_t k = 0; k < maxBitValue; ++k) {
-                    histogram[k] += localHist[k];
+                std::vector<double> localHist(maxBitValue, 0.0);
+                if (info.format == BGR) {
+#pragma omp for nowait
+                    for (int32_t i = 0; i < totalPixels; ++i) {
+                        if (useMask && mask && !(*mask)[i]) continue;
+
+                        const T* pix = pData + i * 3;
+                        RgbPixel rgb{ static_cast<int32_t>(pix[0]),
+                                      static_cast<int32_t>(pix[1]),
+                                      static_cast<int32_t>(pix[2]) };
+                        int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
+                        localHist[index] += 1.0;
+                    }
+                }
+                else {
+#pragma omp for nowait
+                    for (int32_t i = 0; i < totalPixels; ++i) {
+                        if (useMask && mask && !(*mask)[i]) continue;
+
+                        const T* pix = pData + i * 3;
+                        RgbPixel rgb{ static_cast<int32_t>(pix[2]),
+                                      static_cast<int32_t>(pix[1]),
+                                      static_cast<int32_t>(pix[0]) };
+                        int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
+                        localHist[index] += 1.0;
+                    }
+                }
+                }
+    #pragma omp critical
+                {
+                    for (int32_t k = 0; k < maxBitValue; ++k) {
+                        histogram[k] += localHist[k];
+                    }
                 }
             }
-        }
 #else
-        for (int32_t i = 0; i < totalPixels; ++i) {
-            if (useMask && mask && !(*mask)[i]) continue;
-
-            const T* pix = pData + i * 3;
-            RgbPixel rgb{ static_cast<int32_t>(pix[0]),
-                          static_cast<int32_t>(pix[1]),
-                          static_cast<int32_t>(pix[2]) };
-            int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
-            histogram[index] += 1.0;
-        }
+            serialCalc = false;
 #endif
+        }
+        if (serialCalc) {
+            if (info.format == BGR) {
+                for (int32_t i = 0; i < totalPixels; ++i) {
+                    const T* pix = pData + i * 3;
+                    RgbPixel rgb{ pix[2],
+                                  pix[1],
+                                  pix[0] };
+                    int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
+                    histogram[index] += 1.0;
+                }
+                return;
+            }
+            else {
+                for (int32_t i = 0; i < totalPixels; ++i) {
+                    const T* pix = pData + i * 3;
+                    RgbPixel rgb{ pix[0],
+                                  pix[1],
+                                  pix[2] };
+                    int index = CyMediaCalc::RGBT2StretchOneFast(rgb, type, maxValF);
+                    histogram[index] += 1.0;
+                }
+                return;
+            }
+        }
     }
     bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data, std::vector<double>& histogram, StretchType type /*= stretch_None*/) {
-        if (!data || info.format != RGB) {
+        if (!data || (!info.isRGB())) {
             return false;
         }
 

@@ -53,21 +53,25 @@ copy "CyMedia\CyMediaParse\CyMediaVideoParse.h" "%GenDir_include%\CyMediaParse"
 echo "copy ColorMap"
 xcopy "CyMedia\CyMediaDis\colorMap_ALL" "%GenDir_Bin%colorMap\" /i/s/y
 
-::Bin/Lib->x64
+::Lib/Bin->x64
 echo "copy Bin/Lib->x64"
-copy "%LIBSrcDir%\x64\Debug\CyMedia.dll" "%GenDir_Bin_64%\Debug\"
 copy "%LIBSrcDir%\x64\Debug\CyMedia.lib" "%GenDir_Lib_64%\Debug\"
 copy "%LIBSrcDir%\x64\Debug\CyMedia.pdb" "%GenDir_Lib_64%\Debug\"
+copy "%LIBSrcDir%\x64\Debug\CyMedia.dll" "%GenDir_Bin_64%\Debug\"
+xcopy "CyMedia\CyMediaParse\FFMPEG\Bin\x64" "%GenDir_Bin_64%\Debug\" /i/s/y
 
-copy "%LIBSrcDir%\x64\Release\CyMedia.dll" "%GenDir_Bin_64%\Release\"
 copy "%LIBSrcDir%\x64\Release\CyMedia.lib" "%GenDir_Lib_64%\Release\"
+copy "%LIBSrcDir%\x64\Release\CyMedia.dll" "%GenDir_Bin_64%\Release\"
+xcopy "CyMedia\CyMediaParse\FFMPEG\Bin\x64" "%GenDir_Bin_64%\Release\" /i/s/y
 
-::Bin/Lib->Win32
+::Lib/Bin->Win32
 echo "copy Bin/Lib->Win32"
-copy "%LIBSrcDir%\Win32\Debug\CyMedia.dll" "%GenDir_Bin_32%\Debug\"
 copy "%LIBSrcDir%\Win32\Debug\CyMedia.lib" "%GenDir_Lib_32%\Debug\"
 copy "%LIBSrcDir%\Win32\Debug\CyMedia.pdb" "%GenDir_Lib_32%\Debug\"
+copy "%LIBSrcDir%\Win32\Debug\CyMedia.dll" "%GenDir_Bin_32%\Debug\"
+xcopy "CyMedia\CyMediaParse\FFMPEG\Bin\Win32" "%GenDir_Bin_32%\Debug\" /i/s/y
 
-copy "%LIBSrcDir%\Win32\Release\CyMedia.dll" "%GenDir_Bin_32%\Release\"
 copy "%LIBSrcDir%\Win32\Release\CyMedia.lib" "%GenDir_Lib_32%\Release\"
+copy "%LIBSrcDir%\Win32\Release\CyMedia.dll" "%GenDir_Bin_32%\Release\"
+xcopy "CyMedia\CyMediaParse\FFMPEG\Bin\Win32" "%GenDir_Bin_32%\Release\" /i/s/y
 ::Demo
