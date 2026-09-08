@@ -22,6 +22,7 @@ namespace CyMedia {
         if (m_framerate <= 0.0f) {
             m_framerate = 25.0f;
         }
+        m_playFps = m_framerate;
 
         m_isOpen = true;
         m_currentPos = 1;
@@ -166,8 +167,8 @@ namespace CyMedia {
         return m_currentPos;
     }
 
-    void VideoParseBase::setSpeed(float s) {
-        if (s > 0.f) m_speed = s;
+    void VideoParseBase::setPlayFps(float s) {
+        if (s > 0.f) m_playFps = s;
     }
 
     void VideoParseBase::playbackThread() {
@@ -183,7 +184,7 @@ namespace CyMedia {
 
             // 帧率控制
             auto interval = std::chrono::microseconds(
-                static_cast<int64_t>(1'000'000.0 / (m_framerate * m_speed.load())));
+                static_cast<int64_t>(1'000'000.0 / (m_playFps.load())));
             auto deadline = std::chrono::steady_clock::now() + interval;
 
             uint64_t pos = m_currentPos.load();
@@ -205,14 +206,14 @@ namespace CyMedia {
                 newItem.frameData = m_asyncBuffer; // 完整拷贝帧数据，脱离原缓冲区
             }
             {
-                    std::lock_guard<std::mutex> lk(m_frameQueueMtx);
-                    // 队列满则丢弃最旧的帧，保证实时性，不阻塞解码线程
-                    while (m_frameQueue.size() >= m_maxQueueSize) {
-                        m_frameQueue.pop();
-                    }
-                    m_frameQueue.push(std::move(newItem));
+                std::lock_guard<std::mutex> lk(m_frameQueueMtx);
+                // 队列满则丢弃最旧的帧，保证实时性，不阻塞解码线程
+                while (m_frameQueue.size() >= m_maxQueueSize) {
+                    m_frameQueue.pop();
                 }
-                m_frameQueueCv.notify_one(); // 唤醒回调线程
+                m_frameQueue.push(std::move(newItem));
+            }
+            m_frameQueueCv.notify_one(); // 唤醒回调线程
             m_currentPos = pos + 1;
             // ==============================================
 
@@ -248,7 +249,7 @@ namespace CyMedia {
             }
             // ========== 按帧率控制回调间隔 ==========
             auto interval = std::chrono::microseconds(
-                static_cast<int64_t>(1'000'000.0 / (m_framerate * m_speed.load())));
+                static_cast<int64_t>(1'000'000.0 / (m_playFps.load())));
             nextCallbackTime += interval;
             auto now = std::chrono::steady_clock::now();
             if (now > nextCallbackTime) {

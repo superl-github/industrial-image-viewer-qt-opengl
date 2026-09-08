@@ -366,7 +366,9 @@ namespace CyMediaCalc_YUV {
                         continue;
                     RgbPixel rgb;
                     if (func == YUVTRANS_Y) {
-                        rgb.r = rgb.g = rgb.b = Y;
+                        rgb.r = Y;
+                        rgb.g = 0;
+                        rgb.b = 0;
                     }
                     else {
                         uint8_t R8, G8, B8;
@@ -384,55 +386,52 @@ namespace CyMediaCalc_YUV {
         return true;
     }
 
-    bool YUV2RGBConver(const ImageShowInfo& info, const uint8_t* data,
-        uint8_t* outdata, YUVTransMethod func) {
+    bool YUV2RGBConver(const ImageShowInfo& info, const uint8_t* __restrict data,
+        uint8_t* __restrict outdata, YUVTransMethod func) {
         if (!info.isYUV() || data == nullptr || outdata == nullptr)
             return false;
 
         int w = info.width;
         int h = info.height;
         int total = w * h;
+        const bool gray = (func == YUVTRANS_Y);
 
         // 定义并行任务（每个像素独立转换）
-        auto convert_pixel = [&](int idx) {
-            int x = idx % w;
-            int y = idx / w;
+        auto convert_pixel = [&](int h) {
+            int y = h;
             uint8_t Y, U, V;
-            if (!getYUV(info, data, x, y, Y, U, V)) {
-                // 出错时输出黑色
-                outdata[idx * 3 + 0] = 0;
-                outdata[idx * 3 + 1] = 0;
-                outdata[idx * 3 + 2] = 0;
-                return;
-            }
-
-            if (func == YUVTRANS_Y) {
-                outdata[idx * 3 + 0] = Y;
-                outdata[idx * 3 + 1] = Y;
-                outdata[idx * 3 + 2] = Y;
-            }
-            else {
-                uint8_t R, G, B;
-                YUVtoRGB(Y, U, V, R, G, B);
-                outdata[idx * 3 + 0] = R;
-                outdata[idx * 3 + 1] = G;
-                outdata[idx * 3 + 2] = B;
+            for (int x = 0; x < w; x++) {
+                if (!getYUV(info, data, x, y, Y, U, V)) return;
+                if (gray) {
+                    outdata[y * w + x] = Y;
+                }
+                else {
+                    uint8_t R, G, B;
+                    YUVtoRGB(Y, U, V, R, G, B);
+                    outdata[(y * w + x) * 3 + 0] = R;
+                    outdata[(y * w + x) * 3 + 1] = G;
+                    outdata[(y * w + x) * 3 + 2] = B;
+                }
             }
             };
 
+        for (int idx = 0; idx < h; ++idx) {
+            convert_pixel(idx);
+        }
+        return true;
         // 并行选择
 #if defined _MSC_VER
         // Windows 平台使用 PPL
-        concurrency::parallel_for(0, total, convert_pixel);
+        concurrency::parallel_for(0, h, convert_pixel);
 #elif defined _OPENMP
         // 支持 OpenMP 时使用
 #pragma omp parallel for
-        for (int idx = 0; idx < total; ++idx) {
+        for (int idx = 0; idx < h; ++idx) {
             convert_pixel(idx);
         }
 #else
         // 串行回退
-        for (int idx = 0; idx < total; ++idx) {
+        for (int idx = 0; idx < h; ++idx) {
             convert_pixel(idx);
         }
 #endif

@@ -27,7 +27,7 @@ namespace CyMedia {
         if (m_streamIdx < 0) return ParseResult::FORMAT_ERROR;
         AVStream* stream = m_fmtCtx->streams[m_streamIdx];
         const AVCodec* codec = avcodec_find_decoder(stream->codecpar->codec_id);
-        if (!codec) return ParseResult::UNSIPPORTED;
+        if (!codec) return ParseResult::UNSUPPORTED;
         m_codecCtx = avcodec_alloc_context3(codec);
         avcodec_parameters_to_context(m_codecCtx, stream->codecpar);
         ret = avcodec_open2(m_codecCtx, codec, nullptr);
@@ -56,12 +56,12 @@ namespace CyMedia {
         m_swsCtx = sws_getContext(width, height, m_codecCtx->pix_fmt, width, height, AV_PIX_FMT_RGB24, SWS_BILINEAR, nullptr, nullptr, nullptr);
         if (!m_swsCtx) return ParseResult::FORMAT_ERROR;
         m_timeBase = stream->time_base;
-        m_frameRate = stream->avg_frame_rate;
-        const float fps = av_q2d(m_frameRate);
+        m_playRate = stream->avg_frame_rate;
+        const float fps = av_q2d(m_playRate);
         // 4. 计算总帧数
         uint64_t totalFrames = 0;
         if (stream->nb_frames > 0) totalFrames = stream->nb_frames;
-        else if (stream->duration != AV_NOPTS_VALUE && fps > 1e-6f) totalFrames = static_cast<uint64_t>(av_rescale_q(stream->duration, m_timeBase, av_inv_q(m_frameRate)));
+        else if (stream->duration != AV_NOPTS_VALUE && fps > 1e-6f) totalFrames = static_cast<uint64_t>(av_rescale_q(stream->duration, m_timeBase, av_inv_q(m_playRate)));
         totalFrames = totalFrames < 1 ? 1 : totalFrames;
         // 5. 填充基类 protected 成员
         m_frameInfo = ImageShowInfo(width, height, 8, RGB, static_cast<uint32_t>(width * height * 3), PIXEL_VALUE_INT);
@@ -135,10 +135,15 @@ namespace CyMedia {
         if (index != m_lastFrameIdx + 1) {
             int64_t target_ts = av_rescale_q(
                 static_cast<int64_t>(index - 1),
-                av_inv_q(m_frameRate),
+                av_inv_q(m_playRate),
                 m_timeBase
             );
-            av_seek_frame(m_fmtCtx, m_streamIdx, target_ts, AVSEEK_FLAG_BACKWARD);
+            int ret = av_seek_frame(m_fmtCtx, m_streamIdx, target_ts, AVSEEK_FLAG_BACKWARD);
+            if (ret < 0) {
+                avcodec_flush_buffers(m_codecCtx);
+                m_lastFrameIdx = 0;
+                return false;
+            }
             avcodec_flush_buffers(m_codecCtx);
             m_lastFrameIdx = 0;
         }
@@ -153,10 +158,10 @@ namespace CyMedia {
             int recvRet = avcodec_receive_frame(m_codecCtx, m_decFrame);
             if (recvRet == 0) {
                 uint64_t curIdx = (m_decFrame->pts != AV_NOPTS_VALUE) ?
-                    static_cast<uint64_t>(av_rescale_q(m_decFrame->pts, m_timeBase, av_inv_q(m_frameRate))) :
+                    static_cast<uint64_t>(av_rescale_q(m_decFrame->pts, m_timeBase, av_inv_q(m_playRate))) :
                     m_lastFrameIdx + 1;
 
-                if (curIdx >= index) {
+                if (curIdx == index || index == 1) {
                     // 转换并拷贝到 buffer
                     sws_scale(m_swsCtx,
                         m_decFrame->data, m_decFrame->linesize,
@@ -172,6 +177,9 @@ namespace CyMedia {
                     }
                     m_lastFrameIdx = index;
                     return true;
+                }
+                if (curIdx > index) {
+                    return false;
                 }
                 continue;  // 继续解码下一帧
             }

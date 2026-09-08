@@ -49,6 +49,9 @@ namespace CyMedia {
         /// 图像数据回调函数类型，用于接收处理后的图像帧。
         using CyMediaDisImageCallBack = std::function<void(CyMedia::ImageShowInfo&, uint8_t*, void*)>;
 
+        /// 显示单张图像的窗口，返回窗口句柄，由外部调用方释放或关闭时自动删除
+        static QWidget* imgShow(CyMedia::ImageShowInfo, void* data, QString titleName = QString());
+
     public:
         /**
          * @brief 构造函数。
@@ -200,7 +203,7 @@ namespace CyMedia {
          * @param force 若为 `true`，即使队列满也会覆盖最旧帧；否则丢弃新帧。
          * @return 数据成功入队返回 `true`，否则 `false`。
          */
-        bool upImageData(CyMedia::ImageShowInfo info, uint8_t* data, bool force = false);
+        bool upImageData(CyMedia::ImageShowInfo info, void* data, bool force = false);
         /**
          * @brief upIamgeIsDirect 是否直接处理更新数据，不进入缓存
          * @details 

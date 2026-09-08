@@ -48,7 +48,7 @@ vec4 calcRGBA(sampler2D texture, ivec2 texSize, ivec2 intTexCoord) {
         vVal = uv.r;
     }
 
-    if (YUVMethod == 1) {
+    if (YUVMethod == 0) {
         return vec4(yVal, yVal, yVal, 1.0);
     } else {
         vec3 rgb = yuv2rgb(yVal, uVal, vVal);

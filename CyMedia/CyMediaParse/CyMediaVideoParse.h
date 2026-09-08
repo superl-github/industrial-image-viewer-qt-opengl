@@ -139,10 +139,10 @@ namespace CyMedia {
         uint32_t getCurrentPosition() const;
 
         /**
-         * @brief 设置播放速度倍率。
-         * @param speed 倍率（必须 > 0）。1.0f 为原速，2.0f 为两倍速，0.5f 为半速。
+         * @brief 设置播放帧率
+         * @param fps（必须 > 0）。
          */
-        void setSpeed(float speed);
+        void setPlayFps(float fps);
 
         void setAlignTarget(uint32_t targetFrame);
 

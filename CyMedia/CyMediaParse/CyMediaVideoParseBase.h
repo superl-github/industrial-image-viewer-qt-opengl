@@ -120,11 +120,11 @@ namespace CyMedia {
         uint64_t getCurrentPosition() const;
 
         /**
-         * @brief 设置播放速度倍率。
-         * @param speed 倍率（必须 > 0）。1.0f 为原速，2.0f 为两倍速，0.5f 为半速。
+         * @brief 设置播放帧率。
+         * @param fps 倍率（必须 > 0）
          * @note 速度改变会影响帧间隔时间，内部计时器将自动重校准。
          */
-        void setSpeed(float speed);
+        void setPlayFps(float fps);
 
       
 
@@ -181,7 +181,7 @@ namespace CyMedia {
         std::atomic<uint64_t> m_lastCallbackPos{ 0 };  // 最后一个成功回调的帧号
         std::atomic<uint32_t> m_alignTarget{ 0 };  // 上层指定的对齐目标，0=不使用
         std::atomic<bool>     m_needAlign{ false };     // 暂停后恢复播放时需要对齐
-        std::atomic<float>    m_speed{ 1.0f };
+        std::atomic<float>    m_playFps = 0.0;
 
         // 回调
         FrameCallback m_callback = nullptr;

@@ -19,6 +19,7 @@ static const double THUMBNAIL_RATIO = 0.30;     // 占主视图宽高的比例
 class CyMediaDisView::MyViewPrivateData {
 public:
     CyMediaDisView* pView = nullptr;
+    bool m_GLIsInit = false;
     //Zoom
     float scaleFactor = 1.2;            ///< 当前缩放因子
     float xZoomValue = 1.0;             ///< 当前图像宽缩放倍率
@@ -343,6 +344,10 @@ void CyMediaDisView::rotateView(double angle) {
     setTransform(transform);
 }
 
+bool CyMediaDisView::glIsInit() {
+    return d->m_GLIsInit;
+}
+
 CyMediaDisViewBckDraw* CyMediaDisView::imageDraw() const {
     return m_backDraw;
 }
@@ -452,6 +457,7 @@ void CyMediaDisView::showEvent(QShowEvent* e) {
         m_Thumbnail->hide(); // 初始隐藏
     }
     d->updateThumbnail();
+    d->m_GLIsInit = true;
 }
 
 void CyMediaDisView::closeEvent(QCloseEvent* e) {

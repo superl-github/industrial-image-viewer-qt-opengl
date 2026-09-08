@@ -14,6 +14,17 @@
 #include <string>
 #include <filesystem>
 
+//==================== SIMD检测 ====================
+#if (defined(_M_IX86_FP) && _M_IX86_FP >= 2) || defined(_M_X64) || defined(__SSE2__)
+#define HAS_SSE2 1
+#else
+#define HAS_SSE2 0
+#endif
+
+#if defined(_M_ARM) || defined(_M_ARM64)
+ // MSVC ARM 默认支持 NEON（可用于内联汇编或 intrinsic）
+#endif
+
  //==================== 库导出/导入宏 ====================
 # if defined(CYMEDIA_EXPORT)
 #  define CYMEDIA_LIB __declspec(dllexport)
@@ -29,7 +40,7 @@
  */
 namespace CyMedia {
     //================ 版本号 ====================
-    const char VERSION[] = "V 1.2.3.preview";
+    const char VERSION[] = "V 1.2.5";
 
     //==================== 色彩空间转换常量 ====================
     /**
@@ -207,7 +218,7 @@ namespace CyMedia {
         OK = 0,
         FILE_OPEN_FAIL,
         FORMAT_ERROR,
-        UNSIPPORTED,
+        UNSUPPORTED,
         INVALID_PARAM,
         IO_ERROR
     };

@@ -59,7 +59,7 @@ namespace CyMedia {
     ParseResult VideoParser::open(const std::filesystem::path& filePath, CyMedia::VideoParseInfo& parseInfo, bool format/* = false*/) {
         close(); // 释放旧的解析器
         auto creator = FormatRegistry::instance().find(getvideoTypeByPath(filePath.string()));
-           if (!creator) return ParseResult::UNSIPPORTED;
+           if (!creator) return ParseResult::UNSUPPORTED;
            d->m_impl = creator();
            return d->m_impl->open(filePath, parseInfo, format);
     }
@@ -129,8 +129,8 @@ namespace CyMedia {
     }
 
 
-    void VideoParser::setSpeed(float speed) {
-        if (d->m_impl) d->m_impl->setSpeed(speed);
+    void VideoParser::setPlayFps(float fps) {
+        if (d->m_impl) d->m_impl->setPlayFps(fps);
     }
 
     REGISTER_VIDEO_FORMAT(VideoSuffix::RAWV, VideoParseRaw);

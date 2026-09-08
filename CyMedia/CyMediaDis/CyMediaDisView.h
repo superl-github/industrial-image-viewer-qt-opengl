@@ -101,6 +101,7 @@ public:
     void rotateView(double angle);
 
     //图像操作
+    bool glIsInit();
     CyMediaDisViewBckDraw* imageDraw() const;
     void clearBackGround();
 

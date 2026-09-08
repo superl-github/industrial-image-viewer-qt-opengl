@@ -241,7 +241,7 @@ namespace CyMediaCalc {
      * @param info     图像信息（须为 YUV 格式）。
      * @param data     输入 YUV 数据。
      * @param out_data 输出 RGB 数据（width*height*3 字节）。
-     * @param func     YUV 转 RGB 方法（默认 BT.601）。
+     * @param func     YUV 转 RGB 方法（默认 BT.601）,如果为YUVTRANS_Y则输出只有width*height字节。
      * @return 成功返回 true，否则 false。
      */
     bool CYMEDIA_LIB YUV2RGB(const CyMedia::ImageShowInfo& info, const uint8_t* data, uint8_t* out_data, YUVTransMethod func = BT601);

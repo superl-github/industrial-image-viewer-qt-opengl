@@ -82,6 +82,9 @@
     <ClCompile Include="CyMediaParse\CyMediaVideoParseFfmpeg.cpp">
       <Filter>CyMediaParse</Filter>
     </ClCompile>
+    <ClCompile Include="CyMediaDisShow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
@@ -164,6 +167,9 @@
     </QtMoc>
     <QtMoc Include="CyMediaDis\CyMediaDisViewBckDraw.h">
       <Filter>CyMediaDis</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaDisShow.h">
+      <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

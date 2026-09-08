@@ -74,41 +74,41 @@ namespace CyMedia {
     }
 
 
-    int CyMediaImageParse::openImage(std::filesystem::path filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {
+    ParseResult CyMediaImageParse::openImage(std::filesystem::path filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {
         if (!std::filesystem::is_regular_file(filePath)) {
-            return  1;
+            return  ParseResult::INVALID_PARAM;
         }
         //RAW
         if (fileType == ImageSuffix::RAW) {
             uint32_t fileSize = std::filesystem::file_size(filePath);
             int headSize = sizeof(CyMedia::ImageShowInfo);
-            if (fileSize < headSize) return 1;
+            if (fileSize < headSize) return  ParseResult::FORMAT_ERROR;
             //打开文件
             std::ifstream file(filePath, std::ios::binary);
             if (!file.is_open()) {
-                return 1;
+                return  ParseResult::FILE_OPEN_FAIL;
             }
             //读取头
             file.read((char*)(&info), headSize);
             //验证长度
             if (fileSize != info.length + headSize) {
                 file.close();
-                return 3;
+                return ParseResult::FORMAT_ERROR;
             }
             data.resize(info.length);
             file.read((char*)data.data(), info.length);
             file.close();
-            return 0;
+            return ParseResult::OK;
         }
         //Other
         FILE* fp = openFileForReading(filePath);
-        if (!fp) return 1;
+        if (!fp) return ParseResult::FILE_OPEN_FAIL;
 
         int w, h, channels;
         unsigned char* img = stbi_load_from_file(fp, &w, &h, &channels, 0);
         fclose(fp);
 
-        if (!img) return 2; // invalid file format
+        if (!img) return ParseResult::UNSUPPORTED;
 
         info.width = w;
         info.height = h;
@@ -121,42 +121,42 @@ namespace CyMedia {
         case 4: info.format = RGBA; break;
         default:
             stbi_image_free(img);
-            return 2;
+            return ParseResult::UNSUPPORTED;
         }
 
         info.length = w * h * channels;
         data.resize(info.length);
         memcpy(data.data(), img, info.length);
         stbi_image_free(img);
-        return 0;
+        return ParseResult::OK;
     }
 
 
-    int CyMediaImageParse::openImage_NotHeaderRaw(std::filesystem::path filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {//以二进制模式打开文件
+    ParseResult CyMediaImageParse::openImage_NotHeaderRaw(std::filesystem::path filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data) {//以二进制模式打开文件
         if (!std::filesystem::is_regular_file(filePath)) {
-            return  1;// file error
+            return  ParseResult::INVALID_PARAM;
         }
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
-            return 1;
+            return ParseResult::FILE_OPEN_FAIL;
         }
         //判断文件大小
         auto fileSize = std::filesystem::file_size(filePath);
-        if (fileSize < dataOffset + info.length) return 3;
+        if (fileSize < dataOffset + info.length) return ParseResult::FORMAT_ERROR;
         //读取数据
         file.seekg(dataOffset, std::ios::beg);
         if (!file)
-            return 3; // header error (seek failed)
+            return ParseResult::IO_ERROR;
         data.resize(info.length);
         file.read((char*)data.data(), info.length);
         if (!file)
-            return 1; // file read error
+            return ParseResult::IO_ERROR;
         file.close();
-        return 0;
+        return ParseResult::OK;
     }
 
 
-    int CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, ImageSaveOpe saveOpe) {
+    ParseResult CyMediaImageParse::saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, ImageSaveOpe saveOpe) {
         auto fileType = getTypeByPath(filePath.string());
 
         //RAW
@@ -169,28 +169,28 @@ namespace CyMedia {
             // 2. 以二进制模式打开文件
             std::ofstream file(filePath, std::ios::binary | std::ios::trunc);
             if (!file.is_open()) {
-                return 1;
+                return ParseResult::FILE_OPEN_FAIL;
             }
             //写入头信息
             if (saveOpe.rawAddHead) {
                 file.write((char*)(&info), sizeof(CyMedia::ImageShowInfo));
-                if (!file) return 1;
+                if (!file) return ParseResult::IO_ERROR;
             }
             //写入数据
             file.write((char*)data, info.length);
-            if (!file) return 1;
-            return file.good() ? 0 : 1;
+            if (!file) return ParseResult::IO_ERROR;
+            return file.good() ? ParseResult::OK : ParseResult::IO_ERROR;
         }
         
         //Other
         if (info.bit != 8) {
-            return 2;//stb_image只支持8位 TODO 后续压缩处理
+            return ParseResult::UNSUPPORTED;
         }
         // 不支持的保存格式
         if (fileType != ImageSuffix::BMP &&
             fileType != ImageSuffix::PNG &&
             fileType != ImageSuffix::JPEG) {
-            return 2;
+            return ParseResult::UNSUPPORTED;
         }
 
         int channels = 0;
@@ -225,7 +225,7 @@ namespace CyMedia {
                     writeData = opeImageData;
                 }
                 else {
-                    return 2;
+                    return ParseResult::INVALID_PARAM;
                 }
             }break;
 
@@ -239,7 +239,7 @@ namespace CyMedia {
 
             }break;
 
-            case CyMedia::MONO_OVERSIZE: return 2;
+            case CyMedia::MONO_OVERSIZE: return ParseResult::INVALID_PARAM;
 
             case CyMedia::RGB: {
                 channels = 3;
@@ -284,8 +284,13 @@ namespace CyMedia {
             }break;
         }
 
+        //拉伸处理
+        if (opePara.stretchType != stretch_None) {
+
+        }
+
         FILE* fp = openFileForWriting(filePath);
-        if (!fp) return 1;
+        if (!fp) return ParseResult::FILE_OPEN_FAIL;
 
         int w = info.width, h = info.height;
         int result = 0;
@@ -304,6 +309,6 @@ namespace CyMedia {
             delete[] opeImageData;
         }
 
-        return (result != 0) ? 0 : 1;
+        return (result != 0) ? ParseResult::OK : ParseResult::IO_ERROR;
     }
 };

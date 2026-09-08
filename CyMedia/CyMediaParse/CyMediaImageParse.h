@@ -42,9 +42,9 @@ namespace CyMedia {
          * @param[in] info :Parsed image information
          * @param[in] data :Parsed image data
          * @ref  
-         * @return int 0:success 1:file error 2:Invalid file format 3:not RawHeader
+         * @return CyMedia::ParseResult
         ***/
-        static int openImage(std::filesystem::path filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
+        static ParseResult openImage(std::filesystem::path filePath, CyMedia::ImageSuffix fileType, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
 
         /**
          * @brief openImage_NotHeaderRaw
@@ -55,9 +55,9 @@ namespace CyMedia {
          * @param[in] info:Designated Information
          * @param[out] data:Parsed image data
          * @ref  
-         * @return int 0:success 1:file error 3:header error
+         * @return CyMedia::ParseResult
         ***/
-        static int openImage_NotHeaderRaw(std::filesystem::path filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
+        static ParseResult openImage_NotHeaderRaw(std::filesystem::path filePath, int dataOffset, CyMedia::ImageShowInfo& info, std::vector<uint8_t>& data);
 
         
         /**
@@ -65,12 +65,13 @@ namespace CyMedia {
          * @details Open a raw image file.
          *
          * @param[in] filePath:Full file path
-         * @param[in] dataOffset:Image data
          * @param[in] info:image Information
-         * @param[out] data:image data
+         * @param[in] data:image data
+         * @param[in] opePara:Image processing parameters do not take effect when the save format is RAW.
+         * @param[in] saveOpe:Image Saving Options
          * @ref
-         * @return int 0:success 1:file error 2:Invalid file format
+         * @return CyMedia::ParseResult
         ***/
-        static int saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, ImageSaveOpe saveOpe);
+        static ParseResult saveImageToFile(std::filesystem::path filePath, const CyMedia::ImageShowInfo& info, const uint8_t* data, ImageColorOpe opePara, ImageSaveOpe saveOpe);
     };
 };

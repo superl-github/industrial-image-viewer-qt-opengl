@@ -20,5 +20,5 @@ namespace CyMediaCalc_YUV {
         StretchType type = stretch_None);
 
     //图像转换
-    bool YUV2RGBConver(const ImageShowInfo& info, const uint8_t* data, uint8_t* outdata, YUVTransMethod func = BT601);
+    bool YUV2RGBConver(const ImageShowInfo& info, const uint8_t* __restrict data, uint8_t* __restrict outdata, YUVTransMethod func = BT601);
 }

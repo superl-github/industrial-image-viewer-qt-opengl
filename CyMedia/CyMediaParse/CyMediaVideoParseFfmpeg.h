@@ -33,7 +33,7 @@ namespace CyMedia {
         AVPacket* m_packet = nullptr;
         int               m_streamIdx = -1;
         AVRational        m_timeBase = { 0, 0 };
-        AVRational        m_frameRate = { 0, 0 };
+        AVRational        m_playRate = { 0, 0 };
         uint64_t          m_lastFrameIdx = 0;
 
         bool              m_eofed = false;      // 是否已到达文件尾
