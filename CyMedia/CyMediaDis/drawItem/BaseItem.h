@@ -20,6 +20,8 @@
 #pragma once
 #include "CyDisDrawItem.h"
 
+class QPointF;
+class QGraphicsSimpleTextItem;
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
     class HandleItem;
@@ -65,7 +67,7 @@ namespace CyDisDrawItem {
         virtual bool onDrawMouseEvent(QEvent::Type type, const QPointF& scenePos);
         virtual bool isDrawFinished() const;
         virtual void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) = 0;
-
+        
         // Style / function
         bool isPreViewMode();
         virtual void setPreviewMode(bool preview);
@@ -89,13 +91,19 @@ namespace CyDisDrawItem {
         QColor flickeringColor();
         void setFlickeringColor(QColor color);
 
+        //TipText
+        QGraphicsSimpleTextItem* label() const { return m_label; };
+        void setShowTip(bool show);
+        void setTipText(QString text);
+        void setTipFont(const QFont& font);
+        QFont tipFont() const;
+
     protected:
         QUuid m_id;
 
         QColor m_contour_color_unselect = Qt::gray;
         QColor m_contour_color_select = QColor(0x2a, 0xa3, 0xc6);
         QColor m_handleColor = Qt::white;
-
         // true:Real-time tracking: Immediately sends an update if the position or shape changes. 
         // false: Sends a signal only when movement/resizing is complete.
         bool m_bTrackGeometryChange = false;
@@ -109,6 +117,8 @@ namespace CyDisDrawItem {
         ItemCreateContexMenuCallBack m_createContextMenuFunc = nullptr;
         ItemContexMenuTriger m_ContextMenuTriigerFunc = nullptr;
         void* m_ContextMenuTriigerFunc_user = nullptr;
+
+        bool eventFilter(QObject* obj, QEvent* event) override;
 
         virtual QPoint getHandlePos(HandlePosition type, int id = 0) = 0;
         virtual QPoint getHandlePosInScene(HandlePosition type, int id = 0) = 0;
@@ -131,9 +141,19 @@ namespace CyDisDrawItem {
         virtual bool getContextSupport(ContextMenuType contexType);
         QMap<QAction*, BaseItem::ContextMenuType> onContextMenuCreate(QMenu& menu);
         virtual void onContexMenu(ContextMenuType type, QGraphicsSceneContextMenuEvent* event) = 0;
+
+        //TipText
+        QGraphicsSimpleTextItem* m_label = nullptr;
+        bool m_showTip = false;
+        QString m_tipText;
+        void updateTipLabel();
         
     private slots:
         void onFlickeringTimeout();
+
+        //TipText
+        void installViewFilters();
+        void removeViewFilters();
 
     private:
         // Blink-related members

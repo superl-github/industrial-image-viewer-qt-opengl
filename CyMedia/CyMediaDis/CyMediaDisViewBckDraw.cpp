@@ -326,6 +326,8 @@ QOpenGLContext* CyMediaDisViewBckDraw::createSharedContext() {
         delete ctx;
         return nullptr;
     }
+    //应对图像宽度不是4字对齐的情况
+    //auto f = ctx->functions(); if (f) f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);//1字节对齐会导致文字渲染出问题
     ctx->doneCurrent();  // 释放，供外部线程使用
     return ctx;
 }
@@ -613,6 +615,8 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
     m_shader_program->enableAttributeArray(1);
     m_shader_program->setAttributeBuffer(1, GL_FLOAT, sizeof(QVector3D), 2, sizeof(VerticesAndTextureCoord));
     vaobinder.release();
+
+    //f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height, float mulW, float mulH) {
@@ -1114,8 +1118,7 @@ CyMedia::StretchType CyMediaDisViewBckDraw::stretchType() {
 }
 
 void CyMediaDisViewBckDraw::setStretchType(CyMedia::StretchType type) {
-    if (eStretchType == type)
-        return;
+    if (eStretchType == type) return;
     eStretchType = type;
     upStretchValue = true;
 }

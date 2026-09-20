@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "BaseItem.h"
 #include <QVector>
 

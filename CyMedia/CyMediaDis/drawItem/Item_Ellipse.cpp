@@ -1,4 +1,4 @@
-﻿#include "Item_Ellipse.h"
+#include "Item_Ellipse.h"
 
 #include <QDialog>
 #include <QLabel>
@@ -66,6 +66,7 @@ namespace CyDisDrawItem {
         if (isSelected()) {
             pen.setColor(m_contour_color_select);
         }
+        // 绘制图形
         painter->setPen(pen);
         painter->setBrush(Qt::transparent);
         painter->drawEllipse(m_localRect);

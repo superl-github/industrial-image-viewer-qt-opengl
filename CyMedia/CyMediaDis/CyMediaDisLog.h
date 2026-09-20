@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "CyMediaBaseDef.h"
 
 class CyMediaDisLog{
@@ -19,7 +19,7 @@ public:
     void log_printf(CyMedia::LogLevel level, const char* fmt, ...);
 
     void log_printf_Trace(const char* fmt, ...);
-    void log_printf_dDebug(const char* fmt, ...);
+    void log_printf_Debug(const char* fmt, ...);
     void log_printf_Info(const char* fmt, ...);
     void log_printf_Warning(const char* fmt, ...);
     void log_printf_Error(const char* fmt, ...);

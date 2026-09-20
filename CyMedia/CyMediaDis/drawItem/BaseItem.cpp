@@ -1,5 +1,11 @@
 #include "BaseItem.h"
+
 #include <QTimer>
+#include <QThread>
+#include <QApplication>
+#include <QGraphicsSimpleTextItem>
+#include <QGraphicsView>
+
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::BaseItem ======
 
@@ -24,6 +30,17 @@ namespace CyDisDrawItem {
         m_flickeringTimer = new QTimer(this);
         connect(m_flickeringTimer, &QTimer::timeout, this, &BaseItem::onFlickeringTimeout);
         m_flickeringTimer->setInterval(500); // 500ms切换一次，闪烁频率1Hz
+
+        // ==== 文本子项 ====
+        m_label = new QGraphicsSimpleTextItem(this);
+        // 关键：忽略 view 的缩放/旋转变换 → 字号在屏幕上恒定
+        m_label->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+        // 不抢鼠标事件（右键/点击仍落到 BaseItem 上）
+        m_label->setAcceptedMouseButtons(Qt::NoButton);
+        m_label->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        m_label->setFlag(QGraphicsItem::ItemIsMovable, false);
+        m_label->setBrush(m_contour_color_unselect);
+        m_label->setVisible(false);
     }
 
     BaseItem::~BaseItem() {
@@ -72,6 +89,7 @@ namespace CyDisDrawItem {
             setFlag(ItemIsMovable, true);
             setHandlesVisible(isSelected());
         }
+        updateTipLabel();// 预览模式隐藏 tip
     }
 
     void BaseItem::setHandleColor(QColor color) {
@@ -98,11 +116,13 @@ namespace CyDisDrawItem {
 
     void BaseItem::setUnSelectedContourColor(QColor color) {
         m_contour_color_unselect = color;
+        if (m_label && !isSelected()) m_label->setBrush(color);
         update();
     }
 
     void BaseItem::setSelectedContourColor(QColor color) {
         m_contour_color_select = color;
+        if (m_label && isSelected()) m_label->setBrush(color);
         update();
     }
 
@@ -158,6 +178,9 @@ namespace CyDisDrawItem {
             m_flickeringState = true;
             m_contour_color_unselect = m_flickeringColor;
             m_contour_color_select = m_flickeringColor;
+            // 文本
+            if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select
+                : m_contour_color_unselect);
 
             m_flickeringTimer->start();
         }
@@ -168,6 +191,9 @@ namespace CyDisDrawItem {
             // 恢复原始颜色
             m_contour_color_unselect = m_oldContourColorUnselect;
             m_contour_color_select = m_oldContourColorSelect;
+            // 文本
+            if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select
+                : m_contour_color_unselect);
         }
 
         update();
@@ -191,13 +217,54 @@ namespace CyDisDrawItem {
         }
     }
 
-    void BaseItem::updateHandles() {
-        if (m_handles.isEmpty())
-            return;
+    void BaseItem::setShowTip(bool show) {
+        if (m_showTip == show) return;
+        m_showTip = show;
+        updateTipLabel();
+        if (QThread::currentThread() == qApp->thread()) update();
+    }
 
-        for (auto* handle : std::as_const(m_handles)) {
-            handle->setPos(getHandlePos(handle->position()));
+    void BaseItem::setTipText(QString text) {
+        if (m_tipText == text) return;
+        m_tipText = std::move(text);
+        updateTipLabel();
+        if (m_showTip && QThread::currentThread() == qApp->thread()) update();
+    }
+
+    void BaseItem::setTipFont(const QFont& font) {
+        if (!m_label) return;
+        m_label->setFont(font);
+        updateTipLabel();
+    }
+
+    QFont BaseItem::tipFont() const {
+        return m_label ? m_label->font() : QFont();
+    }
+
+    bool BaseItem::eventFilter(QObject* obj, QEvent* event) {
+        switch (event->type()) {
+        case QEvent::Wheel:      // 滚轮缩放
+        case QEvent::Resize:     // 窗口大小变化
+        case QEvent::Scroll:     // 滚动条拖动
+        case QEvent::MouseButtonDblClick: // 双击自适应等场景
+        case QEvent::KeyPress:   // 可能有快捷键缩放
+            // 事件的默认处理会修改 viewportTransform，
+            // 所以延后到事件循环下一轮再刷新标签位置
+            QTimer::singleShot(0, this, [this]() { updateTipLabel(); });
+            break;
+        default:
+            break;
         }
+        return QGraphicsObject::eventFilter(obj, event);
+    }
+
+    void BaseItem::updateHandles() {
+        if (m_handles.size()) {
+            for (auto* handle : std::as_const(m_handles)) {
+                handle->setPos(getHandlePos(handle->position()));
+            }
+        }
+        updateTipLabel();// 子类几何变化都会调 updateHandles()，顺带把 label 也刷了
     }
 
     void BaseItem::removeHandles() {
@@ -221,10 +288,21 @@ namespace CyDisDrawItem {
         }
         else if (change == QGraphicsItem::ItemSelectedHasChanged) {
             setHandlesVisible(value.toBool());
+            if (m_label) {
+                m_label->setBrush(value.toBool() ? m_contour_color_select
+                    : m_contour_color_unselect);
+            }
             emit selectedChanged();
         }
-
-        if (change == ItemPositionHasChanged) {
+        else if (change == QGraphicsItem::ItemSceneHasChanged) {
+            removeViewFilters();
+            // 视图可能在场景赋值后才注册，延后一拍安装
+            QTimer::singleShot(0, this, [this]() {
+                installViewFilters();
+                updateTipLabel();
+                });
+        }
+        else if (change == ItemPositionHasChanged) {
             // 只要位置变了（且可移动），就标记
             m_positionChangedDuringDrag = true;
             if (m_bTrackGeometryChange) {
@@ -321,6 +399,48 @@ namespace CyDisDrawItem {
         return menuMap;
 	}
 
+    void BaseItem::updateTipLabel() {
+        if (!m_label) return;
+
+        const bool visible = m_showTip && !m_tipText.isEmpty() && !m_isPreviewMode;
+        if (m_label->text() != m_tipText)
+            m_label->setText(m_tipText);
+        m_label->setVisible(visible);
+        if (!visible) return;
+
+        const QPointF anchor = boundingRect().center();
+        const QSizeF  labelPx = m_label->boundingRect().size(); // 屏幕像素尺寸
+        
+        // 拿不到视图时退化为居中
+        if (!scene() || scene()->views().isEmpty()) {
+            m_label->setPos(anchor - QPointF(labelPx.width() / 2.0, labelPx.height() / 2.0));
+            return;
+        }
+        QGraphicsView* view = scene()->views().first();
+        const QTransform itemToViewport = sceneTransform() * view->viewportTransform();
+        if (!itemToViewport.isInvertible()) return;
+        const QTransform viewportToItem = itemToViewport.inverted();
+        const QRectF  vpRect = view->viewport()->rect();
+        const QPointF anchorVp = itemToViewport.map(anchor);  // 锚点在视口坐标的位置
+        const qreal   gap = 6.0;                          // 图形与标签之间的间距（像素）
+
+        // 图形靠左半屏 → 放右边；靠右半屏 → 放左边
+        const bool inLeftHalf = anchorVp.x() < vpRect.center().x();
+        qreal x = inLeftHalf ? (anchorVp.x() + gap)
+            : (anchorVp.x() - gap - labelPx.width());
+
+        const bool inTopHalf = anchorVp.y() < vpRect.center().y();
+        qreal y = inTopHalf ? (anchorVp.y() + gap)
+            : (anchorVp.y() - gap - labelPx.height());
+
+        // 最后再把标签夹进视口，避免贴边时溢出半个像素
+        x = qBound(vpRect.left(), x, vpRect.right() - labelPx.width());
+        y = qBound(vpRect.top(), y, vpRect.bottom() - labelPx.height());
+
+        // 屏幕坐标 → 父项坐标
+        m_label->setPos(viewportToItem.map(QPointF(x, y)));
+    }
+
     void BaseItem::onFlickeringTimeout() {
         if (!m_flickeringEnable)
             return;
@@ -338,8 +458,31 @@ namespace CyDisDrawItem {
             m_contour_color_unselect = Qt::gray;
             m_contour_color_select = Qt::gray;
         }
+        //文本
+        if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select
+            : m_contour_color_unselect);
 
         update();
+    }
+
+    void BaseItem::installViewFilters() {
+        if (!scene()) return;
+        const auto views = scene()->views();
+        for (auto* view : views) {
+            if (view && view->viewport()) {
+                view->viewport()->installEventFilter(this);
+            }
+        }
+    }
+
+    void BaseItem::removeViewFilters() {
+        // 遍历所有可能的 viewport（包括 scene 已为空的边界情况）
+        const auto views = scene() ? scene()->views() : QList<QGraphicsView*>();
+        for (auto* view : views) {
+            if (view && view->viewport()) {
+                view->viewport()->removeEventFilter(this);
+            }
+        }
     }
 
 

@@ -5,7 +5,6 @@
  *          色彩空间转换常量以及通用回调函数类型。所有上层模块（如 CyMediaDis）
  *          均依赖此文件中的定义。
  * @author LLF
- * @version 1.0
  */
 
 #pragma once
@@ -40,7 +39,7 @@
  */
 namespace CyMedia {
     //================ 版本号 ====================
-    const char VERSION[] = "V 1.2.5";
+    const char VERSION[] = "V 1.2.6";
 
     //==================== 色彩空间转换常量 ====================
     /**

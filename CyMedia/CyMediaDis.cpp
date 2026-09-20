@@ -19,6 +19,7 @@
 
 #include <queue>
 
+#include <QObject>
 #include <QMutex>
 #include <QElapsedTimer>
 #include <QOffscreenSurface>
@@ -30,10 +31,10 @@
 #include <QOpenGLWidget>
 #include <QListView>
 #include <QWindow>
-#include <QLabel>
+#include <QDesktopServices>
+#include <QWaitCondition>
 
 #define ImageStackMaxSize 3
-
 class SquareButton : public QPushButton {
     Q_OBJECT
 public:
@@ -53,14 +54,15 @@ namespace CyMedia {
 
     public:
         typedef struct oneFrameBuffer {
-            CyMedia::ImageShowInfo info;                        ///< 图像信息
-            void*           pdata = nullptr;                     ///< 图像数据
-            bool            bisUpData = false;                  ///< 是否是新数据需要更新
-            bool            bIsSource = false;                  ///< 是否是模块存储的原始数据
-            bool            bCopySource = true;                 ///< 是否copy到本地源数据 
-            bool            bUpImage = true;                    ///< 是否更新显示图像
-            bool            bUpStretch = true;                  ///< 是否更新灰度拉伸
-            bool            bIsAddFps = true;                   ///< 是否统计帧频
+            CyMedia::ImageShowInfo info;        ///< 图像信息
+            void*           pdata = nullptr;    ///< 图像数据
+            uint32_t        capacity = 0;
+
+            bool            bIsSource = false;  ///< 是否是模块存储的原始数据
+            bool            bCopySource = true; ///< 是否copy到本地源数据 
+            bool            bUpImage = true;    ///< 是否更新显示图像
+            bool            bUpStretch = true;  ///< 是否更新灰度拉伸
+            bool            bIsAddFps = true;   ///< 是否统计帧频
         }oneFrameBuffer_;
 
         typedef struct opeFrameThreadPara {
@@ -71,9 +73,13 @@ namespace CyMedia {
 
             uint8_t* pAnalyImage = 0;
             uint32_t analyImageLen = 0;
+            uint32_t analyImageNeedLen = 0;
 
+            //显示图像4字节对齐
             uint8_t* pAlignImage = 0;
             CyMedia::ImageShowInfo pAlignImage_info;
+            int aliginWidth = 0;
+            int aliginHeight = 0;
 
             bool isSource = false;
             bool upStretch = false;
@@ -92,6 +98,7 @@ namespace CyMedia {
                     pAnalyImage = nullptr;
                 }
                 analyImageLen = 0;
+                analyImageNeedLen = 0;
                 if (pAlignImage) {
                     delete[] pAlignImage;
                     pAlignImage = nullptr;
@@ -106,6 +113,7 @@ namespace CyMedia {
 
                 if (ctx) {
                     delete ctx;
+                    ctx = nullptr;
                 }
             }
         }_opeFrameThreadPara;
@@ -114,7 +122,7 @@ namespace CyMedia {
         explicit privateData(CyMediaDis* parent = nullptr);
         ~privateData();
 
-    public:signals:
+    signals:
         void ImageInfoChange(CyMedia::ImageShowInfo info);
         void ImageDataDone(CyMedia::ImageShowInfo info);
         void startDataFpsTimer();
@@ -122,8 +130,8 @@ namespace CyMedia {
     public:
         void initGUI();
         oneFrameBuffer* getBuffer(bool force = false);
-        void upImageToBuffer(oneFrameBuffer* buffer, CyMedia::ImageShowInfo& info, void* data);
-        bool addData(CyMedia::ImageShowInfo info, void* data, bool force = false);
+        void upImageToBuffer(oneFrameBuffer* buffer, const CyMedia::ImageShowInfo& info, void* data);
+        bool addData(const CyMedia::ImageShowInfo& info, void* data, bool force = false);
         void addOneGrayData(bool upImage, bool upStretch = true, bool force = false);
         void clearImage();
         bool upDataIsSlow();
@@ -138,6 +146,7 @@ namespace CyMedia {
         void Thread_ImageData_oneFrame(const oneFrameBuffer& img, opeFrameThreadPara& opePara);
         void Thread_ImageData_Tools(CyMedia::ImageShowInfo& info, void* data, opeFrameThreadPara& opePara);
         void Thread_ImageData_SpecialOpe(CyMedia::ImageShowInfo& srcInfo, void** srcData, opeFrameThreadPara& opePara);
+        void Thread_ImageData_AnalyImageAlloc(uint32_t needLen, opeFrameThreadPara& opePara);
         void Thread_ImageData_UpDis(CyMedia::ImageShowInfo& info, void* data, opeFrameThreadPara& opePara);
         void ImageInfoChangeReceiver(CyMedia::ImageShowInfo info);
         void ImageDataDoneReceive(CyMedia::ImageShowInfo info);
@@ -153,6 +162,10 @@ namespace CyMedia {
         void initLayout();
 
     public:
+        struct RawFrame {
+            CyMedia::ImageShowInfo info;
+            std::shared_ptr<uint8_t[]> data;
+        };
         QMutex  m_dataLock;
         CyMedia::eLanguage m_language = ENGLISH;
         QTranslator* m_trans = nullptr;
@@ -166,10 +179,12 @@ namespace CyMedia {
         CyDisDrawItem::DrawItemTool* drawingTool = nullptr;
         QThread* pImageDataThread = 0;        ///< 图像处理线程句柄
         bool     bImageDataThread_flag = true;   ///< 图像处理线程循环标志
-        std::queue<oneFrameBuffer*>  threadPare_ImageDataStack;      ///< 图像线程所使用的数据栈
-        oneFrameBuffer threadPare_ImageDataArray[ImageStackMaxSize];
+        oneFrameBuffer* threadPare_ImageDataArray = nullptr;
+        std::atomic<bool>* threadPare_ImageDataReady = nullptr;
         quint32 ImageStackMaxNum = ImageStackMaxSize;
-        quint32 ImageDataStack_currentOpe = 0;
+        std::atomic<int> ImageDataStack_currentOpe = -1;
+        std::atomic<uint32_t> m_writeSlot{ 0 };
+        QWaitCondition m_dataCond;
 
         //=====Image=====
         bool m_bDirectUpImage = false;
@@ -177,22 +192,22 @@ namespace CyMedia {
         QTimer* m_directImageFPSTimer = nullptr;
         opeFrameThreadPara m_directUpImagePara;
         oneFrameBuffer m_directUpImageBuffer;
-        uint32_t m_copySourceNum = 0;
+        std::atomic<uint32_t> m_copySourceNum = 0;
         CyMediaDisImageCallBack mImageCallBack = nullptr;
         void* mImageCallBackUser = nullptr;
         CyMedia::ImageShowInfo m_imageinfo;
-        int32_t posX = 0;
-        int32_t posY = 0;
+        std::atomic<int32_t> posX = 0;
+        std::atomic<int32_t> posY = 0;
 
         std::atomic<bool> bHaveData = false; ///< 当前是否有图像数据
         bool m_bFirstUpImage = true;          ///< 是否首次更新图像
 
-        CyMedia::ImageShowInfo  m_rawInfo;        ///< 接收数据原始信息
-        uint8_t* m_rawImageData = nullptr;        ///< 接收数据原始图像
+        RawFrame m_rawFrame;
 
         //=====数据统计=====
         int64_t nDataFpsCount = 0;
-        double   DataFps = 0.0;
+        double                  DataFps = 0.0;
+        std::atomic<bool>       m_dataIsSlow{ true };
         QElapsedTimer           calcolorTimer;  ///< 计算鼠标位置颜色定时器
         QElapsedTimer           flushtimer;     ///< 显示帧频计时器
         QElapsedTimer clearImageTime;
@@ -221,6 +236,87 @@ namespace CyMedia {
         bool guiIsInit = false;
     };
 
+    AboutQTDialog::AboutQTDialog(QWidget* parent /*= nullptr*/)
+        : QDialog(parent) {
+        ui_textBrowser = new QTextBrowser(this);
+        ui_textBrowser->setReadOnly(true);
+        ui_textBrowser->setOpenLinks(false);
+        ui_textBrowser->setOpenExternalLinks(false);
+        connect(ui_textBrowser, &QTextBrowser::anchorClicked, this, &AboutQTDialog::onAnchorClicked);
+        connect(ui_textBrowser->document(), &QTextDocument::contentsChanged,
+            this, &AboutQTDialog::adjustSizeToContent);
+
+        ui_closeBtn = new QPushButton(this);
+        connect(ui_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+        
+        QGridLayout* layout = new QGridLayout;
+        layout->addWidget(ui_textBrowser, 0, 0, 1, 2);
+        layout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Maximum), 1, 0, 1, 1);
+        layout->addWidget(ui_closeBtn, 1, 1, 1, 1);
+        layout->setSpacing(2);
+        layout->setContentsMargins(4, 4, 4, 4);
+        setLayout(layout);
+        setMinimumWidth(640);
+
+        flushTrans();
+    }
+
+    void AboutQTDialog::flushTrans() {
+        ui_textBrowser->setHtml(tr(R"(
+<html>
+<head>
+<style>
+body { font-family: "Microsoft YaHei",SimSun; font-size:12pt; }
+</style>
+</head>
+<body>
+<p>This application uses the Qt framework, Qt related libraries are governed by the GNU Lesser General Public License v2.1 (LGPLv2.1).</p>
+<p>Qt Copyright (C) The Qt Company Ltd. and contributors.<br/>
+Qt version used: Qt 5.14.2.
+</p>
+<p>Source code for Qt 5.14.2 can be obtained at:
+<a href="https://download.qt.io/archive/qt/5.14/5.14.2/submodules/">https://download.qt.io/archive/qt/5.14/5.14.2/submodules/</a>
+</p>
+<p>This application dynamically links Qt libraries. Qt library files (*.dll) and Qt plugin folders are distributed separately.<br/>
+End users may replace or update Qt related libraries and plugin files.<br/>
+<b>No modifications have been made to Qt source code.</b>
+</p>
+<p>The full GNU LGPLv2.1 license text is available at:
+<a href="https://www.gnu.org/licenses/lgpl-2.1.html">https://www.gnu.org/licenses/lgpl-2.1.html</a>
+</p>
+<hr/>
+<p style="font-size:smaller">
+For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_EN.txt and LGPL-2.1.txt in the installation directory.
+</p>
+</body>
+</html>
+)"));
+        ui_closeBtn->setText(tr("close"));
+    }
+
+    void AboutQTDialog::onAnchorClicked(const QUrl& url) {
+        QDesktopServices::openUrl(url);
+    }
+
+    void AboutQTDialog::adjustSizeToContent() {
+        // 获取文档理想尺寸
+        //QSize docSz = ui_textBrowser->document()->size().toSize();
+        QTextDocument* doc = ui_textBrowser->document();
+        doc->adjustSize(); // 强制执行布局计算
+        QSizeF docSizeF = doc->size();
+        QSize docSz = docSizeF.toSize();
+        // 预留边距
+        int w = qMax(640, docSz.width() + 20);
+        int h = docSz.height() + 2 + ui_closeBtn->height();
+
+        // 限制最大高度，文本过长时出现滚动条，防止窗口超出屏幕
+        const int maxH = 700;
+        h = qMin(h, maxH);
+
+        ui_textBrowser->setMaximumHeight(docSz.height() + 10);
+        this->resize(w, h);
+    }
+
     QWidget* CyMediaDis::imgShow(CyMedia::ImageShowInfo info, void* data, QString titleName /*= QString()*/) {
         //创建窗口
         CyMedia::imgShowWidget* w = new CyMedia::imgShowWidget();
@@ -233,8 +329,8 @@ namespace CyMedia {
     }
 
     CyMediaDis::CyMediaDis(QWidget* parent /* = nullptr */)
-        : QFrame(parent)
-        , d(new CyMediaDis::privateData(this)){
+    : QFrame(parent)
+    , d(new CyMediaDis::privateData(this)) {
     
         d->initGUI();
         setDrawMode(CyDisDrawItem::Invalid);
@@ -248,10 +344,23 @@ namespace CyMedia {
     CyMediaDis::~CyMediaDis() {
         if (d) {
             d->stopImageOpeThread();
-            for (int i = 0; i < d->ImageStackMaxNum; ++i) {
-                delete[] d->threadPare_ImageDataArray[i].pdata;
+            if (d->threadPare_ImageDataArray) {
+                for (uint32_t i = 0; i < d->ImageStackMaxNum; ++i) {
+                    if (d->threadPare_ImageDataArray[i].pdata) {
+#ifdef _MSC_VER
+                        _aligned_free(d->threadPare_ImageDataArray[i].pdata);
+#else
+                        delete[] d->threadPare_ImageDataArray[i].pdata;
+#endif
+                        d->threadPare_ImageDataArray[i].pdata = nullptr;
+                    }
+                }
+                delete[] d->threadPare_ImageDataArray;
+                d->threadPare_ImageDataArray = nullptr;
+                delete[] d->threadPare_ImageDataReady;
+                d->threadPare_ImageDataReady = nullptr;
             }
-            if (d->m_rawImageData) delete[] d->m_rawImageData;
+            d->m_rawFrame.data.reset();
 
             d->m_StretchWidget->setParent(nullptr);
             d->m_StretchWidget->close();
@@ -313,7 +422,7 @@ namespace CyMedia {
         switch (format) {
             case CyMedia::MONO: return QString("MONO");
 
-            case CyMedia::MONO10P: return QString("MONO10P"); return QString("MONO10P_GVSP");
+            case CyMedia::MONO10P: return QString("MONO10P");
             case CyMedia::MONO12P: return QString("MONO12P");
             case CyMedia::MONO12P_GVSP: return QString("MONO12P_GVSP");
 
@@ -393,17 +502,52 @@ namespace CyMedia {
     }
 
     void CyMediaDis::setImageStackNum(uint32_t num) {
-        if (num <= 1) {
-            num = 1;
-        }
-        else if (num > 10) {
+        // 合法范围 1~10
+        if (num < 1)  num = 1;
+        if (num > 10) num = 10;
 
-        }
         QMutexLocker lock(&d->m_dataLock);
+
+        if (num == d->ImageStackMaxNum) {
+            return; // 大小未变，直接返回
+        }
+        // ★ 停止处理线程，避免调整数组时线程仍在使用旧指针
+        bool needRestart = d->pImageDataThread && d->pImageDataThread->isRunning();
+        if (needRestart) {
+            d->stopImageOpeThread();
+        }
+
+        // 释放旧的缓冲数据
+        if (d->threadPare_ImageDataArray) {
+            for (uint32_t i = 0; i < d->ImageStackMaxNum; ++i) {
+                delete[] d->threadPare_ImageDataArray[i].pdata;
+                d->threadPare_ImageDataArray[i].pdata = nullptr;
+                d->threadPare_ImageDataReady[i].store(false, std::memory_order_release);
+            }
+            delete[] d->threadPare_ImageDataArray;
+            d->threadPare_ImageDataArray = nullptr;
+        }
+
+        // 分配新数组
+        d->threadPare_ImageDataArray = new CyMediaDis::privateData::oneFrameBuffer[num];
+        d->threadPare_ImageDataReady = new std::atomic<bool>[num];
+        for (uint32_t i = 0; i < num; ++i) {
+            d->threadPare_ImageDataReady[i].store(false, std::memory_order_relaxed);
+        }
         d->ImageStackMaxNum = num;
+        d->ImageDataStack_currentOpe = 0;
+
+        // 按需重启图像处理线程
+        if (needRestart) {
+            d->bImageDataThread_flag = true;
+            d->pImageDataThread->start();
+            CyMediaDisLog::instance().log_printf(
+                CyMedia::LogLevel::INFO,
+                "setImageStackNum: 重新分配图像缓冲大小为 %u\n\r", num);
+        }
     }
 
-    bool CyMediaDis::upImageData(CyMedia::ImageShowInfo info, void* data, bool force /*= false*/) {
+    bool CyMediaDis::upImageData(const CyMedia::ImageShowInfo& info, void* data, bool force /*= false*/) {
         return d->addData(info, data, force);
     }
 
@@ -420,15 +564,21 @@ namespace CyMedia {
             d->stopImageOpeThread();
             // 重置buffer
             for (int i = 0; i < d->ImageStackMaxNum; ++i) {
-                d->threadPare_ImageDataArray[i].bisUpData = false;
+                d->threadPare_ImageDataReady[i].store(false, std::memory_order_release);
             }
             //初始化
             d->m_directUpImagePara.init();
             d->m_directUpImagePara.thread_Flag = &d->m_directUpImageFlag;
+            auto widthRemainder = d->m_imageinfo.width % 4;
+            if (widthRemainder) widthRemainder = 4 - widthRemainder;
+            d->m_directUpImagePara.aliginWidth = (d->m_imageinfo.width + widthRemainder);
+            d->m_directUpImagePara.aliginHeight = d->m_imageinfo.height;
+
             d->m_directUpImageBuffer.bIsAddFps = true;
             d->m_directUpImageBuffer.bIsSource = false;
             d->m_directUpImageBuffer.bUpImage = true;
             d->m_directUpImageBuffer.bUpStretch = true;
+            d->m_directUpImageBuffer.bCopySource = false;
             d->m_directImageFPSTimer->start();
         }
         else {
@@ -471,7 +621,7 @@ namespace CyMedia {
     }
 
     void CyMediaDis::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/) {
-        d->view->imageDraw()->setStreaChPara(start, end, (1 << d->m_rawInfo.bit) - 1 );
+        d->view->imageDraw()->setStreaChPara(start, end, (1 << d->m_rawFrame.info.bit) - 1 );
     }
 
     CyMedia::DemosaicingMethod CyMediaDis::Demosaic(){
@@ -733,6 +883,13 @@ namespace CyMedia {
     CyMediaDis::privateData::privateData(CyMediaDis* parent /*= nullptr*/)
         : QObject(parent)
         , m_parent(parent) {
+
+        threadPare_ImageDataArray = new oneFrameBuffer[ImageStackMaxSize];
+        threadPare_ImageDataReady = new std::atomic<bool>[ImageStackMaxSize];
+        for (uint32_t i = 0; i < ImageStackMaxSize; ++i) {
+            threadPare_ImageDataReady[i].store(false, std::memory_order_relaxed);
+        }
+        ImageStackMaxNum = ImageStackMaxSize;
     
         pImageDataThread = new QThread(this);
         connect(pImageDataThread, &QThread::started, this, &CyMediaDis::privateData::Thread_ImageData, Qt::DirectConnection);
@@ -754,55 +911,39 @@ namespace CyMedia {
     }
 
     CyMediaDis::privateData::oneFrameBuffer* CyMediaDis::privateData::getBuffer(bool force /*= false*/) {
-        int currentOpe = ImageDataStack_currentOpe; // 当前消费者正在用的索引
-        int candidateSlot = -1;
-        int oldestValidSlot = -1; // 用于 force 覆盖（排除 currentOpe）
-        //查找空闲槽位
-        for (int i = 0; i < ImageStackMaxNum; ++i) {
-            if (!threadPare_ImageDataArray[i].bisUpData && i != currentOpe) {
-                candidateSlot = i;
-                break;
+        uint32_t slot = m_writeSlot.load(std::memory_order_relaxed) % ImageStackMaxNum;
+        for (uint32_t tries = 0; tries < ImageStackMaxNum; ++tries) {
+            if (slot != (uint32_t)ImageDataStack_currentOpe.load(std::memory_order_acquire)
+                && !threadPare_ImageDataReady[slot].load(std::memory_order_acquire)) {
+                m_writeSlot.store((slot + 1) % ImageStackMaxNum, std::memory_order_relaxed);
+                return &threadPare_ImageDataArray[slot];
             }
-        }if (candidateSlot != -1) {
-            ;// 有可用槽，直接使用
+            slot = (slot + 1) % ImageStackMaxNum;
         }
-        else if (force) {
-            // 无空闲槽，但允许 force → 找一个 bisUpData==true 且 ≠ currentOpe 的最旧帧覆盖
-            // 简单策略：从 (currentOpe + 1) % N 开始找第一个可覆盖的
-            for (int i = 0; i < ImageStackMaxNum; ++i) {
-                int idx = (currentOpe + 1 + i) % ImageStackMaxNum;
-                if (idx != currentOpe) {
-                    oldestValidSlot = idx;
-                    break;
-                }
-            }
-            if (oldestValidSlot == -1) {
-                // 极端情况：所有槽要么是 currentOpe，要么空闲（理论上不会发生）
-                return nullptr;
-            }
-            candidateSlot = oldestValidSlot;
-        }
-        else {
-            // 无空闲，且不允许 force → 丢弃
-            return nullptr;
-        }
-
-        return &threadPare_ImageDataArray[candidateSlot];
+        if (!force) return nullptr;
+        // force 时覆盖 currentOpe 的下一个
+        slot = (ImageDataStack_currentOpe.load() + 1) % ImageStackMaxNum;
+        return &threadPare_ImageDataArray[slot];
     }
 
-    void CyMediaDis::privateData::upImageToBuffer(oneFrameBuffer* buffer, CyMedia::ImageShowInfo& info, void* data) {
-        //内存管理
-        if (buffer->pdata == nullptr || buffer->info.length != info.length) {
-            delete[] buffer->pdata;
-            buffer->pdata = new unsigned char[info.length];
-            buffer->info.length = info.length;
+    void CyMediaDis::privateData::upImageToBuffer(oneFrameBuffer* buffer, const CyMedia::ImageShowInfo& info, void* data) {
+        //内存分配
+        if (buffer->capacity < info.length) {
+#ifdef _MSC_VER
+            if (buffer->pdata) _aligned_free(buffer->pdata);
+            buffer->pdata = (uint8_t*)_aligned_malloc(info.length, 64);
+#else
+            //delete[] buffer->pdata;
+            //buffer->pdata = new unsigned char[info.length];
+#endif
+            buffer->capacity = info.length;
         }
         //拷贝数据
         memcpy(&(buffer->info), &info, sizeof(CyMedia::ImageShowInfo));
-        memcpy(buffer->pdata, data, info.length);
+        std::memcpy(buffer->pdata, data, info.length);
     }
 
-    bool CyMediaDis::privateData::addData(CyMedia::ImageShowInfo info, void* data, bool force /*= false*/) {
+    bool CyMediaDis::privateData::addData(const CyMedia::ImageShowInfo& info, void* data, bool force /*= false*/) {
         if (!data || info.width <= 0 || info.height <= 0 || info.bit <= 0 || info.length <= 0) {
             CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::ERR, "[func] upImageData:(!data || info.width <= 0 || info.height <= 0 || info.bit <= 0 || info.length <= 0)");
             return false;
@@ -851,10 +992,8 @@ namespace CyMedia {
         }
         else {
             //数据入栈
-            QMutexLocker lock(&m_dataLock);
             t_pBuffer = getBuffer(force);
-            if (!t_pBuffer)
-                return false;
+            if (!t_pBuffer) return false;
             //重置状态
             t_pBuffer->bIsSource = false;
             t_pBuffer->bUpImage = true;
@@ -862,32 +1001,24 @@ namespace CyMedia {
             t_pBuffer->bIsAddFps = true;
         }
         //判断Copy
-        t_pBuffer->bCopySource = false;
-        if (upDataIsSlow()) {
-            t_pBuffer->bCopySource = true;
-            m_copySourceNum = 0;
-        }
-        else {
-            m_copySourceNum++;
-            if (m_copySourceNum >= 10) {
-                m_copySourceNum = 0;
-                t_pBuffer->bCopySource = true;
-            }
-        }
-        if (m_bDirectUpImage) {
-            Thread_ImageData_oneFrame(m_directUpImageBuffer, m_directUpImagePara);
-        }
-        else {
-            upImageToBuffer(t_pBuffer, info, data);
-            //更新标志
-            t_pBuffer->bisUpData = true;
+        t_pBuffer->bCopySource = upDataIsSlow() || (++m_copySourceNum >= 10);
+        if (m_copySourceNum >= 10) m_copySourceNum = 0;
+        if (!m_bDirectUpImage) {
             // 启动线程
             if (false == pImageDataThread->isRunning()) {
                 bImageDataThread_flag = true;
                 pImageDataThread->start();
                 CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::INFO, "启动图像数据处理线程, 数据栈最大缓存:%d\n\r", ImageStackMaxNum);
             }
+            upImageToBuffer(t_pBuffer, info, data);
+            //更新标志
+            int idx = int(t_pBuffer - threadPare_ImageDataArray);
+            threadPare_ImageDataReady[idx].store(true, std::memory_order_release);
         }
+        else {
+            Thread_ImageData_oneFrame(m_directUpImageBuffer, m_directUpImagePara);
+        }
+        m_dataCond.wakeOne();
         return true;
     }
 
@@ -901,18 +1032,17 @@ namespace CyMedia {
         if (false == pImageDataThread->isRunning()) {
             pImageDataThread->start();
         }
-        QMutexLocker lock(&m_dataLock);
         oneFrameBuffer* t_pBuffer = getBuffer(force);
-        if (!t_pBuffer)
-            return;
+        if (!t_pBuffer) return;
         //重置状态
         t_pBuffer->bIsSource = true;
         t_pBuffer->bUpImage = upImage;
         t_pBuffer->bUpStretch = upStretch && m_StretchWidget->isVisible();// (m_StretchWidget->stretchtype() != lastUpStretchType) || m_StretchWidget->isAutoStretch();
         t_pBuffer->bIsAddFps = false;
-        upImageToBuffer(t_pBuffer, m_rawInfo, m_rawImageData);
         //更新标志
-        t_pBuffer->bisUpData = true;
+        int idx = int(t_pBuffer - threadPare_ImageDataArray);
+        threadPare_ImageDataReady[idx].store(true, std::memory_order_release);
+        m_dataCond.wakeOne();
     }
 
     void CyMediaDis::privateData::clearImage() {
@@ -921,7 +1051,7 @@ namespace CyMedia {
             stopImageOpeThread();
             // 重置buffer
             for (int i = 0; i < ImageStackMaxNum; ++i) {
-                threadPare_ImageDataArray[i].bisUpData = false;
+                threadPare_ImageDataReady[i].store(false, std::memory_order_release);
             }
             // 清除图像
             view->clearBackGround();
@@ -935,31 +1065,35 @@ namespace CyMedia {
             }
             //关闭绘制模式
             setDrawMode(CyDisDrawItem::Invalid);
+            clearImageTime.start();
             bHaveData = false;
         }
     }
 
     bool CyMediaDis::privateData::upDataIsSlow() {
-        return (DataFps < 2.1) || std::isinf(DataFps);
+        return m_dataIsSlow;
     }
 
     void CyMediaDis::privateData::stopImageOpeThread() {
         bImageDataThread_flag = false;
+        m_dataCond.wakeAll();
         if (pImageDataThread && pImageDataThread->isRunning()) {
             pImageDataThread->quit();
             pImageDataThread->wait(0x3000);
-            pImageDataThread->terminate();
+            //pImageDataThread->terminate();//强制杀死线程可能会造成共享资源不一致
         }
     }
 
     void CyMediaDis::privateData::Thread_ImageData() {
         CyMediaDis::privateData::opeFrameThreadPara opePara;
         opePara.init();
+        auto widthRemainder = m_imageinfo.width % 4;
+        if (widthRemainder) widthRemainder = 4 - widthRemainder;
+        opePara.aliginWidth = (m_imageinfo.width + widthRemainder);
+        opePara.aliginHeight = m_imageinfo.height;
 
         QElapsedTimer eTiemr;
         eTiemr.start();
-
-        oneFrameBuffer tFrame;
 
         bImageDataThread_flag = true;
         opePara.thread_Flag = &bImageDataThread_flag;
@@ -977,26 +1111,25 @@ namespace CyMedia {
             int targetIdx = -1;
             {
                 QMutexLocker lock(&m_dataLock);
-                // 找一个 bisUpData == true 且 ≠ -1 的帧（不关心 currentOpe，因为它是自己设的）
-                for (int i = 0; i < ImageStackMaxNum; ++i) {
-                    if (threadPare_ImageDataArray[i].bisUpData) {
-                        targetIdx = i;
-                        ImageDataStack_currentOpe = i; // 标记正在处理
-                        break;
+                while (bImageDataThread_flag && targetIdx == -1) {
+                    m_dataCond.wait(&m_dataLock);
+                    for (uint32_t i = 0; i < ImageStackMaxNum; ++i) {
+                        if (threadPare_ImageDataReady[i].load(std::memory_order_acquire)) {
+                            targetIdx = i;
+                            ImageDataStack_currentOpe = i;
+                            break;
+                        }
                     }
                 }
             }
-            if (targetIdx == -1) {
-                QThread::msleep(10);
-                continue;
-            }
+            if (false == bImageDataThread_flag) return;
             //处理
             eTiemr.restart();
-            tFrame = threadPare_ImageDataArray[targetIdx];
+            CyMediaDis::privateData::oneFrameBuffer tFrame = threadPare_ImageDataArray[targetIdx];
             //已存储数据处理
             if (tFrame.bIsSource) {
-                tFrame.pdata = m_rawImageData;
-                tFrame.info = m_rawInfo;
+                tFrame.pdata = m_rawFrame.data.get();
+                tFrame.info = m_rawFrame.info;
             }
             //更新处理参数
             {
@@ -1026,7 +1159,8 @@ namespace CyMedia {
             CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::TRACE, "Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
             //回收，清除状态
             QMutexLocker lock(&m_dataLock);
-            threadPare_ImageDataArray[targetIdx].bisUpData = false;
+            threadPare_ImageDataReady[targetIdx].store(false, std::memory_order_release);
+            ImageDataStack_currentOpe = -1;
         }
         QMutexLocker lock(&m_dataLock);
         ImageDataStack_currentOpe = -1;
@@ -1044,10 +1178,11 @@ namespace CyMedia {
             nDataFpsCount++;
         }
         if (false == m_bDirectUpImage) {
-            if (opePara.dataFpsTimer.isValid())
-                opePara.dataFpsTimer.start();
+            if (false == opePara.dataFpsTimer.isValid()) opePara.dataFpsTimer.start();
             if (nDataFpsCount >= opePara.dataFpsFramePoint || opePara.dataFpsTimer.elapsed() >= opePara.dataFpsTimePointMs) {
-                DataFps = 1000.0 * nDataFpsCount / opePara.dataFpsTimer.elapsed();
+                qint64 e = opePara.dataFpsTimer.elapsed();
+                if (e > 0) DataFps = 1000.0 * nDataFpsCount / e; else DataFps = 1000.0;
+                m_dataIsSlow = DataFps < 2.1;
                 nDataFpsCount = 0;
                 opePara.dataFpsTimer.restart();
             }
@@ -1055,11 +1190,8 @@ namespace CyMedia {
         
         //数据指向
         auto Imagedata = frame.pdata;
-        CyMedia::ImageShowInfo Imageinfo;
-        if (!Imagedata) {
-            return;
-        }
-        memcpy(&Imageinfo, &(frame.info), sizeof(CyMedia::ImageShowInfo));
+        if (!Imagedata) return;
+        CyMedia::ImageShowInfo Imageinfo = frame.info;
         //检查是否退出
         if (false == *opePara.thread_Flag) {
             return;
@@ -1067,14 +1199,17 @@ namespace CyMedia {
 
         //拷贝原始数据，用以静态图像分析、保存等功能
         if (false == frame.bIsSource && true == frame.bCopySource) {
+            auto newData = std::shared_ptr<uint8_t[]>(new uint8_t[Imageinfo.length]);
+            memcpy(newData.get(), Imagedata, Imageinfo.length);
             QMutexLocker lock(&m_dataLock);
-            if (memcmp(&m_rawInfo, &Imageinfo, sizeof(CyMedia::ImageShowInfo))) {
-                memcpy(&m_rawInfo, &Imageinfo, sizeof(CyMedia::ImageShowInfo));
-                if (m_rawImageData)
-                    delete[] m_rawImageData;
-                m_rawImageData = new uint8_t[m_rawInfo.length];
+            if (m_rawFrame.info.length != Imageinfo.length ||
+                m_rawFrame.info.width != Imageinfo.width ||
+                m_rawFrame.info.height != Imageinfo.height ||
+                m_rawFrame.info.format != Imageinfo.format ||
+                m_rawFrame.info.bit != Imageinfo.bit) {
+                m_rawFrame.info = Imageinfo;
             }
-            memcpy(m_rawImageData, Imagedata, m_rawInfo.length);
+            m_rawFrame.data = std::move(newData);
         }
         // 检查是否退出
         if (false == *opePara.thread_Flag) {
@@ -1153,15 +1288,9 @@ namespace CyMedia {
             //转RGB
             if (true == opePara.BayerTransOnCPU) {
                 uint32_t RGBLen = srcInfo.length * 3;
-                if (!opePara.pAnalyImage) {
-                    opePara.pAnalyImage = new unsigned char[RGBLen];
-                    opePara.analyImageLen = RGBLen;
-                }
-                else if (opePara.analyImageLen != RGBLen) {
-                    delete[]opePara.pAnalyImage;
-                    opePara.pAnalyImage = new unsigned char[RGBLen];
-                    opePara.analyImageLen = RGBLen;
-                }
+                //分配内存
+                Thread_ImageData_AnalyImageAlloc(RGBLen, opePara);
+                //处理
                 CyMediaCalc::bayer2RGB(srcInfo, (uint8_t*)(*srcData), opePara.pAnalyImage, opePara.colorOpe.bayerFunc);
                 srcInfo.length = opePara.analyImageLen;
                 srcInfo.format = CyMedia::RGB;
@@ -1172,15 +1301,9 @@ namespace CyMedia {
             //转RGB
             if (true == opePara.YUVTransOnCPU) {
                 uint32_t RGBLen = srcInfo.width * srcInfo.height * 3;
-                if (!opePara.pAnalyImage) {
-                    opePara.pAnalyImage = new unsigned char[RGBLen];
-                    opePara.analyImageLen = RGBLen;
-                }
-                else if (opePara.analyImageLen != RGBLen) {
-                    delete[]opePara.pAnalyImage;
-                    opePara.pAnalyImage = new unsigned char[RGBLen];
-                    opePara.analyImageLen = RGBLen;
-                }
+                //分配内存
+                Thread_ImageData_AnalyImageAlloc(RGBLen, opePara);
+                //处理
                 CyMediaCalc::YUV2RGB(srcInfo, (uint8_t*)(*srcData), opePara.pAnalyImage, opePara.colorOpe.YUVFunc);
                 if (opePara.colorOpe.YUVFunc == YUVTRANS_Y) {
                     srcInfo.length = srcInfo.width * srcInfo.height;
@@ -1196,15 +1319,9 @@ namespace CyMedia {
         else if (srcInfo.format == MJPG) {
             //转RGB
             uint32_t RGBLen = srcInfo.width * srcInfo.height * 3;
-            if (!opePara.pAnalyImage) {
-                opePara.pAnalyImage = new unsigned char[RGBLen];
-                opePara.analyImageLen = RGBLen;
-            }
-            else if (opePara.analyImageLen != RGBLen) {
-                delete[]opePara.pAnalyImage;
-                opePara.pAnalyImage = new unsigned char[RGBLen];
-                opePara.analyImageLen = RGBLen;
-            }
+            //分配内存
+            Thread_ImageData_AnalyImageAlloc(RGBLen, opePara);
+            //处理
             //QElapsedTimer timer; timer.start();
             bool isGray;
             CyMediaCalc::JPG2RGB(srcInfo, *srcData, opePara.pAnalyImage, isGray);
@@ -1236,15 +1353,9 @@ namespace CyMedia {
                     }
                     tempInfo.upLenth();
                     uint32_t convertLen = tempInfo.length;
-                    if (!opePara.pAnalyImage) {
-                        opePara.pAnalyImage = new unsigned char[convertLen];
-                        opePara.analyImageLen = convertLen;
-                    }
-                    else if (opePara.analyImageLen != convertLen) {
-                        delete[]opePara.pAnalyImage;
-                        opePara.pAnalyImage = new unsigned char[convertLen];
-                        opePara.analyImageLen = convertLen;
-                    }
+                    //分配内存
+                    Thread_ImageData_AnalyImageAlloc(convertLen, opePara);
+                    //处理
                     CyMediaCalc::monoUnPack(srcInfo, (uint8_t*)(*srcData), opePara.pAnalyImage);
                     memcpy(&srcInfo, &tempInfo, sizeof(CyMedia::ImageShowInfo));
                     *srcData = opePara.pAnalyImage;
@@ -1256,17 +1367,13 @@ namespace CyMedia {
         //创建更新图像外部上下文并设置共享
         if (!opePara.ctx) {
             opePara.ctx = view->imageDraw()->createSharedContext();
-            if (!opePara.ctx) {
-                return;
-            }
+            if (!opePara.ctx) return;
             opePara.thread_ctx = QThread::currentThread();
         }
         else if (QThread::currentThread() != opePara.thread_ctx) {
             delete opePara.ctx;
             opePara.ctx = view->imageDraw()->createSharedContext();
-            if (!opePara.ctx) {
-                return;
-            }
+            if (!opePara.ctx) return;
         }
         bool imageInfoChange = false;
         double r = 0, g = 0, b = 0;
@@ -1281,11 +1388,21 @@ namespace CyMedia {
         view->imageDraw()->setStreaChPara(stretV.start, stretV.end, stretV.max);
 
         //更新信息
-        if (memcmp(&m_imageinfo, &src_info, sizeof(CyMedia::ImageShowInfo)) || true == m_bFirstUpImage) {
-            if (false == opePara.isSource)
-                imageInfoChange = true;
-            //view->upImageInfo(Imageinfo);
+        bool infoChanged = m_bFirstUpImage
+            || m_imageinfo.width != src_info.width
+            || m_imageinfo.height != src_info.height
+            || m_imageinfo.bit != src_info.bit
+            || m_imageinfo.format != src_info.format
+            || m_imageinfo.length != src_info.length
+            || m_imageinfo.special_pixel != src_info.special_pixel;
+        if (infoChanged) {
+            if (false == opePara.isSource) imageInfoChange = true;
             memcpy(&m_imageinfo, &src_info, sizeof(CyMedia::ImageShowInfo));
+            //计算四字节对齐宽度
+            auto widthRemainder = m_imageinfo.width % 4;
+            if (widthRemainder) widthRemainder = 4 - widthRemainder;
+            opePara.aliginWidth = (m_imageinfo.width + widthRemainder);
+            opePara.aliginHeight = m_imageinfo.height;
         }
         // 鼠标位置颜色
         if (calcolorTimer.isValid()) {
@@ -1303,19 +1420,13 @@ namespace CyMedia {
         }
         if (imageInfoChange) {
             emit ImageInfoChange(src_info);
-            QThread::msleep(1);
             m_bFirstUpImage = true;
         }
         
-        //四字节对齐处理
-        auto widthRemainder = src_info.width % 4;
-        if (widthRemainder) {
-            widthRemainder = 4 - widthRemainder;
-        }
-        auto alignWidth = (src_info.width + widthRemainder);
-        auto alignHeight = src_info.height;
-        int imageColorCount = 1, picsrclen;
-        if (alignWidth != src_info.width || alignHeight != src_info.height) {
+        //四字节对齐处理 弃用
+        int imageColorCount = 1;
+        bool aliginOpe = opePara.aliginWidth != src_info.width || opePara.aliginHeight != src_info.height;
+        if (aliginOpe) {
             if (src_info.format == CyMedia::RGB) imageColorCount = 3;
             int pixelWideh = 1;
             if (src_info.bit <= 8)
@@ -1324,7 +1435,7 @@ namespace CyMedia {
                 pixelWideh = 2;
             else if (src_info.bit <= 32)
                 pixelWideh = 4;
-            int picsrclen = (alignWidth * alignHeight * pixelWideh * imageColorCount);
+            int picsrclen = (opePara.aliginWidth * opePara.aliginHeight * pixelWideh * imageColorCount);
             bool bAlooc = false;
             if (!opePara.pAlignImage) {
                 bAlooc = true;
@@ -1337,12 +1448,12 @@ namespace CyMedia {
                 opePara.pAlignImage = new unsigned char[picsrclen];
                 memset(opePara.pAlignImage, 0x00, picsrclen);
                 memcpy(&opePara.pAlignImage_info, &src_info, sizeof(CyMedia::ImageShowInfo));
-                opePara.pAlignImage_info.width = alignWidth;
-                opePara.pAlignImage_info.height = alignHeight;
+                opePara.pAlignImage_info.width = opePara.aliginWidth;
+                opePara.pAlignImage_info.height = opePara.aliginHeight;
                 opePara.pAlignImage_info.length = picsrclen;
             }
 
-            CyMediaCalc::copyAlignImage(src_data, opePara.pAlignImage, src_info.width, src_info.height, alignWidth, alignHeight, pixelWideh * imageColorCount);
+            CyMediaCalc::copyAlignImage(src_data, opePara.pAlignImage, src_info.width, src_info.height, opePara.aliginWidth, opePara.aliginHeight, pixelWideh * imageColorCount);
             view->imageDraw()->upBackGround(opePara.pAlignImage_info, opePara.pAlignImage, opePara.ctx);
         }
         else {
@@ -1359,6 +1470,7 @@ namespace CyMedia {
         //初始化信息
         m_imageinfo.width = 1000;
         m_imageinfo.height = 1000;
+
         m_directImageFPSTimer = new QTimer(this);
         connect(m_directImageFPSTimer, &QTimer::timeout, this, [this]() {
             if (false == m_bDirectUpImage) return;
@@ -1381,11 +1493,16 @@ namespace CyMedia {
             posY = y;
             double r = 0, g = 0, b = 0;
             if (upDataIsSlow()) {
-                CyMediaCalc::calcCoordinateColor(m_rawInfo, m_rawImageData, x, y, &r, &g, &b, { view->imageDraw()->Demosaic(), view->imageDraw()->yuvMethod(), m_StretchWidget->stretchtype() });
+                RawFrame snapshot;
+                {
+                    QMutexLocker lock(&m_dataLock);
+                    snapshot = m_rawFrame;   // shared_ptr 拷贝，引用计数 +1，旧数据生命周期延长到读端用完
+                }
+                CyMediaCalc::calcCoordinateColor(snapshot.info, snapshot.data.get(), x, y, &r, &g, &b, {view->imageDraw()->Demosaic(), view->imageDraw()->yuvMethod(), m_StretchWidget->stretchtype()});
                 m_parent->emit upPosPix(x, y, r, g, b, 
-                    m_rawInfo.isMono() || 
-                    (m_rawInfo.isBayer() && view->imageDraw()->Demosaic() == CyMedia::DEMOSAIC_NONE) ||
-                    m_rawInfo.isYUV() && view->imageDraw()->yuvMethod() == CyMedia::YUVTRANS_Y);
+                    snapshot.info.isMono() ||
+                    (snapshot.info.isBayer() && view->imageDraw()->Demosaic() == CyMedia::DEMOSAIC_NONE) ||
+                    snapshot.info.isYUV() && view->imageDraw()->yuvMethod() == CyMedia::YUVTRANS_Y);
             }
             });
         connect(scene, &CyDMediaDisScen::urlsDrop, this, [this](QList<QUrl> urls) {
@@ -1627,11 +1744,8 @@ namespace CyMedia {
         if (m_AutoThumbnail) {
             view->setThumbnailEnable(info.width >= m_AutoThumbnailSize.width() || info.height >= m_AutoThumbnailSize.height());
         }
-        view->thumnailWidget()->update();
-
-        scene->update();
-        view->update();
-        m_parent->update();
+        if (view->thumbnailVisible()) view->thumnailWidget()->update();
+        view->viewport()->update(); //view->update();
 
         if (m_bFirstUpImage) {
             m_bFirstUpImage = false;
@@ -1676,6 +1790,19 @@ namespace CyMedia {
         m_parent->emit itemRemoved(id);
     }
 
+    void CyMediaDis::privateData::Thread_ImageData_AnalyImageAlloc(uint32_t needLen, opeFrameThreadPara& opePara) {
+        uint32_t allocLen = needLen * 1.5;
+        if (!opePara.pAnalyImage) {
+            opePara.pAnalyImage = new uint8_t[allocLen];
+            opePara.analyImageLen = allocLen;
+        }
+        else if (opePara.analyImageLen < needLen) {
+            delete[] opePara.pAnalyImage;
+            opePara.pAnalyImage = new uint8_t[allocLen];
+            opePara.analyImageLen = allocLen;
+        }
+        opePara.analyImageNeedLen = needLen;
+    }
 
 
 
@@ -1930,7 +2057,6 @@ namespace CyMedia {
     void CyMediaDis_GetRawInfoDialog::onCanCelClicked() {
         this->reject();
     }
-
 }
 
 #include "CyMediaDis.moc"

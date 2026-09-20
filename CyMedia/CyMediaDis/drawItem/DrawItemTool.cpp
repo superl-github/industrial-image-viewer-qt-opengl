@@ -78,24 +78,39 @@ namespace CyDisDrawItem {
         if (!mouseEvent) {
             return QObject::eventFilter(obj, event);
         }
-        // 是否点击某个item
         QPointF scenePos = m_view->mapToScene(mouseEvent->pos());
-        QGraphicsItem* item = m_manager->scene()->itemAt(scenePos, QTransform());
-        if (item) {
-            m_selectedItem = item;
-            return QObject::eventFilter(obj, event);
-        }
         m_selectedItem = nullptr;
-
         switch (event->type()) {
             case QEvent::MouseButtonPress: {
                 if (mouseEvent->button() == Qt::LeftButton) {
+                    // 是否点击某个item
+                    QGraphicsItem* item = m_view->itemAt(mouseEvent->pos());
+                    if (item) {
+                        QGraphicsObject* graphiObj = item->toGraphicsObject();
+                        if (graphiObj == nullptr) {
+                            // 说明是手柄（HandleItem 是纯 QGraphicsItem）
+                            return QObject::eventFilter(obj, event);   // 放行给 Qt
+                        }
+                        //点可以绘制在其他区域上
+                        if (m_mode = Point) {
+                            BaseItem* baseItem = dynamic_cast<BaseItem*>(graphiObj);
+                            if (baseItem && baseItem->itemType() == ItemType::Point && false == m_replaceMode) {
+                                m_selectedItem = item;
+                                return false;
+                            }
+                        }
+
+                        m_selectedItem = item;
+                        return false;
+                    }
+
                     // 判断是否需要阈值
                     bool needThreshold = ItemFactory::requireDragThreshold(m_mode);
                     if (!needThreshold) {
                         // 不需要阈值，直接创建预览Item
                         m_previewItem = ItemFactory::createItem(m_mode);
                         if (m_previewItem) {
+                            m_previewItem->setZValue(m_mode == ItemType::Point ? 10 : 1);
                             // 替换模式，移除之前的绘制结果
                             if (m_replaceMode) {
                                 if (m_lastItem) {

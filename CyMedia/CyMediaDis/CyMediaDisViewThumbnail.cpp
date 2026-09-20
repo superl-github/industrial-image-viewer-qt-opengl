@@ -4,8 +4,8 @@
 #include "CyMediaCalc/CyMediaCalc.h"
 
 CyMediaDisViewThumbnail::CyMediaDisViewThumbnail(CyMediaDisView* parentView, QWidget* parent /*= nullptr*/)
-    : QOpenGLWidget(parent)
-    , m_parentView(parentView) {
+: QOpenGLWidget(parent)
+, m_parentView(parentView) {
     
 }
 

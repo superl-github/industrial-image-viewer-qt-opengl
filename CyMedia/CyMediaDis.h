@@ -14,14 +14,37 @@
 #include "CyMediaDis/drawItem/BaseItem.h"
 #include "CyMediaDis/drawItem/CyDisDrawItem.h"
 
+#include <QDialog>
 #include <QFrame>
 #include <QWidget>
-#include <QDialog>
 #include <QPushButton>
 #include <QLayout>
 #include <QUrl>
+#include <QTextBrowser>
 
 namespace CyMedia {
+    /**
+     * @class CyMedia::AboutQTDialog.
+     * @brief Qt Lincense
+     */
+     class CYMEDIA_LIB AboutQTDialog : public QDialog {
+         Q_OBJECT
+     public:
+         explicit AboutQTDialog(QWidget* parent = nullptr);
+
+     public:
+         void flushTrans();
+
+     private slots:
+         void onAnchorClicked(const QUrl& url);
+         void adjustSizeToContent();
+
+     private:
+
+         QTextBrowser* ui_textBrowser = nullptr;
+         QPushButton* ui_closeBtn = nullptr;
+     };
+
     /**
      * @class CyMedia::CyMediaDis
      * @brief 高性能图像显示与交互控件（集成窗口，基于 Qt QFrame）。
@@ -194,6 +217,7 @@ namespace CyMedia {
          * @details 当数据输入速度大于处理速度时，队列用于缓存未处理的帧。增大缓存可减少丢帧，
          *          但会增加内存占用。
          * @param num 缓存帧数（1~10，默认 3）。
+         * @warning 使用此接口时需确保不会调用upImageData。
          */
         void setImageStackNum(uint32_t num);
         /**
@@ -203,7 +227,7 @@ namespace CyMedia {
          * @param force 若为 `true`，即使队列满也会覆盖最旧帧；否则丢弃新帧。
          * @return 数据成功入队返回 `true`，否则 `false`。
          */
-        bool upImageData(CyMedia::ImageShowInfo info, void* data, bool force = false);
+        bool upImageData(const CyMedia::ImageShowInfo&, void* data, bool force = false);
         /**
          * @brief upIamgeIsDirect 是否直接处理更新数据，不进入缓存
          * @details 
@@ -527,7 +551,6 @@ namespace CyMedia {
         class privateData; ///< 私有数据封装（PIMPL）。
         privateData* d = nullptr;
     };
-
 
     /**
      * @brief 用于打开 RAW 图像时获取参数的对话框。

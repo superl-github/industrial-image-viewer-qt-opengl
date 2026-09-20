@@ -127,6 +127,45 @@
     </message>
 </context>
 <context>
+    <name>CyMedia::AboutQTDialog</name>
+    <message>
+        <source>
+&lt;html&gt;
+&lt;head&gt;
+&lt;style&gt;
+body { font-family: &quot;Microsoft YaHei&quot;,SimSun; font-size:12pt; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;This application uses the Qt framework, Qt related libraries are governed by the GNU Lesser General Public License v2.1 (LGPLv2.1).&lt;/p&gt;
+&lt;p&gt;Qt Copyright (C) The Qt Company Ltd. and contributors.&lt;br/&gt;
+Qt version used: Qt 5.14.2.
+&lt;/p&gt;
+&lt;p&gt;Source code for Qt 5.14.2 can be obtained at:
+&lt;a href=&quot;https://download.qt.io/archive/qt/5.14/5.14.2/submodules/&quot;&gt;https://download.qt.io/archive/qt/5.14/5.14.2/submodules/&lt;/a&gt;
+&lt;/p&gt;
+&lt;p&gt;This application dynamically links Qt libraries. Qt library files (*.dll) and Qt plugin folders are distributed separately.&lt;br/&gt;
+End users may replace or update Qt related libraries and plugin files.&lt;br/&gt;
+&lt;b&gt;No modifications have been made to Qt source code.&lt;/b&gt;
+&lt;/p&gt;
+&lt;p&gt;The full GNU LGPLv2.1 license text is available at:
+&lt;a href=&quot;https://www.gnu.org/licenses/lgpl-2.1.html&quot;&gt;https://www.gnu.org/licenses/lgpl-2.1.html&lt;/a&gt;
+&lt;/p&gt;
+&lt;hr/&gt;
+&lt;p style=&quot;font-size:smaller&quot;&gt;
+For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_EN.txt and LGPL-2.1.txt in the installation directory.
+&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>close</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>CyMedia::CyMediaDis_GetRawInfoDialog</name>
     <message>
         <source>Image width(number of columns)</source>
@@ -158,6 +197,10 @@
     </message>
     <message>
         <source>cancle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fps</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

@@ -1,0 +1,23 @@
+Qt License Notice
+=================
+
+This application uses the Qt framework.
+Qt is copyright (C) The Qt Company Ltd. and other contributors.
+
+Qt version used: Qt 5.14.2
+
+The Qt libraries and plugins used in this application are licensed under
+the GNU Lesser General Public License version 2.1 (LGPLv2.1).
+
+Relevant terms for this distribution:
+1. This application dynamically links against Qt libraries.
+   Qt DLL files and Qt plugin folders (platforms, imageformats, iconengines, styles, translations, etc.)
+   are distributed as separate files.
+   End users may replace or modify these Qt library/plugin files and relink with this application.
+2. This application source code is NOT required to be disclosed.
+3. No modifications have been made to the original Qt source code.
+   You may obtain the unmodified Qt 5.14.2 source code at:
+https://download.qt.io/archive/qt/5.14/5.14.2/submodules/
+
+Full text of LGPLv2.1:
+https://www.gnu.org/licenses/lgpl-2.1.html

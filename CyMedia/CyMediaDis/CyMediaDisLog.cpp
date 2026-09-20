@@ -1,4 +1,4 @@
-﻿#include "CyMediaDisLog.h"
+#include "CyMediaDisLog.h"
 #include "stdarg.h"
 
 
@@ -51,7 +51,7 @@ void CyMediaDisLog::log_printf_Trace(const char* fmt, ...) {
 }
 
 
-void CyMediaDisLog::log_printf_dDebug(const char* fmt, ...) {
+void CyMediaDisLog::log_printf_Debug(const char* fmt, ...) {
     return log_printf(CyMedia::LogLevel::DEBUG, fmt);
 }
 
