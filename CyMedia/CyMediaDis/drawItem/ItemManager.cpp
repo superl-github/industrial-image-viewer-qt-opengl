@@ -1,4 +1,4 @@
-﻿#include "ItemManager.h"
+#include "ItemManager.h"
 #include "ItemFactory.h"
 
 #include <QDebug>
@@ -151,15 +151,12 @@ namespace CyDisDrawItem {
     }
 
     QUuid ItemManager::selectedItem() const {
-        return m_selectedItem->id();
+        return m_selectedItem ? m_selectedItem->id() : QUuid();
     }
 
-    QUuid ItemManager::getLaseItem() {
-        if (m_items.size() <= 0)
-            return QUuid();
-        else {
-            return m_items[m_items.size() - 1]->id();
-        }
+    QUuid ItemManager::getLastItem() {
+        if (m_items.size() <= 0) return QUuid();
+        else return m_items[m_items.size() - 1]->id();
     }
 
     void ItemManager::onItemSelectionChanged() {

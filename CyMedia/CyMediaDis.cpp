@@ -91,6 +91,12 @@ namespace CyMedia {
             bool BayerTransOnCPU = true;
             bool YUVTransOnCPU = false;
 
+            ~opeFrameThreadPara() {
+                if (pAnalyImage) { delete[] pAnalyImage; pAnalyImage = nullptr; }
+                if (pAlignImage) { delete[] pAlignImage; pAlignImage = nullptr; }
+                if (ctx) { delete ctx;         ctx = nullptr; }
+            }
+
             void init() {
                 dataFpsTimer.invalidate();
                 if (pAnalyImage) {
@@ -520,7 +526,11 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         // 释放旧的缓冲数据
         if (d->threadPare_ImageDataArray) {
             for (uint32_t i = 0; i < d->ImageStackMaxNum; ++i) {
+#ifdef _MSC_VER
+                _aligned_free(d->threadPare_ImageDataArray[i].pdata);
+#else
                 delete[] d->threadPare_ImageDataArray[i].pdata;
+#endif
                 d->threadPare_ImageDataArray[i].pdata = nullptr;
                 d->threadPare_ImageDataReady[i].store(false, std::memory_order_release);
             }
@@ -769,7 +779,7 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
     }
 
     QUuid CyMediaDis::getLaseItem() {
-        return d->drawmanager->getLaseItem();
+        return d->drawmanager->getLastItem();
     }
 
     bool CyMediaDis::isDrawing() {
@@ -933,8 +943,8 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
             if (buffer->pdata) _aligned_free(buffer->pdata);
             buffer->pdata = (uint8_t*)_aligned_malloc(info.length, 64);
 #else
-            //delete[] buffer->pdata;
-            //buffer->pdata = new unsigned char[info.length];
+            delete[] buffer->pdata;
+            buffer->pdata = new unsigned char[info.length];
 #endif
             buffer->capacity = info.length;
         }
@@ -1154,8 +1164,15 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
                 opePara.isSource = tFrame.bIsSource;
                 opePara.upStretch = tFrame.bUpStretch;
             }
-            
-            Thread_ImageData_oneFrame(tFrame, opePara);
+            try {
+                Thread_ImageData_oneFrame(tFrame, opePara);
+            }
+            catch (const std::exception& e) {
+                CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::ERR,
+                    "图像处理异常: %s\n", e.what());
+                // 可选：丢掉这一帧
+            }
+            catch (...) {}
             CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::TRACE, "Thread_ImageData_processOne耗时：%lldms\n", eTiemr.elapsed());
             //回收，清除状态
             QMutexLocker lock(&m_dataLock);
@@ -1166,7 +1183,6 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         ImageDataStack_currentOpe = -1;
         pImageDataThread->quit();
         bImageDataThread_flag = false;
-        if (opePara.ctx) delete opePara.ctx;
         CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::INFO, "图像处理线程退出\n\r");
     }
     void CyMediaDis::privateData::Thread_ImageData_oneFrame(const oneFrameBuffer& frame, opeFrameThreadPara& opePara) {
@@ -1199,17 +1215,12 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
 
         //拷贝原始数据，用以静态图像分析、保存等功能
         if (false == frame.bIsSource && true == frame.bCopySource) {
-            auto newData = std::shared_ptr<uint8_t[]>(new uint8_t[Imageinfo.length]);
-            memcpy(newData.get(), Imagedata, Imageinfo.length);
             QMutexLocker lock(&m_dataLock);
-            if (m_rawFrame.info.length != Imageinfo.length ||
-                m_rawFrame.info.width != Imageinfo.width ||
-                m_rawFrame.info.height != Imageinfo.height ||
-                m_rawFrame.info.format != Imageinfo.format ||
-                m_rawFrame.info.bit != Imageinfo.bit) {
-                m_rawFrame.info = Imageinfo;
+            if (!m_rawFrame.data || m_rawFrame.info.length != Imageinfo.length) {
+                m_rawFrame.data.reset(new uint8_t[Imageinfo.length]);
             }
-            m_rawFrame.data = std::move(newData);
+            memcpy(m_rawFrame.data.get(), Imagedata, Imageinfo.length);
+            m_rawFrame.info = Imageinfo;
         }
         // 检查是否退出
         if (false == *opePara.thread_Flag) {
@@ -1292,7 +1303,7 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
                 Thread_ImageData_AnalyImageAlloc(RGBLen, opePara);
                 //处理
                 CyMediaCalc::bayer2RGB(srcInfo, (uint8_t*)(*srcData), opePara.pAnalyImage, opePara.colorOpe.bayerFunc);
-                srcInfo.length = opePara.analyImageLen;
+                srcInfo.length = opePara.analyImageNeedLen;
                 srcInfo.format = CyMedia::RGB;
                 *srcData = opePara.pAnalyImage;
             }
@@ -1310,7 +1321,7 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
                     srcInfo.format = CyMedia::MONO;
                 }
                 else {
-                    srcInfo.length = opePara.analyImageLen;
+                    srcInfo.length = opePara.analyImageNeedLen;
                     srcInfo.format = CyMedia::RGB;
                 }
                 *srcData = opePara.pAnalyImage;
@@ -1330,7 +1341,7 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
                 srcInfo.format = CyMedia::MONO;
             }
             else {
-                srcInfo.length = opePara.analyImageLen;
+                srcInfo.length = opePara.analyImageNeedLen;
                 srcInfo.format = CyMedia::RGB;
             }
             *srcData = opePara.pAnalyImage;
@@ -1428,6 +1439,7 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         bool aliginOpe = opePara.aliginWidth != src_info.width || opePara.aliginHeight != src_info.height;
         if (aliginOpe) {
             if (src_info.format == CyMedia::RGB) imageColorCount = 3;
+            else if (src_info.format == CyMedia::RGBA) imageColorCount = 4;
             int pixelWideh = 1;
             if (src_info.bit <= 8)
                 pixelWideh = 1;
@@ -1491,19 +1503,32 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         connect(scene, &CyDMediaDisScen::mousePosChange, this, [this](int x, int y) {
             posX = x;
             posY = y;
+            if (false == upDataIsSlow()) return;
+            // 节流：仍然建议保留，避免鼠标拖动时每秒几百次
+            static QElapsedTimer moveTimer;
+            if (moveTimer.isValid() && moveTimer.elapsed() < 200) return;
+            moveTimer.restart();
+            // 先把依赖外部对象的参数取出来，锁内只做纯计算
+            const auto demosaic = view->imageDraw()->Demosaic();
+            const auto yuvM = view->imageDraw()->yuvMethod();
+            const auto stretchT = m_StretchWidget->stretchtype();
             double r = 0, g = 0, b = 0;
-            if (upDataIsSlow()) {
-                RawFrame snapshot;
-                {
-                    QMutexLocker lock(&m_dataLock);
-                    snapshot = m_rawFrame;   // shared_ptr 拷贝，引用计数 +1，旧数据生命周期延长到读端用完
-                }
-                CyMediaCalc::calcCoordinateColor(snapshot.info, snapshot.data.get(), x, y, &r, &g, &b, {view->imageDraw()->Demosaic(), view->imageDraw()->yuvMethod(), m_StretchWidget->stretchtype()});
-                m_parent->emit upPosPix(x, y, r, g, b, 
-                    snapshot.info.isMono() ||
-                    (snapshot.info.isBayer() && view->imageDraw()->Demosaic() == CyMedia::DEMOSAIC_NONE) ||
-                    snapshot.info.isYUV() && view->imageDraw()->yuvMethod() == CyMedia::YUVTRANS_Y);
+            CyMedia::ImageShowInfo infoSnapshot;
+            bool gray = false;
+            {
+                QMutexLocker lock(&m_dataLock);
+                if (!m_rawFrame.data || m_rawFrame.info.length == 0) return;
+
+                infoSnapshot = m_rawFrame.info;
+                CyMediaCalc::calcCoordinateColor(
+                    infoSnapshot, m_rawFrame.data.get(), x, y, &r, &g, &b,
+                    { demosaic, yuvM, stretchT });
+
+                gray = infoSnapshot.isMono() ||
+                    (infoSnapshot.isBayer() && demosaic == CyMedia::DEMOSAIC_NONE) ||
+                    (infoSnapshot.isYUV() && yuvM == CyMedia::YUVTRANS_Y);
             }
+            m_parent->emit upPosPix(x, y, r, g, b, gray);
             });
         connect(scene, &CyDMediaDisScen::urlsDrop, this, [this](QList<QUrl> urls) {
                 m_parent->emit urlsDrop(urls);

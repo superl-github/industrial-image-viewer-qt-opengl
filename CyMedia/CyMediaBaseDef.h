@@ -371,13 +371,28 @@ namespace CyMedia {
                 length = (pixelNum * 12 + 7) / 8;
                 return length;
             }
+            if (isYUV()) {
+                switch (format) {
+                case CyMedia::FOURCC_YUY2:
+                case CyMedia::FOURCC_YVYU:
+                case CyMedia::FOURCC_I422:
+                case CyMedia::FOURCC_YV16:
+                    length =  pixelNum * 2;
+                    return length;
+                case CyMedia::FOURCC_I420:
+                case CyMedia::FOURCC_YV12:
+                case CyMedia::FOURCC_NV12:
+                case CyMedia::FOURCC_NV21: 
+                    length = pixelNum * 3 / 2;
+                    return length;
+                }
+                length = pixelNum;
+                return length;
+            }
 
             int pixelLen = 0;
             if (bit <= 8) {
                 pixelLen = 1;
-                if (isYUV()) {
-                    pixelLen = 2;
-                }
             }
             else if (bit <= 16) {
                 pixelLen = 2;

@@ -45,6 +45,7 @@ namespace CyDisDrawItem {
 
     BaseItem::~BaseItem() {
         removeHandles();
+        removeViewFilters();
     }
 
 	QPainterPath BaseItem::shape() const {
@@ -178,25 +179,44 @@ namespace CyDisDrawItem {
             m_flickeringState = true;
             m_contour_color_unselect = m_flickeringColor;
             m_contour_color_select = m_flickeringColor;
-            // 文本
-            if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select
-                : m_contour_color_unselect);
-
-            m_flickeringTimer->start();
+            
+            //启动定时器
+            if (QThread::currentThread() != qApp->thread()) {
+                QMetaObject::invokeMethod(this, [this]() mutable {
+                    m_flickeringTimer->start();
+                    });
+            }
+            else {
+                m_flickeringTimer->start();
+            }
         }
         else {
             // 停止定时器
-            m_flickeringTimer->stop();
+            if (QThread::currentThread() != qApp->thread()) {
+                QMetaObject::invokeMethod(this, [this]() mutable {
+                    m_flickeringTimer->stop();
+                    });
+            }
+            else {
+                m_flickeringTimer->stop();
+            }
 
             // 恢复原始颜色
             m_contour_color_unselect = m_oldContourColorUnselect;
             m_contour_color_select = m_oldContourColorSelect;
-            // 文本
-            if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select
-                : m_contour_color_unselect);
         }
 
-        update();
+        if (QThread::currentThread() == qApp->thread()) {
+            // 文本
+            if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select : m_contour_color_unselect);
+            update();
+        }
+        else {
+            QTimer::singleShot(0, this, [this]() {
+                // 文本
+                if (m_label) m_label->setBrush(isSelected() ? m_contour_color_select : m_contour_color_unselect);
+                });
+        }
     }
 
     QColor BaseItem::flickeringColor() {

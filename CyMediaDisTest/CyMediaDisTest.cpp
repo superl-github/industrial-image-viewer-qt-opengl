@@ -2,6 +2,7 @@
 #include "CyMediaDis/CyMediaRecTimeW.h"
 #include "CyMediaDis/CyMediaDisGrayStretch.h"
 #include "CyMediaDis/CyMediaDisGrayTest.h"
+#include "CyMediaCalc/CyMediaCalc.h"
 
 #include <random>
 #include <chrono>
@@ -146,19 +147,43 @@ QString CyMediaDisTest::geyYUVMethodStr(CyMedia::YUVTransMethod methord) {
     return QString("unknown");
 }
 
+QString CyMediaDisTest::genDrawItemTypeStr(CyDisDrawItem::ItemType type) {
+    switch (type) {
+    case CyDisDrawItem::Invalid: return tr("pointer");
+    case CyDisDrawItem::Point: return tr("Point");
+    case CyDisDrawItem::Rectangle: return tr("Rectangle");
+    case CyDisDrawItem::Line: return tr("Line");
+    case CyDisDrawItem::Ellipse: return tr("Ellipse");
+    case CyDisDrawItem::Polygon: return tr("Polygon");
+    }
+
+    return QString("unknown");
+}
+
 void CyMediaDisTest::openFile(QString filePath) {
     urlsDropOpe(QList<QUrl>{QUrl::fromUserInput(filePath)});
 }
 
 void CyMediaDisTest::rePlayImageCallBack(const CyMedia::ImageShowInfo& info, const uint8_t* data, int ncount, void* userData) {
     CyMediaDisTest* pThis = (CyMediaDisTest*)userData;
-    if (pThis && data) {
+    if (pThis) {
         pThis->upPlayFrame(info, data, ncount);
     }
 }
 
 void CyMediaDisTest::cyMediaLogCallBack(CyMedia::LogLevel level, const std::string& msg, void* puser) {
     printf("[CyMediaDis] %s\n", msg.c_str());
+}
+
+uint8_t CyMediaDisTest::calcValueFigures(quint32 value) {
+    quint32 max = 1000000000;
+    for (uint8_t i = 10; i > 0; i--) {
+        if (value / max != 0) {
+            return i;
+        }
+        max = max / 10;
+    }
+    return 1;
 }
 
 void CyMediaDisTest::initGUI() {
@@ -179,29 +204,42 @@ void CyMediaDisTest::initGUI() {
     m_image_func = new CyMedia::CyMediaImageParse();
 
     //Replay
+    m_replay_w = new QWidget(this);
+    
     ui_playBtn = new QPushButton(QIcon(":/CyMediaDisTest/Icon/play.png"), QString(""), this);
     ui_playBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui_playBtn->setVisible(false);
     ui_PlaySlider = new CyPlaySlider(this);
     ui_PlaySlider->setHandleTracking(true);
-    ui_PlaySlider->setVisible(false);
     connect(ui_playBtn, &QPushButton::clicked, this, &CyMediaDisTest::onPlayBtnClick);
     connect(ui_PlaySlider, &CyPlaySlider::sliderMoved, this, &CyMediaDisTest::onPlaySliderMoved);
     connect(ui_PlaySlider, &CyPlaySlider::sliderDrag, this, &CyMediaDisTest::onPlaySliderDraged);
     connect(ui_PlaySlider, &CyPlaySlider::sliderRelease, this, &CyMediaDisTest::onPlaySliderReleased);
     connect(this, &CyMediaDisTest::upPlaySlider, this, &CyMediaDisTest::onUplaySlider);
 
+    m_playFPSLabel = new QLabel(m_replay_w);
+    m_playFps_box = new QSpinBox(m_replay_w);
+    m_playFps_box->setKeyboardTracking(false);
+    connect(m_playFps_box, QOverload<int>::of(&QSpinBox::valueChanged), this, &CyMediaDisTest::onReplayFPSChanged);
+
+    QHBoxLayout* t_replay_W_Layout = new QHBoxLayout(m_replay_w);
+    t_replay_W_Layout->addWidget(ui_playBtn);
+    t_replay_W_Layout->addWidget(m_playFPSLabel);
+    t_replay_W_Layout->addWidget(m_playFps_box);
+    t_replay_W_Layout->addWidget(ui_PlaySlider);
+    m_replay_w->setVisible(false);
+
     QGridLayout* mainLyout = new QGridLayout(ui.centralWidget);
     mainLyout->setContentsMargins(0, 0, 0, 0);
     mainLyout->setSpacing(0);
-    mainLyout->addWidget(m_view, 0, 0, 1, 2);
-    mainLyout->addWidget(ui_playBtn, 1, 0, 1, 1);
-    mainLyout->addWidget(ui_PlaySlider, 1, 1, 1, 1);
+    mainLyout->addWidget(m_view, 0, 0, 1, 1);
+    mainLyout->addWidget(m_replay_w, 1, 0, 1, 1);
 
     initStatus();
     initMenu();
     initContexMenu();
     initMenu();
+
+    m_AboutQtDialog = new CyMedia::AboutQTDialog(this);
 
     ui_act_acq_stop->setEnabled(false);
 }
@@ -283,10 +321,15 @@ void CyMediaDisTest::initMenu() {
     ui_menu_acq->addAction(ui_act_acq_stop);
     connect(ui_act_acq_stop, &QAction::triggered, this, &CyMediaDisTest::on_act_acq_stop);
 
-    //view
-    ui_menu_view = new QMenu(this);
+    //image
+    ui_menu_image = new QMenu(this);
 
-    ui_menu_colormaping = new QMenu(ui_menu_view);
+    ui_act_clear_image = new QAction(this);
+    ui_act_clear_image->setCheckable(false);
+    connect(ui_act_clear_image, &QAction::triggered, this, &CyMediaDisTest::on_act_clear_image);
+    ui_menu_image->addAction(ui_act_clear_image);
+    
+    ui_menu_colormaping = new QMenu(ui_menu_image);
     ui_act_group_view_colomap = new QActionGroup(this);
     auto colormaplist = m_view->ColorMapList();
     for (int i = 0; i < colormaplist.size(); i++) {
@@ -301,10 +344,10 @@ void CyMediaDisTest::initMenu() {
             t_act->setChecked(true);
         }
     }
-    ui_menu_view->addMenu(ui_menu_colormaping);
+    ui_menu_image->addMenu(ui_menu_colormaping);
     connect(ui_act_group_view_colomap, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_view_colormap_type);
 
-    ui_menu_bayer_rebuild = new QMenu(ui_menu_view);
+    ui_menu_bayer_rebuild = new QMenu(ui_menu_image);
     ui_act_group_view_bayer_rebuild = new QActionGroup(this);
     for (int i = CyMedia::DEMOSAIC_NONE; i <= CyMedia::DEMOSAIC_AHD; i++) {
         t_act = new QAction(ui_menu_bayer_rebuild);
@@ -317,10 +360,10 @@ void CyMediaDisTest::initMenu() {
             t_act->setChecked(true);
         }
     }
-    ui_menu_view->addMenu(ui_menu_bayer_rebuild);
+    ui_menu_image->addMenu(ui_menu_bayer_rebuild);
     connect(ui_act_group_view_bayer_rebuild, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_view_bayer_rebuild_type);
 
-    ui_menu_yuv_rebuild = new QMenu(ui_menu_view);
+    ui_menu_yuv_rebuild = new QMenu(ui_menu_image);
     ui_act_group_view_yuv_rebuild = new QActionGroup(this);
     for (int i = CyMedia::YUVTRANS_Y; i <= CyMedia::BT601; i++) {
         t_act = new QAction(ui_menu_yuv_rebuild);
@@ -333,11 +376,11 @@ void CyMediaDisTest::initMenu() {
             t_act->setChecked(true);
         }
     }
-    ui_menu_view->addMenu(ui_menu_yuv_rebuild);
+    ui_menu_image->addMenu(ui_menu_yuv_rebuild);
     connect(ui_act_group_view_yuv_rebuild, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_view_yuv_rebuild_type);
 
-    ui_grayscaleStretchAct = new QAction(ui_menu_view);
-    ui_menu_view->addAction(ui_grayscaleStretchAct);
+    ui_grayscaleStretchAct = new QAction(ui_menu_image);
+    ui_menu_image->addAction(ui_grayscaleStretchAct);
     connect(ui_grayscaleStretchAct, &QAction::triggered, this, &CyMediaDisTest::on_act_gray_stretch);
 
     //Tool
@@ -347,6 +390,37 @@ void CyMediaDisTest::initMenu() {
     ui_menu_tool->addAction(ui_grayscaleMeasurementAct);
     connect(ui_grayscaleMeasurementAct, &QAction::triggered, this, &CyMediaDisTest::on_act_grayscale_measure);
 
+    ui_sigleTooItemAct = new QAction(this);
+    ui_sigleTooItemAct->setCheckable(true);
+    ui_sigleTooItemAct->setChecked(m_view->isSingleItemMode());
+    ui_menu_tool->addAction(ui_sigleTooItemAct);
+    connect(ui_sigleTooItemAct, &QAction::triggered, this, [this](bool checked) {
+        m_view->setSingleItemMode(checked);
+        });
+
+    m_ToolDrawModeMenu = new QMenu(this);
+    ui_act_group_tool_DrawMode = new QActionGroup(this);
+    for (int i = CyDisDrawItem::Invalid; i <= CyDisDrawItem::Polygon; i++) {
+        t_act = new QAction(m_ToolDrawModeMenu);
+        t_act->setCheckable(true);
+        t_act->setData(i);
+        ui_act_tool_DrawMode_list.append(t_act);
+        ui_act_group_tool_DrawMode->addAction(t_act);
+        m_ToolDrawModeMenu->addAction(t_act);
+        if (i == m_view->drawMode()) {
+            t_act->setChecked(true);
+        }
+    }
+    ui_menu_tool->addMenu(m_ToolDrawModeMenu);
+    connect(ui_act_group_tool_DrawMode, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_tool_item_drawMode);
+
+    ui_clearDrawItemAct = new QAction(this);
+    ui_clearDrawItemAct->setCheckable(false);
+    ui_menu_tool->addAction(ui_clearDrawItemAct);
+    connect(ui_clearDrawItemAct, &QAction::triggered, this, [this]() {
+        m_view->clearItem();
+        });
+
     //About
     ui_menu_help = new QMenu(this);
 
@@ -354,9 +428,13 @@ void CyMediaDisTest::initMenu() {
     ui_menu_help->addAction(ui_act_about);
     connect(ui_act_about, &QAction::triggered, this, &CyMediaDisTest::on_act_about);
 
+    ui_act_qt = new QAction("Qt", this);
+    ui_menu_help->addAction(ui_act_qt);
+    connect(ui_act_qt, &QAction::triggered, this, &CyMediaDisTest::on_act_qt);
+
     ui_menu_bar->addMenu(ui_menu_file);
     ui_menu_bar->addMenu(ui_menu_acq);
-    ui_menu_bar->addMenu(ui_menu_view);
+    ui_menu_bar->addMenu(ui_menu_image);
     ui_menu_bar->addMenu(ui_menu_tool);
     ui_menu_bar->addMenu(ui_menu_help);
 }
@@ -388,7 +466,8 @@ void CyMediaDisTest::flushTranslate() {
     ui_act_acq_analog->setText(tr("Analog capture"));
     ui_act_acq_stop->setText(tr("Stop analog capture"));
 
-    ui_menu_view->setTitle(tr("Image"));
+    ui_menu_image->setTitle(tr("Image"));
+    ui_act_clear_image->setText(tr("Clear image"));
     ui_menu_colormaping->setTitle(tr("Color mapping"));
     ui_menu_bayer_rebuild->setTitle(tr("Demosaicing Method"));
     for (auto oneact : ui_act_view_bayer_rebuild_list) {
@@ -405,6 +484,19 @@ void CyMediaDisTest::flushTranslate() {
 
     ui_menu_help->setTitle(tr("Help"));
     ui_act_about->setText(tr("about ") + m_app_name);
+
+    ui_sigleTooItemAct->setText(tr("Sigle Draw"));
+    m_ToolDrawModeMenu->setTitle(tr("Draw Tool Type"));
+    for (auto oneact : ui_act_tool_DrawMode_list) {
+        oneact->setText(genDrawItemTypeStr(CyDisDrawItem::ItemType(oneact->data().toUInt())));
+    }
+    ui_clearDrawItemAct->setText(tr("Clear Too Item"));
+
+    //Dialog
+    m_AboutQtDialog->flushTrans();
+
+    //replay
+    m_playFPSLabel->setText("Fps");
 }
 
 
@@ -483,6 +575,10 @@ void CyMediaDisTest::on_act_acq_stop() {
     ui_act_acq_stop->setEnabled(false);
 }
 
+void CyMediaDisTest::on_act_clear_image() {
+    m_view->clearImage();
+}
+
 void CyMediaDisTest::on_act_view_colormap_type(QAction* act) {
     m_view->setColorMap(act->data().toUInt());
 }
@@ -508,6 +604,10 @@ void CyMediaDisTest::on_act_gray_stretch() {
     }
 }
 
+void CyMediaDisTest::on_act_tool_item_drawMode(QAction* act) {
+    m_view->setDrawMode(CyDisDrawItem::ItemType(act->data().toUInt()));
+}
+
 void CyMediaDisTest::on_act_grayscale_measure() {
     auto w = m_view->grayTestWidget();
     if (!w) return;
@@ -523,6 +623,10 @@ void CyMediaDisTest::on_act_grayscale_measure() {
 
 void CyMediaDisTest::on_act_about() {
 
+}
+
+void CyMediaDisTest::on_act_qt() {
+    m_AboutQtDialog->exec();
 }
 
 void CyMediaDisTest::on_status_timerout() {
@@ -726,8 +830,7 @@ void CyMediaDisTest::closeReplay() {
     if (m_playStatus != ending) {
         m_playStatus = ending;
         m_videoParse->close();
-        ui_playBtn->setVisible(false);
-        ui_PlaySlider->setVisible(false);
+        m_replay_w->setVisible(false);
     }
 }
 
@@ -736,7 +839,7 @@ void CyMediaDisTest::upPlayFrame(const CyMedia::ImageShowInfo& info, const uint8
         //更新图像
         m_ImageInfo = info;
         //格式转换
-        if (false == m_bVideoFormat) {
+        if (true == m_bVideoIsRaw && false == m_bVideoFormat) {
             if (false == CYCam_FormatTrans(CY_PIXEL_FORMAT(info.format), &m_ImageInfo.format, &m_ImageInfo.bit)) {
                 return;
             }
@@ -749,10 +852,10 @@ void CyMediaDisTest::upPlayFrame(const CyMedia::ImageShowInfo& info, const uint8
         else {
             m_bIsPlayFinish = false;
         }
-        if (m_view->upImageData(m_ImageInfo, (uint8_t*)pdata, m_bIsPlayFinish)) {
-            //更新进度条
-            emit upPlaySlider(nCount, m_bIsPlayFinish);
-        }
+        //更新图像
+        if(pdata) m_view->upImageData(m_ImageInfo, (uint8_t*)pdata, m_bIsPlayFinish);
+        //更新进度条
+        emit upPlaySlider(nCount, m_bIsPlayFinish);
     }
 }
 
@@ -869,6 +972,13 @@ void CyMediaDisTest::onUplaySlider(int num, bool isFinish) {
     }
 }
 
+void CyMediaDisTest::onReplayFPSChanged(int value) {
+    if (m_playStatus != finish) {
+        m_videoParse->setPlayFps(value);
+        ui_PlaySlider->setRate(value);
+    }
+}
+
 void CyMediaDisTest::onFileOpen(QString filePath) {
     printf("打开文件:%s\n", filePath.toUtf8().data());
     closeReplay();
@@ -878,6 +988,23 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
     if (videoType == CyMedia::VideoSuffix::RAWV) {
         onOpenRawFile(filePath);
         return;
+    }
+    else if (videoType != CyMedia::VideoSuffix::INVALID){
+        m_bVideoIsRaw = false;
+        auto openVideoRe = onOpenVideo(filePath, false);
+        if (openVideoRe == CyMedia::ParseResult::OK) {
+            return;
+        }
+        //文件错误
+        else if (openVideoRe == CyMedia::ParseResult::FILE_OPEN_FAIL) {
+            QMessageBox::warning(
+                this,
+                tr("error"),
+                tr("file error"),
+                QMessageBox::Ok
+            );
+            return;
+        }
     }
     //处理图像
     printf("判断图像格式\n");
@@ -901,16 +1028,16 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
     //其他图像
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
-    int openRet = m_image_func->openImage(filePath.toStdWString(), imageType, info, data);
-    if (0 != openRet) {
+    auto openRet = m_image_func->openImage(filePath.toStdWString(), imageType, info, data);
+    if (CyMedia::ParseResult::OK != openRet) {
         QString errStr;
-        if (openRet == 1) {
+        if (openRet == CyMedia::ParseResult::FILE_OPEN_FAIL) {
             errStr = tr("file error");
         }
-        else if (openRet == 2) {
+        else if (openRet == CyMedia::ParseResult::UNSUPPORTED) {
             errStr = tr("Invalid file format");
         }
-        else if (openRet == 3) {
+        else if (openRet == CyMedia::ParseResult::FORMAT_ERROR) {
             errStr = tr("image header error");
         }
         QMessageBox::warning(
@@ -927,9 +1054,10 @@ void CyMediaDisTest::onFileOpen(QString filePath) {
 }
 
 void CyMediaDisTest::onOpenRawFile(QString filePath) {
+    m_bVideoIsRaw = true;
     //先按照有头视频解析
     printf("按有头视频解析\n");
-    auto openVideoRe = onOpenRawVideo(filePath, false);
+    auto openVideoRe = onOpenVideo(filePath, false);
     if (openVideoRe == CyMedia::ParseResult::OK) {
         return;
     }
@@ -948,9 +1076,9 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
     CyMedia::ImageShowInfo info;
     std::vector<uint8_t> data;
     QString errStr;
-    int openRet = m_image_func->openImage(filePath.toStdWString(), CyMedia::ImageSuffix::RAW, info, data);
+    auto openRet = m_image_func->openImage(filePath.toStdWString(), CyMedia::ImageSuffix::RAW, info, data);
     //未找到头
-    if (openRet == 3) {
+    if (openRet == CyMedia::ParseResult::FORMAT_ERROR) {
         printf("未找到头，获取用户输入信息\n");
         //初始化头信息窗口值
         m_rawHeaderW->setOpenFileName(QFileInfo(filePath).completeBaseName());
@@ -1011,7 +1139,7 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
             m_VideoInfo.frameInfo = info;
             m_VideoInfo.dataOffset = offset;
             m_VideoInfo.fps = m_rawHeaderW->videoFps();
-            openVideoRe = onOpenRawVideo(filePath, true);
+            openVideoRe = onOpenVideo(filePath, true);
             if (openVideoRe == CyMedia::ParseResult::OK) {
                 return;
             }
@@ -1038,15 +1166,15 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
         printf("文件小于两帧，按照图像处理\n");
         openRet = m_image_func->openImage_NotHeaderRaw(filePath.toStdWString(), offset, info, data);
     }
-    if (0 != openRet) {
+    if (CyMedia::ParseResult::OK != openRet) {
         QString errStr;
-        if (openRet == 1) {
+        if (openRet == CyMedia::ParseResult::FILE_OPEN_FAIL) {
             errStr = tr("file error");
         }
-        else if (openRet == 2) {
+        else if (openRet == CyMedia::ParseResult::UNSUPPORTED) {
             errStr = tr("Invalid file format");
         }
-        else if (openRet == 3) {
+        else if (openRet == CyMedia::ParseResult::FORMAT_ERROR) {
             errStr = tr("image header error");
         }
         QMessageBox::warning(
@@ -1062,7 +1190,7 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
     m_view->upImageData(info, data.data());
 }
 
-CyMedia::ParseResult CyMediaDisTest::onOpenRawVideo(QString filepath, bool format) {
+CyMedia::ParseResult CyMediaDisTest::onOpenVideo(QString filepath, bool format) {
     m_bVideoFormat = format;
     printf("CyMediaDisTest::onOpenRawVideo\n");
     const std::filesystem::path videoPath = std::filesystem::u8path(filepath.toUtf8().toStdString());
@@ -1070,11 +1198,11 @@ CyMedia::ParseResult CyMediaDisTest::onOpenRawVideo(QString filepath, bool forma
     auto opeRe = m_videoParse->open(videoPath, m_VideoInfo, format);
     if (opeRe == CyMedia::ParseResult::OK) {
         if (false == format) {
-            printf("解析有头视频成功: %d * %d * %d bit format:%d\n", 
-                m_VideoInfo.frameInfo.width,
-                m_VideoInfo.frameInfo.height,
-                m_VideoInfo.frameInfo.bit,
-                m_VideoInfo.frameInfo.format);
+            qDebug() << QString("解析有头视频成功: %1 * %2 * %3 bit format:%4")
+                .arg(m_VideoInfo.frameInfo.width)
+                .arg(m_VideoInfo.frameInfo.height)
+                .arg(m_VideoInfo.frameInfo.bit)
+                .arg(CyMedia::CyMediaDis::pixelFormatStr(m_VideoInfo.frameInfo.format));
         }
         m_videoParse->registerFrameCallback(CyMediaDisTest::rePlayImageCallBack, this);
         m_playStatus = pause;
@@ -1085,9 +1213,13 @@ CyMedia::ParseResult CyMediaDisTest::onOpenRawVideo(QString filepath, bool forma
         //更新进度条
         ui_PlaySlider->setRange(1, m_VideoInfo.frameCount - 1);
         ui_PlaySlider->setRate(m_VideoInfo.fps);
-        ui_playBtn->show();
-        ui_PlaySlider->show();
+        m_playFps_box->blockSignals(true);
+        m_playFps_box->setRange(1, int(m_VideoInfo.fps * 2.0));
+        m_playFps_box->setValue(m_VideoInfo.fps);
+        m_playFps_box->blockSignals(false);
+        m_playFps_box->setToolTip(tr("min:%1 max:%2").arg(1).arg(int(m_VideoInfo.fps * 2.0)));
         ui_playBtn->setIcon(QIcon(":/CyMediaDisTest/Icon/play.png"));
+        m_replay_w->setVisible(true);
     }
     return opeRe;
 }
@@ -1095,22 +1227,26 @@ CyMedia::ParseResult CyMediaDisTest::onOpenRawVideo(QString filepath, bool forma
 void CyMediaDisTest::onViewUpPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR) {
     if (signlR) {
         ui_PosColorLabel->setText(QString("(%1, %2) %3 %4")
-            .arg(x)
-            .arg(y)
+            .arg(x, m_width_figure, 10, QLatin1Char('0'))
+            .arg(y, m_height_figure, 10, QLatin1Char('0'))
             .arg(tr("Gray"))
-            .arg(r));
+            .arg(int(r), m_bit_figure, 10, QLatin1Char('0')));
     }
     else {
         ui_PosColorLabel->setText(QString("(%1, %2) RGB %3 %4 %5")
-            .arg(x)
-            .arg(y)
-            .arg(r)
-            .arg(g)
-            .arg(b));
+            .arg(x, m_width_figure, 10, QLatin1Char('0'))
+            .arg(y, m_height_figure, 10, QLatin1Char('0'))
+            .arg(int(r), m_bit_figure, 10, QLatin1Char('0'))
+            .arg(int(g), m_bit_figure, 10, QLatin1Char('0'))
+            .arg(int(b), m_bit_figure, 10, QLatin1Char('0')));
     }
 }
 
 void CyMediaDisTest::onImageSizeChanged(quint32 w, quint32 h, int bit) {
+    m_width_figure = calcValueFigures(w);
+    m_height_figure = calcValueFigures(h);
+    m_bit_figure = calcValueFigures((1 << bit) - 1);
+
     ui_ImageSizeLabel->setText(QString("%1 * %2 (%3bit)")
         .arg(w)
         .arg(h)
@@ -1146,8 +1282,8 @@ void CyMediaDisTest::thread_acquisition() {
     uint64_t t_CapFpsCount = 0;
 
     CyMedia::ImageShowInfo info;
-    info.width = 1000;
-    info.height = 1000;
+    info.width = 1282;
+    info.height = 1024;
     info.bit = 8;
     info.format = CyMedia::RGB;
     /*info.format = CyMedia::BAYERRG;

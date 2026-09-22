@@ -5,6 +5,7 @@
 #include "CyMediaDis.h"
 #include "CyMediaParse/CyMediaImageParse.h"
 #include "CyMediaParse/CyMediaVideoParse.h"
+#include "CyMediaCalc/CyMediaFileFunc.h"
 #include "cyplayslider.h"
 #include "CyPixelFormat.h"
 
@@ -15,6 +16,7 @@
 #include <QDragEnterEvent>
 #include <QmimeData>
 #include <QSettings>
+#include <QSPinBox>
 
 class CyMediaDisTest : public QMainWindow {
     Q_OBJECT
@@ -31,11 +33,13 @@ public:
     void genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& img, int frameIdx);
     QString geyBayerMethodStr(CyMedia::DemosaicingMethod methord);
     QString geyYUVMethodStr(CyMedia::YUVTransMethod methord);
+    QString genDrawItemTypeStr(CyDisDrawItem::ItemType type);
 
     void openFile(QString filePath);
 
     static void rePlayImageCallBack(const CyMedia::ImageShowInfo& info, const uint8_t* data, int nCount, void* userData);
     static void cyMediaLogCallBack(CyMedia::LogLevel level, const std::string& msg, void* puser);
+    static uint8_t calcValueFigures(quint32 value);
 
 private:
     void initGUI();
@@ -56,14 +60,17 @@ private:
     void on_act_acq_analog();
     void on_act_acq_stop();
 
+    void on_act_clear_image();
     void on_act_view_colormap_type(QAction* act);
     void on_act_view_bayer_rebuild_type(QAction* act);
     void on_act_view_yuv_rebuild_type(QAction* act);
     void on_act_gray_stretch();
+    void on_act_tool_item_drawMode(QAction* act);
 
     void on_act_grayscale_measure();
 
     void on_act_about();
+    void on_act_qt();
 
     void on_status_timerout();
 
@@ -77,11 +84,12 @@ private:
     void onPlaySliderDraged(int value);
     void onPlaySliderReleased(void);
     void onUplaySlider(int num, bool isFinish);
+    void onReplayFPSChanged(int value);
 
 private:
     void onFileOpen(QString filepath);
     void onOpenRawFile(QString filePath);
-    CyMedia::ParseResult onOpenRawVideo(QString filepath, bool format);
+    CyMedia::ParseResult onOpenVideo(QString filepath, bool format);
     void onViewUpPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR);
     void onImageSizeChanged(quint32 w, quint32 h, int bit);
 
@@ -129,8 +137,9 @@ private:
     QActionGroup* ui_act_group_acq_img_type = nullptr;
     QAction* ui_act_acq_analog = nullptr;
     QAction* ui_act_acq_stop = nullptr;
-    //Menu/view
-    QMenu* ui_menu_view = nullptr;
+    //Menu/image
+    QMenu* ui_menu_image = nullptr;
+    QAction* ui_act_clear_image = nullptr;
     QMenu* ui_menu_colormaping = nullptr;
     QVector<QAction*> ui_act_view_colomap_list;
     QActionGroup* ui_act_group_view_colomap = nullptr;
@@ -144,13 +153,25 @@ private:
     //Menu/Tool
     QMenu* ui_menu_tool = nullptr;
     QAction* ui_grayscaleMeasurementAct = nullptr;
+    QAction* ui_sigleTooItemAct = nullptr;
+    QMenu* m_ToolDrawModeMenu = nullptr;
+    QVector<QAction*> ui_act_tool_DrawMode_list;
+    QActionGroup* ui_act_group_tool_DrawMode = nullptr;
+    QAction* ui_clearDrawItemAct = nullptr;
     //Menu/About
     QMenu* ui_menu_help = nullptr;
     QAction* ui_act_about = nullptr;
+    QAction* ui_act_qt = nullptr;
+
+    //Dialog
+    CyMedia::AboutQTDialog* m_AboutQtDialog = nullptr;
 
     //acquistion
     CyMediaTest::eAnalogImageType m_analog_img_type = CyMediaTest::AnalogImage_RandomColor;
     CyMedia::ImageShowInfo m_ImageInfo;
+    int m_width_figure = 4;
+    int m_height_figure = 4;
+    int m_bit_figure = 3;
     bool m_bIsAcuistion = false;
     bool m_bStopView = false;
     QThread* m_AnalogAcquisitionThread = nullptr;
@@ -162,12 +183,16 @@ private:
     QTimer* m_statusTimer = nullptr;
 
     //replay
+    QWidget* m_replay_w = nullptr;
     QPushButton* ui_playBtn = nullptr;
     CyPlaySlider* ui_PlaySlider = nullptr;
+    QLabel* m_playFPSLabel = nullptr;
+    QSpinBox* m_playFps_box = nullptr;
     CyMediaDisTest::PlayingStatus m_playStatus = ending;
     bool m_bIsPlayFinish = false;
     bool m_bManualPause = false;
     bool m_bVideoFormat = false;
+    bool m_bVideoIsRaw = false;
     CyMedia::VideoParser* m_videoParse = nullptr;
     CyMedia::VideoParseInfo m_VideoInfo;
 };

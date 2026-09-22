@@ -61,11 +61,15 @@ namespace CyDisDrawItem {
                 // 检查Item是否标记绘制完成
                 if (m_previewItem->isDrawFinished()) {
                     finishDrawing();
+                    event->accept();
+                    return true;
                 }
                 // 右键点击取消当前绘制
                 if (event->type() == QEvent::MouseButtonPress && mouseEvent->button() == Qt::RightButton) {
-                    m_manager->removeItem(m_previewItem);
-                    m_previewItem = nullptr;
+                    if (m_previewItem) {
+                        m_manager->removeItem(m_previewItem);
+                        m_previewItem = nullptr;
+                    }
                     //m_mode = ItemType::Invalid;
                     m_isDragging = false; // 重置拖拽状态
                 }
@@ -82,26 +86,28 @@ namespace CyDisDrawItem {
         m_selectedItem = nullptr;
         switch (event->type()) {
             case QEvent::MouseButtonPress: {
+                // 是否点击某个item
+                QGraphicsItem* item = m_view->itemAt(mouseEvent->pos());
                 if (mouseEvent->button() == Qt::LeftButton) {
-                    // 是否点击某个item
-                    QGraphicsItem* item = m_view->itemAt(mouseEvent->pos());
                     if (item) {
                         QGraphicsObject* graphiObj = item->toGraphicsObject();
                         if (graphiObj == nullptr) {
                             // 说明是手柄（HandleItem 是纯 QGraphicsItem）
                             return QObject::eventFilter(obj, event);   // 放行给 Qt
                         }
-                        //点可以绘制在其他区域上
-                        if (m_mode = Point) {
-                            BaseItem* baseItem = dynamic_cast<BaseItem*>(graphiObj);
-                            if (baseItem && baseItem->itemType() == ItemType::Point && false == m_replaceMode) {
-                                m_selectedItem = item;
-                                return false;
-                            }
+                        //不是点绘制，执行选中
+                        if (m_mode != Point) {
+                            m_selectedItem = item;
+                            return false;
                         }
-
-                        m_selectedItem = item;
-                        return false;
+                        //点可以绘制在其他区域上(Ctrl按下，且被选中图形不是点)
+                        BaseItem* baseItem = dynamic_cast<BaseItem*>(graphiObj);
+                        bool bDrawPoint = (mouseEvent->modifiers() & Qt::ControlModifier) &&
+                            baseItem && baseItem->itemType() != ItemType::Point;
+                        if (false == bDrawPoint) {//选中
+                            m_selectedItem = item;
+                            return false;
+                        }
                     }
 
                     // 判断是否需要阈值
@@ -134,10 +140,10 @@ namespace CyDisDrawItem {
                     }
                 }
                 else if (mouseEvent->button() == Qt::RightButton) {
-                    if (m_lastItem) {
+                    /*if (!item && m_lastItem) {
                         m_manager->removeItem(m_lastItem);
                         m_lastItem = nullptr;
-                    }
+                    }*/
                 }
             }break;
 

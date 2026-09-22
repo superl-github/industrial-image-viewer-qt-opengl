@@ -6,6 +6,23 @@ Image-Video-On-QGraphicsView
 
   It was developed to meet the need for interfacing with **camera image streams**, so it uses OpenGL rendering and image processing to ensure speed as much as possible. Using QGraphicsView eliminates a lot of external work, such as image matrices and additional attachments.
 
+**V 1.2.6 **
+
+- 加强rawframe内存管理
+
+- 增强Qtlincense窗口 CyMedia::AboutQTDialog
+
+- CyMediaDis性能优化
+
+- 优化图形绘制，点可以画在其它图形上方
+
+- disItem可以附带文本显示
+
+- 点画在其他区域上需要ctrl键按下时触发
+
+
+
+
 **V 1.2.5**
 
 - 优化图像分析返回结果

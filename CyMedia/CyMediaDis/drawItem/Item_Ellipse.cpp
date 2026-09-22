@@ -133,10 +133,10 @@ namespace CyDisDrawItem {
         QRect sceneRect = boundingRectInScene();
         int32_t l = sceneRect.x(), t = sceneRect.y();
         int32_t r = sceneRect.x() + sceneRect.width(), b = sceneRect.y() + sceneRect.height();
-        printf("currentRect{%d %d %d %d}\n", l, t, r, b);
+        //printf("currentRect{%d %d %d %d}\n", l, t, r, b);
 
         QPoint adjustedMouse = mousePos.toPoint();
-        printf("adjustedMouse{%d %d}\n", adjustedMouse.x(), adjustedMouse.y());
+        //printf("adjustedMouse{%d %d}\n", adjustedMouse.x(), adjustedMouse.y());
         if (isCornerHandle(handletype)) {
             QPoint handleLocal = getHandlePos(handletype);
             // 对应的矩形角点（本地）
@@ -171,9 +171,9 @@ namespace CyDisDrawItem {
         if (t > b) std::swap(t, b);
         if (r - l < m_MinSize.width()) { qreal cx = (l + r) / 2; l = cx - m_MinSize.width() / 2; r = cx + m_MinSize.width() / 2; }
         if (b - t < m_MinSize.height()) { qreal cy = (t + b) / 2; t = cy - m_MinSize.height() / 2; b = cy + m_MinSize.height() / 2; }
-        printf("newRect{%d %d %d %d}\n", l, t, r, b);
+        //printf("newRect{%d %d %d %d}\n", l, t, r, b);
         setBoundingRectInScene(QPoint(l, t), QPoint(r, b), false);
-        printf("setBoundingRectInScene{%.0f %.0f %.0f %.0f}\n\n", pos().x(), pos().y(), pos().x() + m_localRect.width(), pos().y() + m_localRect.height());
+        //printf("setBoundingRectInScene{%.0f %.0f %.0f %.0f}\n\n", pos().x(), pos().y(), pos().x() + m_localRect.width(), pos().y() + m_localRect.height());
         return true;
     }
 

@@ -1,4 +1,4 @@
-﻿#include "Item_Point.h"
+#include "Item_Point.h"
 
 #include <QDialog>
 #include <QLabel>
@@ -43,7 +43,9 @@ namespace CyDisDrawItem {
     }
 
     QRectF CyDisDrawItem::Item_Point::boundingRect() const {
-        return m_localRect;
+        //return m_localRect;
+        const qreal half = mOuterframeLenth + 6;   // 覆盖外框 + 一点余量
+        return QRectF(-half, -half, half * 2, half * 2);
     }
 
     QRect CyDisDrawItem::Item_Point::boundingRectInScene() const {
@@ -53,7 +55,9 @@ namespace CyDisDrawItem {
 
     QPainterPath CyDisDrawItem::Item_Point::shape() const {
         QPainterPath path;
-        path.addRect(m_localRect);
+        //path.addRect(m_localRect);
+        const qreal half = mOuterframeLenth + 4;
+        path.addRect(QRectF(-half, -half, half * 2, half * 2));
         return path;
     }
 

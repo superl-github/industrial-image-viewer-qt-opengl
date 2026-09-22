@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <QtCore/qglobal.h>
 #include <QWidget>
@@ -50,8 +50,7 @@ protected:
     PrivateData* d;
 };
 
-class CustomSlider : public QSlider
-{
+class CustomSlider : public QSlider {
     Q_OBJECT
 public:
     CustomSlider(QWidget* parent = nullptr);

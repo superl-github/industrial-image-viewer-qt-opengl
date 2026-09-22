@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <QObject>
 #include <QList>
 
@@ -40,7 +40,7 @@ namespace CyDisDrawItem {
 
         QList<BaseItem*>& items() { return m_items; }
         QUuid selectedItem() const;
-        QUuid getLaseItem();
+        QUuid getLastItem();
 
         QGraphicsScene* scene() const { return m_scene; }
 

@@ -101,13 +101,6 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
         d->mDrawType == CyDisDrawItem::ItemType::Invalid) {
         return;
     }
-    //文本测试
-    item->setTipText("温度：52.37 ℃");
-    auto font = this->font();
-    auto size = font.pointSize();
-    font.setPointSize(20);
-    item->setTipFont(font);
-    item->setShowTip(true);
     d->mCurrentItemID = item->id();
     if (d->mDrawType != item->itemType()) {
         d->upYrange = true;
