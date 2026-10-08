@@ -191,9 +191,9 @@ private:
 
     // 图像信息
     oneTexturePara m_textureInfo[2];
+    bool m_forceInfoUpdate = true;
 
     // bayer处理
-    bool m_fisrt_up_image = true;
     CyMedia::DemosaicingMethod mDemosaicMethod = CyMedia::DEMOSAIC_BILINEAR;
     
     // YUV处理
@@ -291,7 +291,7 @@ private:
 
     void updateTextureFormat(const CyMedia::ImageShowInfo& info, int idx, bool oversize = false);
     void upShaderUniformSampler(QOpenGLExtraFunctions* f);
-    void upShaderUniformImageInfo(QOpenGLExtraFunctions* f, int colorType);
+    void upShaderUniformImageInfo(QOpenGLExtraFunctions* f, int idx, int colorType);
     void upShaderUniformOther(QOpenGLExtraFunctions* f, QMatrix4x4 mat, float zoom = 1.0f);
     void updateStretchUniforms(QOpenGLExtraFunctions* f);
 

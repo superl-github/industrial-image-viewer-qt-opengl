@@ -139,8 +139,7 @@
       <QtUicDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\uic\</QtUicDir>
     </QtUic>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy "$(ProjectDir)App_zh_CN.qm" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -163,8 +162,7 @@
       <QtUicDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\uic\</QtUicDir>
     </QtUic>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy "$(ProjectDir)App_zh_CN.qm" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -186,6 +184,9 @@
     <QtUic>
       <QtUicDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\uic\</QtUicDir>
     </QtUic>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)App_zh_CN.qm" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -203,6 +204,9 @@
     <QtUic>
       <QtUicDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\uic\</QtUicDir>
     </QtUic>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)App_zh_CN.qm" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ClCompile>
@@ -280,6 +284,20 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="CyMedia.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtTranslation Include="App_en_US.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)</QmOutputDir>
+    </QtTranslation>
+    <QtTranslation Include="App_zh_CN.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)</QmOutputDir>
+    </QtTranslation>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

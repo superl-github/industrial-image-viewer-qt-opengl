@@ -36,7 +36,7 @@ vec4 calcRGBA(sampler2D texture, ivec2 texSize, ivec2 intTexCoord) {
 
     float yVal = texelFetch(texture, ivec2(x, y), 0).r;
 
-    ivec2 uvCoord = ivec2(x / 2, y);   // 水平子采样2，垂直无子采样
+    ivec2 uvCoord = ivec2(x / 2, y / 2);   // 水平子采样2，垂直无子采样
     vec2 uv = texelFetch(textureU, uvCoord, 0).rg;
 
     float uVal, vVal;

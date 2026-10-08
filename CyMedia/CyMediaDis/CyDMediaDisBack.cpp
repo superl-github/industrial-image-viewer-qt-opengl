@@ -1,4 +1,4 @@
-﻿#include "CyDMediaDisBack.h"
+#include "CyDMediaDisBack.h"
 
 #include <QMessageBox>
 #include <QFile>
@@ -962,11 +962,9 @@ void CyDMediaDisBack::initColorMap()
     //读取文件数据
     if (CMfullPathList.size()) {
         QFile oneCMFile;
-        qint32 dataIndex = 0;
         for (auto oneCMPath : CMfullPathList) {
             oneCMFile.setFileName(oneCMPath);
             if (oneCMFile.open(QIODevice::ReadOnly)) {
-                dataIndex++;
                 d->m_ColorMapList.push_back(QFileInfo(oneCMPath).baseName());
                 oneCMFile.close();
             }

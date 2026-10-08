@@ -1,4 +1,6 @@
 #pragma once
+#include <vector>
+
 #include <QString>
 
 namespace CyMediaTest {
@@ -10,4 +12,9 @@ namespace CyMediaTest {
         AnalogImage_Plasma,            // 等离子分形效果
         AnalogImage_End,
     };
+
+    /** RGB888 -> NV12（Y 平面 + UV 交错平面，U 在前 V 在后） */
+    void rgbToNV12(const uint8_t* rgb, int width, int height, std::vector<uint8_t>& out);
+    /** RGB888 -> NV21（Y 平面 + VU 交错平面，V 在前 U 在后） */
+    void rgbToNV21(const uint8_t* rgb, int width, int height, std::vector<uint8_t>& out);
 };

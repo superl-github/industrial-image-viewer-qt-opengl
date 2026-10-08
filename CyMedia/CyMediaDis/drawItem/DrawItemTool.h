@@ -52,6 +52,15 @@ namespace CyDisDrawItem {
     private:
         void updatePreview(const QPointF& currentPos);
         void finishDrawing();
+        //检查是否略过图形选中继续绘制
+        enum PressItemResult {
+            press_Ignore,
+            press_Select,
+            press_NotItem,
+        };
+        qreal computeHitTol(QGraphicsItem* item) const;
+        static bool hitOnBorder(QGraphicsItem* item, const QPointF& scenePos, qreal tol = 6.0);
+        DrawItemTool::PressItemResult checkItemSelect(QMouseEvent* mouseEvent, QGraphicsItem** selectItem);
 
     private:
         QColor mThemeColor;

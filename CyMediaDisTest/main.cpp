@@ -51,14 +51,12 @@ int main(int argc, char *argv[]) {
     //启用全局共享上下文
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     //指定OpenGL版本
-    QSurfaceFormat format;
-    format.setVersion(3, 3);
-    format.setProfile(QSurfaceFormat::CoreProfile);
-    format.setSwapInterval(0);
-    format.setRenderableType(QSurfaceFormat::OpenGL);
-    //format.setDepthBufferSize(24);
-    //format.setStencilBufferSize(8);
-    QSurfaceFormat::setDefaultFormat(format);
+    QSurfaceFormat fmt;
+    fmt.setVersion(3, 3);
+    fmt.setProfile(QSurfaceFormat::CoreProfile);
+    fmt.setRenderableType(QSurfaceFormat::OpenGL);
+    fmt.setSwapInterval(0);
+    QSurfaceFormat::setDefaultFormat(fmt);
 
     QApplication app(argc, argv);
     //opengl检测

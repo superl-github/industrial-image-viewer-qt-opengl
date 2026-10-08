@@ -63,6 +63,7 @@ class CyMediaDisViewThumbnail;
  *  - OpenGL 3.3 Core Profile
  *
  *  @note 采用全局共享上下文方案，需要在初始化QApplication前，QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+ * 
  *  @see CyMediaDisViewBckDraw, CyMediaDisViewThumbnail
  */
 class CyMediaDisView : public QGraphicsView {
@@ -112,11 +113,8 @@ public:
     void setThumbnailEnable(bool enable);
     bool thumbnailVisible();
     void setThumbnailSelectColor(QColor color);
-    void setThumbnailBackgroundColor(QColor color);
-    QColor thumbnailBorderColor();
-    void setThumbnailBorderColor(QColor color);
-    bool ThumbnailDrawBorder();
-    void setThumbnailDrawBorder(bool draw);
+    QPen thumbnailBorderPen();
+    void setThumbnailBorderPen(QPen pen);
 
     //测量工具
     bool drawMode();

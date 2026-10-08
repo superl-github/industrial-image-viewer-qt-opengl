@@ -89,9 +89,6 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
     if (!recompileShader(f, pTex)) {
         return;
     }
-    f->glClearColor(0.0, 0.0, 0.0, 1.0);
-    f->glClear(GL_COLOR_BUFFER_BIT);
-
     // 绑定主纹理（主纹理、U/V、ColorMap）
     f->glActiveTexture(GL_TEXTURE0); f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
     err = f->glGetError(); 
@@ -127,7 +124,7 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
     upShaderUniformSampler(f);
     //更新着色器参数
     if (pTex->needUpImageInfo || pTex->isReBiuld) {
-        upShaderUniformImageInfo(f, int(pTex->glslNcolor));
+        upShaderUniformImageInfo(f, idx, int(pTex->glslNcolor));
         pTex->needUpImageInfo = false;
     }
     if (upStretchValue || pTex->isReBiuld) {
@@ -162,7 +159,9 @@ void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
     f->initializeOpenGLFunctions();
     if (false == initglsl(f)) return;
     initVertex(f, m_textureInfo[0].showInfo);
+    f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);//使用原因参考CyMediaDisViewBckDraw::upBackGround内“upTexture”处
     initTexture(f);
+    f->glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     // Surface
     m_offscreenSurface = new QOffscreenSurface();
     m_offscreenSurface->setFormat(ctx->format());
@@ -236,7 +235,7 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
         painter->endNativePainting();
         return;
     }
-    f->glClearColor(0.0, 0.0, 0.0, 1.0);
+    f->glClearColor(0.0, 0.0, 0.0, 0.0);
     f->glClear(GL_COLOR_BUFFER_BIT);
 
     //主纹理
@@ -281,7 +280,7 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
 
     //更新着色器参数
     if (pTex->needUpImageInfo || pTex->isReBiuld) {
-        upShaderUniformImageInfo(f, int(pTex->glslNcolor));
+        upShaderUniformImageInfo(f, idx, int(pTex->glslNcolor));
         pTex->needUpImageInfo = false;
     }
     if (upStretchValue || pTex->isReBiuld) {
@@ -326,14 +325,12 @@ QOpenGLContext* CyMediaDisViewBckDraw::createSharedContext() {
         delete ctx;
         return nullptr;
     }
-    //应对图像宽度不是4字对齐的情况
-    //auto f = ctx->functions(); if (f) f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);//1字节对齐会导致文字渲染出问题
     ctx->doneCurrent();  // 释放，供外部线程使用
     return ctx;
 }
 
 QOpenGLVertexArrayObject* CyMediaDisViewBckDraw::createVAO() {
-    QOpenGLVertexArrayObject* tVAO = new QOpenGLVertexArrayObject(this);
+    QOpenGLVertexArrayObject* tVAO = new QOpenGLVertexArrayObject();
     QOpenGLVertexArrayObject::Binder vaobinder(tVAO);
     pVBO->bind();
     pEBO->bind();
@@ -368,11 +365,9 @@ void CyMediaDisViewBckDraw::initColorMap(QString path) {
     //读取文件数据
     if (CMfullPathList.size()) {
         QFile oneCMFile;
-        qint32 dataIndex = 0;
         for (auto oneCMPath : CMfullPathList) {
             oneCMFile.setFileName(oneCMPath);
             if (oneCMFile.open(QIODevice::ReadOnly)) {
-                dataIndex++;
                 m_ColorMapList.push_back(QFileInfo(oneCMPath).baseName());
                 oneCMFile.close();
             }
@@ -615,8 +610,6 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
     m_shader_program->enableAttributeArray(1);
     m_shader_program->setAttributeBuffer(1, GL_FLOAT, sizeof(QVector3D), 2, sizeof(VerticesAndTextureCoord));
     vaobinder.release();
-
-    //f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height, float mulW, float mulH) {
@@ -751,7 +744,7 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
     int newWidth = info.width;
     int newHeight = info.height;
     // 信息变化 更新纹理参数
-    bool imag_infoChange = memcmp(&pTex->showInfo, &info, sizeof(CyMedia::ImageShowInfo)) != 0 || m_fisrt_up_image;
+    bool imag_infoChange = memcmp(&pTex->showInfo, &info, sizeof(CyMedia::ImageShowInfo)) != 0 || m_forceInfoUpdate;
     //信息未变，且已超限
     if (false == imag_infoChange && true == m_bIsOVerSize) return false;
     //重新分配尺寸
@@ -791,7 +784,7 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
 
         //重新初始化纹理
         initTextureOne(f, pTex, true);
-        m_fisrt_up_image = true;
+        m_forceInfoUpdate = true;
     }
     //和上一帧前台纹理信息不同也需要更新
     if (pTex->needUpImageInfo == false) {
@@ -967,14 +960,14 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
             pTex->textureFormat = GL_RED;
             pTex->textureType = GL_UNSIGNED_BYTE;
 
-            //只是用U纹理装UV平面
+            //只用U纹理装UV平面
             pTex->useUTex = true;
             pTex->useVTex = false;
 
             pTex->uTexDataOffset = info.width * info.height;
 
-            pTex->uTex_width = pTex->showInfo.width / 2;
-            pTex->uTex_height = pTex->showInfo.height;
+            pTex->uTex_width = (pTex->showInfo.width + 1) / 2;
+            pTex->uTex_height = (pTex->showInfo.height + 1) / 2;
 
             pTex->uvInternalFormat = GL_RG8;
             pTex->uvFormat = GL_RG;
@@ -991,16 +984,15 @@ void CyMediaDisViewBckDraw::upShaderUniformSampler(QOpenGLExtraFunctions* f) {
     f->glUniform1i(uniform_texture_colormap, 3);
 }
 
-void CyMediaDisViewBckDraw::upShaderUniformImageInfo(QOpenGLExtraFunctions* f, int colorType) {
-    int fontIdx = m_texture_front_Index.load();
-    const auto& showInfo = m_textureInfo[fontIdx].showInfo;
+void CyMediaDisViewBckDraw::upShaderUniformImageInfo(QOpenGLExtraFunctions* f, int idx, int colorType) {
+    const auto& showInfo = m_textureInfo[idx].showInfo;
     //设置图像信息
     f->glUniform1i(uniform_nWidth, showInfo.width);
     f->glUniform1i(uniform_nHeight, showInfo.height);
     f->glUniform1i(uniform_nbits, showInfo.bit);
     f->glUniform1i(uniform_colorType, colorType);
     f->glUniform1i(uniform_bayerPatter, colorType - int(CyMedia::BAYERRG));
-    f->glUniform1f(uniform_bitMul, m_textureInfo[fontIdx].bitMul);
+    f->glUniform1f(uniform_bitMul, m_textureInfo[idx].bitMul);
 }
 
 void CyMediaDisViewBckDraw::upShaderUniformOther(QOpenGLExtraFunctions* f, QMatrix4x4 mat, float zoom /*= 1.0f*/) {
@@ -1050,7 +1042,11 @@ bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* d
     oneTexturePara* pTex = &m_textureInfo[backIdx];
 
     //更新纹理
-    if (false == upTexture(f, backIdx, info, data)) return false;
+    // 设置OpenGL1字节对齐(避免数据行字节数不是4对齐)，上传纹理后恢复4字节对齐，避免影响Qt文字等渲染
+    f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    bool upTextRe = upTexture(f, backIdx, info, data);//upTexture内部多次提前退出，在外部恢复4字节对齐，避免冗余代码
+    f->glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    if (false == upTextRe) return false;
     
     //同步
     if (pTex->syncFence) f->glDeleteSync(pTex->syncFence);
@@ -1083,7 +1079,7 @@ bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* d
     ctx->doneCurrent();
     //标记当前显示图像状态
     m_haveImage = true;
-    m_fisrt_up_image = false;
+    m_forceInfoUpdate = false;
     //交换前后台纹理索引
     if (!m_hasNewData.exchange(true)) {
         QMetaObject::invokeMethod(m_view->viewport(), "update", Qt::QueuedConnection);
@@ -1204,10 +1200,7 @@ bool CyMediaDisViewBckDraw::setColorMap(qint32 index) {
 }
 
 bool CyMediaDisViewBckDraw::setColorMap(const QString& mapName) {
-    if (m_ColorMapList.contains(mapName))
-        return false;
     auto index = m_ColorMapList.indexOf(mapName);
-    if (index == -1)
-        return false;
+    if (index == -1) return false;
     return setColorMap(index);
 }

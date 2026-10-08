@@ -17,6 +17,7 @@
 #include <QmimeData>
 #include <QSettings>
 #include <QSPinBox>
+#include <QTranslator>
 
 class CyMediaDisTest : public QMainWindow {
     Q_OBJECT
@@ -69,6 +70,7 @@ private:
 
     void on_act_grayscale_measure();
 
+    void on_act_language(QAction* act);
     void on_act_about();
     void on_act_qt();
 
@@ -107,6 +109,8 @@ private:
     QSettings* m_Setting;
     const QString m_app_name = QString("CyMediaTest");
     CyMedia::eLanguage m_language = CyMedia::ENGLISH;
+    QTranslator* m_trans = nullptr;
+    QAction* m_OldLangugeAct = nullptr;
     Ui::CyMediaDisTestClass ui;
     CyMedia::CyMediaDis* m_view = nullptr;
     CyMedia::CyMediaDis_GetRawInfoDialog* m_rawHeaderW = nullptr;
@@ -160,6 +164,10 @@ private:
     QAction* ui_clearDrawItemAct = nullptr;
     //Menu/About
     QMenu* ui_menu_help = nullptr;
+    QMenu* ui_menu_language = nullptr;
+    QActionGroup* ui_actGroup_language = nullptr;
+    QAction* ChineseAct = nullptr;
+    QAction* EnglishAct = nullptr;
     QAction* ui_act_about = nullptr;
     QAction* ui_act_qt = nullptr;
 
@@ -177,6 +185,7 @@ private:
     QThread* m_AnalogAcquisitionThread = nullptr;
     double  m_CapFps = 0.0;
 
+    CyMedia::ePixType m_test_yuv_format = CyMedia::FOURCC_NV12;
     QThread* mUpImageThread = nullptr;
     bool mUpImageThreadFlag = false;
 

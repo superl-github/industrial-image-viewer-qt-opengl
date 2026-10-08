@@ -86,30 +86,20 @@ namespace CyDisDrawItem {
         m_selectedItem = nullptr;
         switch (event->type()) {
             case QEvent::MouseButtonPress: {
-                // 是否点击某个item
-                QGraphicsItem* item = m_view->itemAt(mouseEvent->pos());
                 if (mouseEvent->button() == Qt::LeftButton) {
-                    if (item) {
-                        QGraphicsObject* graphiObj = item->toGraphicsObject();
-                        if (graphiObj == nullptr) {
-                            // 说明是手柄（HandleItem 是纯 QGraphicsItem）
-                            return QObject::eventFilter(obj, event);   // 放行给 Qt
-                        }
-                        //不是点绘制，执行选中
-                        if (m_mode != Point) {
-                            m_selectedItem = item;
-                            return false;
-                        }
-                        //点可以绘制在其他区域上(Ctrl按下，且被选中图形不是点)
-                        BaseItem* baseItem = dynamic_cast<BaseItem*>(graphiObj);
-                        bool bDrawPoint = (mouseEvent->modifiers() & Qt::ControlModifier) &&
-                            baseItem && baseItem->itemType() != ItemType::Point;
-                        if (false == bDrawPoint) {//选中
-                            m_selectedItem = item;
-                            return false;
-                        }
+                    // 检测是否执行选中某个item
+                    QGraphicsItem* pressItem = nullptr;
+                    auto pressRe = checkItemSelect(mouseEvent, &pressItem);
+                    if (pressRe == press_Select) {
+                        m_selectedItem = pressItem;
+                        return false;
                     }
-
+                    else if (pressRe == press_NotItem) {
+                        return QObject::eventFilter(obj, event);
+                    }
+                    else {
+                        ;//继续绘制
+                    }
                     // 判断是否需要阈值
                     bool needThreshold = ItemFactory::requireDragThreshold(m_mode);
                     if (!needThreshold) {
@@ -138,12 +128,8 @@ namespace CyDisDrawItem {
                         m_dragStartPos = scenePos;
                         m_isDragging = true;
                     }
-                }
-                else if (mouseEvent->button() == Qt::RightButton) {
-                    /*if (!item && m_lastItem) {
-                        m_manager->removeItem(m_lastItem);
-                        m_lastItem = nullptr;
-                    }*/
+                    event->accept();
+                    return true;
                 }
             }break;
 
@@ -215,5 +201,75 @@ namespace CyDisDrawItem {
         m_previewItem = nullptr;
         emit drawItem(m_lastItem);
     }
+
+    qreal DrawItemTool::computeHitTol(QGraphicsItem* item) const {
+        if (!item || !m_view) return 2.0;
+
+        constexpr qreal kScreenTolPx = 3.5;
+
+        // item 局部坐标 → viewport 像素坐标 的完整变换
+        QTransform itemToViewport = item->sceneTransform() * m_view->viewportTransform();
+
+        // 取局部 x 轴单位向量在 viewport 中的长度 = 每局部单位对应多少像素
+        // 用 hypot 而不是只看 m11，是为了兼容 item 或 view 有旋转的情况
+        qreal pixelsPerLocal = std::hypot(itemToViewport.m11(), itemToViewport.m12());
+        if (pixelsPerLocal < 1e-6) return kScreenTolPx;
+
+        qreal tol = kScreenTolPx / pixelsPerLocal;
+
+        // 按 item 尺寸限幅（避免小图形容差覆盖整体）
+        QRectF br = item->boundingRect();
+        if (!br.isEmpty()) {
+            qreal minSide = qMin(br.width(), br.height());
+            tol = qMin(tol, minSide * 0.25);
+        }
+
+        // 按 scene 尺寸限幅（避免极端缩放时容差爆炸）
+        if (item->scene()) {
+            QRectF sr = item->scene()->sceneRect();
+            qreal sceneMin = qMin(sr.width(), sr.height());
+            tol = qMin(tol, sceneMin * 0.01);
+        }
+
+        return qMax(tol, 0.5);
+    }
+
+    bool DrawItemTool::hitOnBorder(QGraphicsItem* item, const QPointF& scenePos, qreal tol /*= 6.0*/) {
+        if (!item) return false;
+        QPointF local = item->mapFromScene(scenePos);
+        QPainterPath outline = item->shape();           // 实心路径
+        QPainterPathStroker stroker;
+        stroker.setWidth(tol * 2);
+        QPainterPath band = stroker.createStroke(outline);
+        return band.contains(local);
+    }
+
+    DrawItemTool::PressItemResult DrawItemTool::checkItemSelect(QMouseEvent* mouseEvent, QGraphicsItem** selectItem) {
+        QGraphicsItem* item = m_view->itemAt(mouseEvent->pos());
+        //未选中Item
+        if (!item) return DrawItemTool::press_Ignore;
+        if (selectItem) *selectItem = item;
+        QGraphicsObject* graphObj = item->toGraphicsObject();
+        if (graphObj == nullptr) return DrawItemTool::press_NotItem;
+
+        //不是点绘制，执行选中
+        if (m_mode != Point) return DrawItemTool::press_Select;
+
+        //点可以绘制在其他区域上，条件：
+        // 1、Ctrl未按下
+        // 2、选中的图形不是点
+        BaseItem* baseItem = dynamic_cast<BaseItem*>(graphObj);
+        if (!(mouseEvent->modifiers() & Qt::ControlModifier) &&
+            (baseItem && baseItem->itemType() != ItemType::Point)) {
+            //判断是否选中边框
+            if (hitOnBorder(item, m_view->mapToScene(mouseEvent->pos()), computeHitTol(item))) {
+                return DrawItemTool::press_Select;   // 点边框 → 选中
+            }
+            return DrawItemTool::press_Ignore;
+        }
+
+        return DrawItemTool::press_Select;
+    }
+
 }
 //#include "DrawItemTool.moc"

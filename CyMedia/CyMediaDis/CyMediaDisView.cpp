@@ -205,24 +205,31 @@ CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
     QOpenGLWidget* OpenGlwidget = new QOpenGLWidget();
     OpenGlwidget->setUpdateBehavior(QOpenGLWidget::PartialUpdate);
     OpenGlwidget->setMouseTracking(true);
-    QSurfaceFormat format;
-    format.setVersion(3, 3);
-    format.setProfile(QSurfaceFormat::CoreProfile);
-    OpenGlwidget->setFormat(format);
+    QSurfaceFormat fmt = OpenGlwidget->format();
+    fmt.setAlphaBufferSize(8);
+    fmt.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    OpenGlwidget->setFormat(fmt);
     setViewport(OpenGlwidget);
 }
 
 CyMediaDisView::~CyMediaDisView() {
+    if (m_Thumbnail) {
+        m_Thumbnail->setParent(nullptr);
+        delete m_Thumbnail;
+        m_Thumbnail = nullptr;
+    }
+
     if (d) {
         m_backDraw->clearBackGround();
-        delete[] m_backDraw;
+        delete m_backDraw;
+        m_backDraw = nullptr;
         delete d;
+        d = nullptr;
     }
 }
 
 void CyMediaDisView::setCyScene(QGraphicsScene* scene) {
     this->setScene(scene);
-    if (m_Thumbnail) m_Thumbnail->setScene(scene);
     scene->setBackgroundBrush(QBrush(Qt::black, Qt::SolidPattern));
 }
 
@@ -267,10 +274,9 @@ void CyMediaDisView::zoomOut(void) {
 }
 
 void CyMediaDisView::zoomAuto(void) {
-    if (!this->scene() || !m_backDraw->haveImage())
-        return;
+    if (!this->scene() || !m_backDraw->haveImage()) return;
 
-    QSize fRect = this->size();
+    QSize fRect = viewport()->size();
     QSizeF sceneRect = this->scene()->sceneRect().size();
     qreal s = qMin(
         fRect.width() * 0.999 / sceneRect.width(),
@@ -310,7 +316,7 @@ void CyMediaDisView::hriMirror(void) {
         return;
 
     QTransform transform(this->transform());
-    transform.rotate(180.0, Qt::YAxis);
+    transform.scale(-1, 1);
     setTransform(transform);
     
     d->hIsMirror = !d->hIsMirror;
@@ -321,7 +327,7 @@ void CyMediaDisView::verMirror(void) {
         return;
 
     QTransform transform(this->transform());
-    transform.rotate(180.0, Qt::XAxis);
+    transform.scale(1, -1);
     setTransform(transform);
 
     d->vIsMirror = !d->vIsMirror;
@@ -354,8 +360,10 @@ CyMediaDisViewBckDraw* CyMediaDisView::imageDraw() const {
 
 void CyMediaDisView::clearBackGround() {
     m_backDraw->clearBackGround();
-    if (QThread::currentThread() == qApp->thread()) {
-        m_Thumbnail->hide();
+    if (m_Thumbnail) {
+        if (QThread::currentThread() == qApp->thread()) {
+            m_Thumbnail->hide();
+        }
     }
 }
 
@@ -389,27 +397,18 @@ bool CyMediaDisView::thumbnailVisible() {
 }
 
 void CyMediaDisView::setThumbnailSelectColor(QColor color) {
+    if (!m_Thumbnail) return;
     m_Thumbnail->setSelectColor(color);
 }
 
-void CyMediaDisView::setThumbnailBackgroundColor(QColor color) {
-    m_Thumbnail->setBackgroundColor(color);
+QPen CyMediaDisView::thumbnailBorderPen() {
+    if (!m_Thumbnail) return {};
+    return m_Thumbnail->borderPen();
 }
 
-QColor CyMediaDisView::thumbnailBorderColor() {
-    return m_Thumbnail->borderColor();
-}
-
-void CyMediaDisView::setThumbnailBorderColor(QColor color) {
-    m_Thumbnail->setBorderColor(color);
-}
-
-bool CyMediaDisView::ThumbnailDrawBorder() {
-    return m_Thumbnail->drawBorder();
-}
-
-void CyMediaDisView::setThumbnailDrawBorder(bool draw) {
-    m_Thumbnail->setDrawBorder(draw);
+void CyMediaDisView::setThumbnailBorderPen(QPen pen) {
+    if (!m_Thumbnail) return;
+    m_Thumbnail->setBorderPen(pen);
 }
 
 bool CyMediaDisView::drawMode() {
@@ -451,7 +450,7 @@ void CyMediaDisView::showEvent(QShowEvent* e) {
     // 创建缩略图（如果尚未创建）
     if (!m_Thumbnail) {
         m_Thumbnail = new CyMediaDisViewThumbnail(this, this);
-        m_Thumbnail->setScene(this->scene());
+        m_Thumbnail->setWindowOpacity(0.2);
         d->upThumbanilSize();
         d->upThumbanilPosition();
         m_Thumbnail->hide(); // 初始隐藏

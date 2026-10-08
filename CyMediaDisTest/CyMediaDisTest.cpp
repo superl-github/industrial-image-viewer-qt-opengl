@@ -23,8 +23,20 @@ CyMediaDisTest::CyMediaDisTest(QWidget* parent)
 
     m_Setting = new QSettings(QString("CyMediaDisTest.ini"), QSettings::IniFormat, this);
     initGUI();
-    flushTranslate();
     initcap();
+
+    //语言
+    CyMedia::eLanguage cyLanguage = CyMedia::CHINESE;
+    QAction* upAct = ChineseAct;
+    auto language = m_Setting->value(QString("App/Language"));
+    if (language.isValid()) {
+        cyLanguage = (CyMedia::eLanguage)language.toUInt();
+    }
+    switch (cyLanguage) {
+    case CyMedia::CHINESE:ChineseAct->setChecked(true); upAct = ChineseAct; break;
+    case CyMedia::ENGLISH:EnglishAct->setChecked(true); upAct = EnglishAct; break;
+    }
+    on_act_language(upAct);
 }
 
 CyMediaDisTest::~CyMediaDisTest() {
@@ -195,7 +207,7 @@ void CyMediaDisTest::initGUI() {
     m_view->setLogCallback(&CyMediaDisTest::cyMediaLogCallBack, this);
     m_view->setlogLevel(CyMedia::LogLevel::DEBUG);
     m_view->setThumbnailAutoEnable(false);
-    m_view->setThumbnailEnable(false);
+    m_view->setThumbnailEnable(true);
     connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, &CyMediaDisTest::onViewUpPosPix);
     connect(m_view, &CyMedia::CyMediaDis::imageSizeChanged, this, &CyMediaDisTest::onImageSizeChanged);
     connect(m_view, &CyMedia::CyMediaDis::urlsDrop, this, &CyMediaDisTest::urlsDropOpe);
@@ -424,6 +436,21 @@ void CyMediaDisTest::initMenu() {
     //About
     ui_menu_help = new QMenu(this);
 
+    ui_menu_language = new QMenu(this);
+    ChineseAct = new QAction(this);
+    ChineseAct->setData(CyMedia::CHINESE);
+    ChineseAct->setCheckable(true);
+    ui_menu_language->addAction(ChineseAct);
+    EnglishAct = new QAction(this);
+    EnglishAct->setData(CyMedia::ENGLISH);
+    EnglishAct->setCheckable(true);
+    ui_menu_language->addAction(EnglishAct);
+    ui_actGroup_language = new QActionGroup(this);
+    ui_actGroup_language->addAction(ChineseAct);
+    ui_actGroup_language->addAction(EnglishAct);
+    connect(ui_actGroup_language, &QActionGroup::triggered, this, &CyMediaDisTest::on_act_language);
+    ui_menu_help->addMenu(ui_menu_language);
+
     ui_act_about = new QAction(this);
     ui_menu_help->addAction(ui_act_about);
     connect(ui_act_about, &QAction::triggered, this, &CyMediaDisTest::on_act_about);
@@ -483,6 +510,9 @@ void CyMediaDisTest::flushTranslate() {
     ui_grayscaleMeasurementAct->setText(tr("Grayscale measurement"));
 
     ui_menu_help->setTitle(tr("Help"));
+    ui_menu_language->setTitle(tr("Language"));
+    ChineseAct->setText("中文");
+    EnglishAct->setText("English");
     ui_act_about->setText(tr("about ") + m_app_name);
 
     ui_sigleTooItemAct->setText(tr("Sigle Draw"));
@@ -619,6 +649,44 @@ void CyMediaDisTest::on_act_grayscale_measure() {
         auto parentPos = pos();
         w->move(parentPos.x() + (width() - w->width()) / 2, parentPos.y() + (height() - w->height()) / 2);
     }
+}
+
+void CyMediaDisTest::on_act_language(QAction* act) {
+    if (!act) return;
+    CyMedia::eLanguage tLanguage = (CyMedia::eLanguage)act->data().toUInt();
+    //创建/移除的翻译器，先移除再创建，避免第一次移除nullptr
+    if (m_trans) qApp->removeTranslator(m_trans);
+    if (!m_trans) m_trans = new QTranslator(qApp);
+    //加载新文件
+    QString tsFilePath;
+    switch (tLanguage) {
+        case CyMedia::CHINESE: {
+            tsFilePath = QString("App_zh_CN.qm");
+        }break;
+
+        case CyMedia::ENGLISH: {
+            tsFilePath = QString("App_en_US.qm");
+        }break;
+    }
+    if (false == m_trans->load(tsFilePath, "./")) {
+        QMessageBox::warning(this, 
+            tr("error"),
+            tr("Failed to load language."),
+            QMessageBox::Ok);
+        //选中旧的Act
+        if (m_OldLangugeAct) {
+            ui_actGroup_language->blockSignals(true);
+            m_OldLangugeAct->setChecked(true);
+            ui_actGroup_language->blockSignals(false);
+        }
+        return;
+    }
+    m_OldLangugeAct = act;
+    flushTranslate();
+    m_view->setLanguage(tLanguage);
+    m_AboutQtDialog->flushTrans();
+    m_language = tLanguage;
+    m_Setting->setValue(QString("App/Language"), uint32_t(m_language));
 }
 
 void CyMediaDisTest::on_act_about() {
@@ -1285,11 +1353,12 @@ void CyMediaDisTest::thread_acquisition() {
     info.width = 1282;
     info.height = 1024;
     info.bit = 8;
-    info.format = CyMedia::RGB;
-    /*info.format = CyMedia::BAYERRG;
-    info.width *= 3;*/
+    info.format = m_test_yuv_format;
     info.upLenth();
     QImage img(info.width, info.height, QImage::Format_RGB888);
+
+    std::vector<uint8_t> yuvBuf;
+
     int framId = 0;
     while (m_bIsAcuistion) {
         t_CapFpsCount++;
@@ -1301,8 +1370,23 @@ void CyMediaDisTest::thread_acquisition() {
             t_CapFpsCount = 0;
             t_CapFpsTimer.restart();
         }
+        //生成 RGB888 测试图案
         genAnalogImage(m_analog_img_type, img, framId);
-        m_view->upImageData(info, img.bits());
+        //格式转换
+        info.format = m_test_yuv_format;
+        info.upLenth();
+        if (info.format == CyMedia::FOURCC_NV12) {
+            CyMediaTest::rgbToNV12(img.bits(), info.width, info.height, yuvBuf);
+            m_view->upImageData(info, yuvBuf.data());
+        }
+        else if (info.format == CyMedia::FOURCC_NV21) {
+            CyMediaTest::rgbToNV21(img.bits(), info.width, info.height, yuvBuf);
+            m_view->upImageData(info, yuvBuf.data());
+        }
+        else {
+            // RGB 直传
+            m_view->upImageData(info, img.bits());
+        }
         framId++;if (framId == INT_MAX) framId = 0;
         QThread::msleep(1);
     }

@@ -36,27 +36,26 @@ class QOpenGLVertexArrayObject;
  *  @note 缩略图仅在主视图缩放超过视口大小时自动显示，否则隐藏。
  *  @see CyMediaDisView.
  */
-class CyMediaDisViewThumbnail : public QOpenGLWidget, public QOpenGLFunctions {
+class CyMediaDisViewThumbnail : public QOpenGLWidget {
     Q_OBJECT
 public:
     CyMediaDisViewThumbnail(CyMediaDisView* parentView, QWidget* parent = nullptr);
     ~CyMediaDisViewThumbnail();
 
 public:
-    void setScene(QGraphicsScene* scene);
     void setViewRect(const QRectF& rect);
 
-    bool isBeingDragged();
+    bool isBeingDragged() const;
 
     void setThumbnailSize(const QSize& size);
 
-    void setBackgroundColor(QColor color);
     void setSelectColor(QColor color);
 
-    bool drawBorder();
-    void setDrawBorder(bool draw);
-    QColor borderColor();
-    void setBorderColor(QColor color);
+    bool drawImage() const;
+    void setDrawImage(bool draw);
+
+    QPen borderPen() const;
+    void setBorderPen(QPen pen);
 
 protected:
     void paintGL() override;          // 替代 paintEvent
@@ -74,7 +73,6 @@ private:
     static const int MIN_RECT_SIZE = 30;   // 最小边长（像素）
 
     CyMediaDisView* m_parentView = nullptr; // 指向主视图
-    QGraphicsScene* m_scene = nullptr;
     QOpenGLVertexArrayObject* m_vao = nullptr; //VAO无法共享，每个上下文要有自己的VAO
 
     QRectF mViewRect;
@@ -84,10 +82,10 @@ private:
     QRectF  m_pressThumbRect;         // 按下时场景矩形在缩略图上的映射（未钳制）
 
     bool mDragging = false;
-    bool mDrawColor = true;
 
-    QColor mBorderColor = QColor(0x00, 0xEE, 0x00);
+    bool m_draw_image = false;
+
+    QPen m_boder_pen;
     QColor mSelectRectColor = QColor(0x2a, 0xa3, 0xc6);
-    QColor mSelectRectColor_transparent = QColor(0x2a, 0xa3, 0xc6, 100);
-    QColor mBackGroundColor = Qt::lightGray;
+    QColor mSelectRectColor_transparent = QColor(0x2a, 0xa3, 0xc6, 60);
 };

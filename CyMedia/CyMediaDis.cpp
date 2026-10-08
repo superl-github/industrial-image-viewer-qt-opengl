@@ -268,7 +268,7 @@ namespace CyMedia {
     }
 
     void AboutQTDialog::flushTrans() {
-        ui_textBrowser->setHtml(tr(R"(
+        auto str = tr(R"(
 <html>
 <head>
 <style>
@@ -296,7 +296,8 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
 </p>
 </body>
 </html>
-)"));
+)");
+        ui_textBrowser->setHtml(str);
         ui_closeBtn->setText(tr("close"));
     }
 
@@ -1434,9 +1435,10 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
             m_bFirstUpImage = true;
         }
         
-        //四字节对齐处理 弃用
+        //四字节对齐处理
         int imageColorCount = 1;
         bool aliginOpe = opePara.aliginWidth != src_info.width || opePara.aliginHeight != src_info.height;
+        aliginOpe = false;//弃用，OpenGL里1字节对齐
         if (aliginOpe) {
             if (src_info.format == CyMedia::RGB) imageColorCount = 3;
             else if (src_info.format == CyMedia::RGBA) imageColorCount = 4;
@@ -1504,7 +1506,7 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
             posX = x;
             posY = y;
             if (false == upDataIsSlow()) return;
-            // 节流：仍然建议保留，避免鼠标拖动时每秒几百次
+            // 节流：避免鼠标拖动时每秒几百次
             static QElapsedTimer moveTimer;
             if (moveTimer.isValid() && moveTimer.elapsed() < 200) return;
             moveTimer.restart();
