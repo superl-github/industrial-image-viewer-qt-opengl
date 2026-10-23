@@ -85,6 +85,9 @@
     <ClCompile Include="CyMediaDisShow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CyMediaLicenseW.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CyMediaDis\drawItem\BaseItem.h">
@@ -169,6 +172,9 @@
       <Filter>CyMediaDis</Filter>
     </QtMoc>
     <QtMoc Include="CyMediaDisShow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="CyMediaLicenseW.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -259,7 +265,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <QtRcc Include="CyMediaDis\CyMediaDis.qrc">
+    <QtRcc Include="CyMedia.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
   </ItemGroup>

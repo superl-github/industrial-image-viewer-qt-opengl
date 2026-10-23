@@ -7,7 +7,8 @@
 #include <QElapsedTimer>
 
 CyMediaDisViewBckDraw::CyMediaDisViewBckDraw(QGraphicsView* view)
-    : QObject(nullptr) {
+    : QObject(nullptr)
+    , m_glslPathPrefixStr(":/qrc/glslSource/") {
     m_view = view;
     // 初始化消息框
     m_message_glslError = new QMessageBox(
@@ -412,7 +413,7 @@ CyMediaDisViewBckDraw::ShaderVariant CyMediaDisViewBckDraw::determineShaderVaria
 
 void CyMediaDisViewBckDraw::loadCommonShader() {
     if (false == m_commonFragmentSource.isEmpty()) return;
-    QFile file(":/CyMediaDis/glslSource/Fragment_Common.c");
+    QFile file(m_glslPathPrefixStr + "Fragment_Common.c");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream stream(&file);
         m_commonFragmentSource = stream.readAll();
@@ -435,7 +436,7 @@ QString CyMediaDisViewBckDraw::loadFragmentShaderSource(ShaderVariant variant) {
     case CyMediaDisViewBckDraw::YUV_SEMIPLANAR:fileName = "Fragment_YUV_SemiPlanar.c"; break;
     }
 
-    QFile file(QString(":/CyMediaDis/glslSource/") + fileName);
+    QFile file(m_glslPathPrefixStr + fileName);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning() << "Failed to load shader:" << fileName;
         return QString();
@@ -555,7 +556,7 @@ bool CyMediaDisViewBckDraw::initglsl(QOpenGLExtraFunctions* f) {
     QElapsedTimer timer;
     // 加载顶点着色器
     if (vertexShaderSource.isEmpty()) {
-        QFile vertexFile(":/CyMediaDis/glslSource/Vertex.c");
+        QFile vertexFile(m_glslPathPrefixStr + "Vertex.c");
         if (vertexFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream stream(&vertexFile);
             stream.setCodec("UTF-8");

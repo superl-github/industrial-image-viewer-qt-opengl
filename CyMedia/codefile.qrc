@@ -1,0 +1,19 @@
+<RCC>
+    <qresource prefix="/qrc">
+        <file>HTML/about_qt.html</file>
+        <file>translate/CyMedia_en_US.qm</file>
+        <file>translate/CyMedia_zh_CN.qm</file>
+        <file>ICONS/FlipH.png</file>
+        <file>ICONS/FlipH-hover.png</file>
+        <file>ICONS/FlipV.png</file>
+        <file>ICONS/FlipV-hover.png</file>
+        <file>ICONS/ZommIn.png</file>
+        <file>ICONS/ZoomIn-hover.png</file>
+        <file>ICONS/ZoomOut.png</file>
+        <file>ICONS/ZoomOut-hover.png</file>
+        <file>ICONS/zoonFit.png</file>
+        <file>ICONS/zoonFit-hover.png</file>
+        <file>ICONS/zoonRaw.png</file>
+        <file>ICONS/zoonRaw-hover.png</file>
+    </qresource>
+</RCC>

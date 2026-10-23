@@ -1,0 +1,23 @@
+Qt 许可声明
+=================
+
+本应用程序使用了 Qt 框架。
+Qt 的版权归 The Qt Company Ltd. 及其他贡献者所有。
+
+使用的 Qt 版本：Qt 5.14.2
+
+本应用程序中使用的 Qt 库和插件遵循
+GNU 宽通用公共许可证 2.1 版 (LGPLv2.1) 许可。
+
+针对本分发版本的相关条款：
+1. 本应用程序动态链接至 Qt 库。 
+Qt DLL 文件和 Qt 插件文件夹（platforms、imageformats、iconengines、styles、translations 等）
+作为独立文件进行分发。 
+最终用户可以替换或修改这些 Qt 库/插件文件，并将其与本应用程序重新链接。
+2. 本应用程序无需公开源代码。
+3. 未对原始 Qt 源代码进行任何修改。 
+您可以从以下地址获取未修改的 Qt 5.14.2 源代码：
+https://download.qt.io/archive/qt/5.14/5.14.2/submodules/
+
+LGPLv2.1 全文：
+https://www.gnu.org/licenses/lgpl-2.1.html

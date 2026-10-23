@@ -174,7 +174,6 @@ namespace CyMedia {
         };
         QMutex  m_dataLock;
         CyMedia::eLanguage m_language = ENGLISH;
-        QTranslator* m_trans = nullptr;
 
         //=====BaseUI/Item=====
         QColor mThemeColor = QColor(0x2a, 0xa3, 0xc6);
@@ -219,6 +218,8 @@ namespace CyMedia {
         QElapsedTimer clearImageTime;
 
         //=====UI/Tool=====
+        const QString m_IconPathPrefixStr;
+        const QString m_TranslatePathPrefixStr;
         QWidget* toolWidget = 0;      ///< Parent window of tool button
         SquareButton* zoomInButton = 0;      ///< 放大按钮
         SquareButton* zoomOutButton = 0;     ///< 缩小按钮
@@ -241,88 +242,6 @@ namespace CyMedia {
     private:
         bool guiIsInit = false;
     };
-
-    AboutQTDialog::AboutQTDialog(QWidget* parent /*= nullptr*/)
-        : QDialog(parent) {
-        ui_textBrowser = new QTextBrowser(this);
-        ui_textBrowser->setReadOnly(true);
-        ui_textBrowser->setOpenLinks(false);
-        ui_textBrowser->setOpenExternalLinks(false);
-        connect(ui_textBrowser, &QTextBrowser::anchorClicked, this, &AboutQTDialog::onAnchorClicked);
-        connect(ui_textBrowser->document(), &QTextDocument::contentsChanged,
-            this, &AboutQTDialog::adjustSizeToContent);
-
-        ui_closeBtn = new QPushButton(this);
-        connect(ui_closeBtn, &QPushButton::clicked, this, &QDialog::accept);
-        
-        QGridLayout* layout = new QGridLayout;
-        layout->addWidget(ui_textBrowser, 0, 0, 1, 2);
-        layout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Maximum), 1, 0, 1, 1);
-        layout->addWidget(ui_closeBtn, 1, 1, 1, 1);
-        layout->setSpacing(2);
-        layout->setContentsMargins(4, 4, 4, 4);
-        setLayout(layout);
-        setMinimumWidth(640);
-
-        flushTrans();
-    }
-
-    void AboutQTDialog::flushTrans() {
-        auto str = tr(R"(
-<html>
-<head>
-<style>
-body { font-family: "Microsoft YaHei",SimSun; font-size:12pt; }
-</style>
-</head>
-<body>
-<p>This application uses the Qt framework, Qt related libraries are governed by the GNU Lesser General Public License v2.1 (LGPLv2.1).</p>
-<p>Qt Copyright (C) The Qt Company Ltd. and contributors.<br/>
-Qt version used: Qt 5.14.2.
-</p>
-<p>Source code for Qt 5.14.2 can be obtained at:
-<a href="https://download.qt.io/archive/qt/5.14/5.14.2/submodules/">https://download.qt.io/archive/qt/5.14/5.14.2/submodules/</a>
-</p>
-<p>This application dynamically links Qt libraries. Qt library files (*.dll) and Qt plugin folders are distributed separately.<br/>
-End users may replace or update Qt related libraries and plugin files.<br/>
-<b>No modifications have been made to Qt source code.</b>
-</p>
-<p>The full GNU LGPLv2.1 license text is available at:
-<a href="https://www.gnu.org/licenses/lgpl-2.1.html">https://www.gnu.org/licenses/lgpl-2.1.html</a>
-</p>
-<hr/>
-<p style="font-size:smaller">
-For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_EN.txt and LGPL-2.1.txt in the installation directory.
-</p>
-</body>
-</html>
-)");
-        ui_textBrowser->setHtml(str);
-        ui_closeBtn->setText(tr("close"));
-    }
-
-    void AboutQTDialog::onAnchorClicked(const QUrl& url) {
-        QDesktopServices::openUrl(url);
-    }
-
-    void AboutQTDialog::adjustSizeToContent() {
-        // 获取文档理想尺寸
-        //QSize docSz = ui_textBrowser->document()->size().toSize();
-        QTextDocument* doc = ui_textBrowser->document();
-        doc->adjustSize(); // 强制执行布局计算
-        QSizeF docSizeF = doc->size();
-        QSize docSz = docSizeF.toSize();
-        // 预留边距
-        int w = qMax(640, docSz.width() + 20);
-        int h = docSz.height() + 2 + ui_closeBtn->height();
-
-        // 限制最大高度，文本过长时出现滚动条，防止窗口超出屏幕
-        const int maxH = 700;
-        h = qMin(h, maxH);
-
-        ui_textBrowser->setMaximumHeight(docSz.height() + 10);
-        this->resize(w, h);
-    }
 
     QWidget* CyMediaDis::imgShow(CyMedia::ImageShowInfo info, void* data, QString titleName /*= QString()*/) {
         //创建窗口
@@ -463,36 +382,37 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         return d->m_language;
     }
 
+    static QTranslator* s_trans = nullptr;
     bool CyMediaDis::setLanguage(CyMedia::eLanguage lang) {
-        if (d->m_trans) {
-            QCoreApplication::removeTranslator(d->m_trans);
-            delete d->m_trans;
-            d->m_trans = nullptr;
+        if (s_trans) {
+            QCoreApplication::removeTranslator(s_trans);
+            delete s_trans;
+            s_trans = nullptr;
         }
 
-        d->m_trans = new QTranslator(QCoreApplication::instance());
+        s_trans = new QTranslator(QCoreApplication::instance());
 
         QString qmFileName;
         switch (lang) {
             case ENGLISH: {
-                qmFileName = QString(":/ttranslations/CyMedia_en_US.qm");
+                qmFileName = d->m_TranslatePathPrefixStr + "CyMedia_en_US.qm";
             }break;
 
             case CHINESE: {
-                qmFileName = QString(":/ttranslations/CyMedia_zh_CN.qm");
+                qmFileName = d->m_TranslatePathPrefixStr + "CyMedia_zh_CN.qm";
             }break;
         }
 
-        if (d->m_trans->load(qmFileName)) {
-            QCoreApplication::installTranslator(d->m_trans);
+        if (s_trans->load(qmFileName)) {
+            QCoreApplication::installTranslator(s_trans);
             d->m_StretchWidget->flushTrans();
             d->mGrayTestWidget->flushTrans();
             d->drawmanager->flushTrans();
             return true;
         }
 
-        delete d->m_trans;
-        d->m_trans = nullptr;
+        delete s_trans;
+        s_trans = nullptr;
         return false;
     }
 
@@ -893,7 +813,9 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
 
     CyMediaDis::privateData::privateData(CyMediaDis* parent /*= nullptr*/)
         : QObject(parent)
-        , m_parent(parent) {
+        , m_parent(parent)
+        , m_IconPathPrefixStr(":/qrc/ICONS/")
+        , m_TranslatePathPrefixStr(":/qrc/translate/") {
 
         threadPare_ImageDataArray = new oneFrameBuffer[ImageStackMaxSize];
         threadPare_ImageDataReady = new std::atomic<bool>[ImageStackMaxSize];
@@ -1573,45 +1495,45 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         zoomInButton = new SquareButton(toolWidget);
         zoomInButton->setText("");
         zoomInButton->setToolTip(u8"Zoom In");
-        zoomInButton->setStyleSheet(
+        zoomInButton->setStyleSheet(QString(
             "QPushButton"
             "{"
-            "image:url(:/CyMediaDis/ICONS/ZommIn.png);"
+            "image:url(%1ZommIn.png);"
             "}"
             "QPushButton::hover"
             "{"
-            "image:url(:/CyMediaDis/ICONS/ZoomIn-hover.png);"
-            "}"
+            "image:url(%1ZoomIn-hover.png);"
+            "}").arg(m_IconPathPrefixStr)
         );
         connect(zoomInButton, &SquareButton::clicked, view, &CyMediaDisView::zoomIn);
 
         zoomOutButton = new SquareButton(toolWidget);
         zoomOutButton->setText("");
         zoomOutButton->setToolTip(u8"Zoom Out");
-        zoomOutButton->setStyleSheet(
+        zoomOutButton->setStyleSheet(QString(
             "QPushButton"
             "{"
-            "image:url(:/CyMediaDis/ICONS/ZoomOut.png);"
+            "image:url(%1ZoomOut.png);"
             "}"
             "QPushButton::hover"
             "{"
-            "image:url(:/CyMediaDis/ICONS/ZoomOut-hover.png);"
-            "}"
+            "image:url(%1ZoomOut-hover.png);"
+            "}").arg(m_IconPathPrefixStr)
         );
         connect(zoomOutButton, &SquareButton::clicked, view, &CyMediaDisView::zoomOut);
 
         zoomRawButton = new SquareButton(toolWidget);
         zoomRawButton->setText("");
         zoomRawButton->setToolTip(u8"Actual Size");
-        zoomRawButton->setStyleSheet(
+        zoomRawButton->setStyleSheet(QString(
             "QPushButton"
             "{"
-            "image:url(:/CyMediaDis/ICONS/zoonRaw.png);"
+            "image:url(%1zoonRaw.png);"
             "}"
             "QPushButton::hover"
             "{"
-            "image:url(:/CyMediaDis/ICONS/zoonRaw-hover.png);"
-            "}"
+            "image:url(%1zoonRaw-hover.png);"
+            "}").arg(m_IconPathPrefixStr)
         );
         connect(zoomRawButton, &SquareButton::clicked, m_parent,
             [this]() {
@@ -1621,45 +1543,45 @@ For other third-party components, please refer to LICENSE_QT_CN.txt, LICENSE_QT_
         zoomFitButton = new SquareButton(toolWidget);
         zoomFitButton->setText("");
         zoomFitButton->setToolTip(u8"Fit to window");
-        zoomFitButton->setStyleSheet(
+        zoomFitButton->setStyleSheet(QString(
             "QPushButton"
             "{"
-            "image:url(:/CyMediaDis/ICONS/zoonFit.png);"
+            "image:url(%1zoonFit.png);"
             "}"
             "QPushButton::hover"
             "{"
-            "image:url(:/CyMediaDis/ICONS/zoonFit-hover.png);"
-            "}"
+            "image:url(%1zoonFit-hover.png);"
+            "}").arg(m_IconPathPrefixStr)
         );
         connect(zoomFitButton, &SquareButton::clicked, view, &CyMediaDisView::zoomAuto);
 
         flipHButton = new SquareButton(toolWidget);
         flipHButton->setText("");
         flipHButton->setToolTip(u8"Flip Horizontal");
-        flipHButton->setStyleSheet(
+        flipHButton->setStyleSheet(QString(
             "QPushButton"
             "{"
-            "image:url(:/CyMediaDis/ICONS/FlipH.png);"
+            "image:url(%1FlipH.png);"
             "}"
             "QPushButton::hover"
             "{"
-            "image:url(:/CyMediaDis/ICONS/FlipH-hover.png);"
-            "}"
+            "image:url(%1FlipH-hover.png);"
+            "}").arg(m_IconPathPrefixStr)
         );
         connect(flipHButton, &SquareButton::clicked, view, &CyMediaDisView::hriMirror);
 
         flipVButton = new SquareButton(toolWidget);
         flipVButton->setText("");
         flipVButton->setToolTip(u8"Flip Vertical");
-        flipVButton->setStyleSheet(
+        flipVButton->setStyleSheet(QString(
             "QPushButton"
             "{"
-            "image:url(:/CyMediaDis/ICONS/FlipV.png);"
+            "image:url(%1FlipV.png);"
             "}"
             "QPushButton::hover"
             "{"
-            "image:url(:/CyMediaDis/ICONS/FlipV-hover.png);"
-            "}"
+            "image:url(%1FlipV-hover.png);"
+            "}").arg(m_IconPathPrefixStr)
         );
         connect(flipVButton, &SquareButton::clicked, view, &CyMediaDisView::verMirror);
 

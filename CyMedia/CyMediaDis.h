@@ -20,31 +20,8 @@
 #include <QPushButton>
 #include <QLayout>
 #include <QUrl>
-#include <QTextBrowser>
 
 namespace CyMedia {
-    /**
-     * @class CyMedia::AboutQTDialog.
-     * @brief Qt Lincense
-     */
-     class CYMEDIA_LIB AboutQTDialog : public QDialog {
-         Q_OBJECT
-     public:
-         explicit AboutQTDialog(QWidget* parent = nullptr);
-
-     public:
-         void flushTrans();
-
-     private slots:
-         void onAnchorClicked(const QUrl& url);
-         void adjustSizeToContent();
-
-     private:
-
-         QTextBrowser* ui_textBrowser = nullptr;
-         QPushButton* ui_closeBtn = nullptr;
-     };
-
     /**
      * @class CyMedia::CyMediaDis
      * @brief 高性能图像显示与交互控件（集成窗口，基于 Qt QFrame）。

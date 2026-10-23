@@ -522,9 +522,6 @@ void CyMediaDisTest::flushTranslate() {
     }
     ui_clearDrawItemAct->setText(tr("Clear Too Item"));
 
-    //Dialog
-    m_AboutQtDialog->flushTrans();
-
     //replay
     m_playFPSLabel->setText("Fps");
 }
@@ -661,14 +658,14 @@ void CyMediaDisTest::on_act_language(QAction* act) {
     QString tsFilePath;
     switch (tLanguage) {
         case CyMedia::CHINESE: {
-            tsFilePath = QString("App_zh_CN.qm");
+            tsFilePath += QString("App_zh_CN.qm");
         }break;
 
         case CyMedia::ENGLISH: {
-            tsFilePath = QString("App_en_US.qm");
+            tsFilePath += QString("App_en_US.qm");
         }break;
     }
-    if (false == m_trans->load(tsFilePath, "./")) {
+    if (false == m_trans->load(tsFilePath, qApp->applicationDirPath())) {
         QMessageBox::warning(this, 
             tr("error"),
             tr("Failed to load language."),
@@ -681,6 +678,7 @@ void CyMediaDisTest::on_act_language(QAction* act) {
         }
         return;
     }
+    qApp->installTranslator(m_trans);
     m_OldLangugeAct = act;
     flushTranslate();
     m_view->setLanguage(tLanguage);

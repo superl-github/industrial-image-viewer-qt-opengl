@@ -176,6 +176,7 @@ private:
     GLushort m_indicesArray[6] = { 0, 1, 2, 3, 2, 1 };
 
     bool mUseOpenGL = true;
+    const QString m_glslPathPrefixStr;
     ShaderVariant m_currentShaderType = ShaderVariant::None;
     QString m_commonFragmentSource;
     QOpenGLShaderProgram* m_shader_program = nullptr;

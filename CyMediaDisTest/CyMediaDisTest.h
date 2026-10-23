@@ -3,6 +3,7 @@
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaTestCommon.h"
 #include "CyMediaDis.h"
+#include "CyMediaLicenseW.h"
 #include "CyMediaParse/CyMediaImageParse.h"
 #include "CyMediaParse/CyMediaVideoParse.h"
 #include "CyMediaCalc/CyMediaFileFunc.h"
