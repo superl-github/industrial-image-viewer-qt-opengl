@@ -437,3 +437,5 @@ FodyWeavers.xsd
 *.msp
 /CyMediaDisTest/Icon
 /CyMedia.rar
+/架构练习.md
+/GenRelease.bat
