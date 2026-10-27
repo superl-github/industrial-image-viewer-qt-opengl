@@ -18,6 +18,170 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\View\Tools\CyMediaRecTimeW.h" />
+    <QtMoc Include="src\View\Tools\CyMediaDisGrayTest.h" />
+    <QtMoc Include="src\View\Tools\CyMediaDisGrayStretch.h" />
+    <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h" />
+    <ClInclude Include="3rdparty\stb_image\stb_image.h" />
+    <ClInclude Include="3rdparty\stb_image\stb_image_write.h" />
+    <ClInclude Include="src\Calculate\CalcColor.h" />
+    <ClInclude Include="src\Calculate\Calculate.h" />
+    <ClInclude Include="src\Calculate\CalcBayer.h" />
+    <ClInclude Include="src\Calculate\CalcMono.h" />
+    <ClInclude Include="src\Calculate\CalcRgb.h" />
+    <ClInclude Include="src\Calculate\CalcYUV.h" />
+    <ClInclude Include="src\common\CyMediaBaseDef.h" />
+    <ClInclude Include="src\Parse\VideoFormatRegistry.h" />
+    <ClInclude Include="src\Parse\ImageParse.h" />
+    <ClInclude Include="src\Parse\VideoParse.h" />
+    <ClInclude Include="src\Parse\VideoParseBase.h" />
+    <ClInclude Include="src\Parse\VideoParseFfmpeg.h" />
+    <ClInclude Include="src\Parse\VideoParseRaw.h" />
+    <ClInclude Include="src\Parse\FileFunc.h" />
+    <ClInclude Include="src\View\DrawItem\DrawItem.h" />
+    <ClInclude Include="src\View\DrawItem\ItemFactory.h" />
+    <QtMoc Include="src\View\Widgets\CyQCP.h" />
+    <QtMoc Include="src\View\Widgets\cycustomwidget.h" />
+    <QtMoc Include="src\View\DrawItem\ItemManager.h" />
+    <QtMoc Include="src\View\DrawItem\Item_Rect.h" />
+    <QtMoc Include="src\View\DrawItem\Item_Polygon.h" />
+    <QtMoc Include="src\View\DrawItem\Item_Point.h" />
+    <QtMoc Include="src\View\DrawItem\Item_Line.h" />
+    <QtMoc Include="src\View\DrawItem\Item_Ellipse.h" />
+    <QtMoc Include="src\View\DrawItem\DrawItemTool.h" />
+    <QtMoc Include="src\View\DrawItem\BaseItem.h" />
+    <QtMoc Include="src\View\Core\CyDMediaDisScen.h" />
+    <QtMoc Include="src\View\Core\CyMediaDisView.h" />
+    <QtMoc Include="src\View\Core\CyMediaDisViewBckDraw.h" />
+    <QtMoc Include="src\View\Core\CyMediaDisViewThumbnail.h" />
+    <ClInclude Include="src\View\DisLog.h" />
+    <QtMoc Include="src\View\LicenseW.h" />
+    <QtMoc Include="src\View\DisShow.h" />
+    <QtMoc Include="src\View\Display.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="3rdparty\qcustomplot\qcustomplot.cpp" />
+    <ClCompile Include="src\Calculate\CalcColor.cpp" />
+    <ClCompile Include="src\Calculate\Calculate.cpp" />
+    <ClCompile Include="src\Calculate\CalcBayer.cpp" />
+    <ClCompile Include="src\Calculate\CalcMono.cpp" />
+    <ClCompile Include="src\Calculate\CalcRgb.cpp" />
+    <ClCompile Include="src\Calculate\CalcYUV.cpp" />
+    <ClCompile Include="src\Parse\ImageParse.cpp" />
+    <ClCompile Include="src\Parse\VideoParse.cpp" />
+    <ClCompile Include="src\Parse\VideoParseBase.cpp" />
+    <ClCompile Include="src\Parse\VideoParseFfmpeg.cpp" />
+    <ClCompile Include="src\Parse\VideoParseRaw.cpp" />
+    <ClCompile Include="src\Parse\FileFunc.cpp" />
+    <ClCompile Include="src\View\Core\CyDMediaDisScen.cpp" />
+    <ClCompile Include="src\View\Core\CyMediaDisView.cpp" />
+    <ClCompile Include="src\View\Core\CyMediaDisViewBckDraw.cpp" />
+    <ClCompile Include="src\View\Core\CyMediaDisViewThumbnail.cpp" />
+    <ClCompile Include="src\View\DisLog.cpp" />
+    <ClCompile Include="src\View\DisShow.cpp" />
+    <ClCompile Include="src\View\LicenseW.cpp" />
+    <ClCompile Include="src\View\DrawItem\BaseItem.cpp" />
+    <ClCompile Include="src\View\DrawItem\DrawItem.cpp" />
+    <ClCompile Include="src\View\DrawItem\DrawItemTool.cpp" />
+    <ClCompile Include="src\View\DrawItem\ItemFactory.cpp" />
+    <ClCompile Include="src\View\DrawItem\ItemManager.cpp" />
+    <ClCompile Include="src\View\Tools\CyMediaDisGrayStretch.cpp" />
+    <ClCompile Include="src\View\Tools\CyMediaDisGrayTest.cpp" />
+    <ClCompile Include="src\View\Tools\CyMediaRecTimeW.cpp" />
+    <ClCompile Include="src\View\Widgets\CyQCP.cpp" />
+    <QtMoc Include="src\View\Widgets\cycustomwidget.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+    <QtMoc Include="src\View\DrawItem\Item_Rect.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+    <QtMoc Include="src\View\DrawItem\Item_Polygon.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+    <QtMoc Include="src\View\DrawItem\Item_Point.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+    <QtMoc Include="src\View\DrawItem\Item_Line.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+    <QtMoc Include="src\View\DrawItem\Item_Ellipse.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+    <QtMoc Include="src\View\Display.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="CyMedia.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtTranslation Include="resources\translate\CyMedia_en_US.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NoObsolete>
+      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NoObsolete>
+      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NoObsolete>
+      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NoObsolete>
+    </QtTranslation>
+    <QtTranslation Include="resources\translate\CyMedia_zh_CN.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
+    </QtTranslation>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{52077782-F739-44E3-ABDE-40765948B425}</ProjectGuid>
     <Keyword>QtVS_v304</Keyword>
@@ -125,7 +289,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
@@ -134,7 +298,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)3rdparty\ffmpeg\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -153,7 +317,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
@@ -161,7 +325,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
 copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)3rdparty\ffmpeg\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>avcodec-63.lib;avdevice-63.lib;avfilter-12.lib;avformat-63.lib;avutil-61.lib;swresample-7.lib;swscale-10.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -171,7 +335,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <QtMoc>
       <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
@@ -185,7 +349,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)3rdparty\ffmpeg\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -194,7 +358,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)CyMediaParse\FFMPEG\include\$(Platform)\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <QtMoc>
       <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
@@ -208,7 +372,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>avcodec-63.lib;avdevice-63.lib;avfilter-12.lib;avformat-63.lib;avutil-61.lib;swresample-7.lib;swscale-10.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)CyMediaParse\FFMPEG\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)3rdparty\ffmpeg\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
@@ -259,197 +423,6 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="CyMediaCalc\CyMediaCalc_Bayer.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMediaCalc_Mono.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMediaCalc_Rgb.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMediaCalc_YUV.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMediaCalc.cpp" />
-    <ClCompile Include="CyMediaCalc\CyMediaFileFunc.cpp" />
-    <ClCompile Include="CyMediaDisShow.cpp" />
-    <ClCompile Include="CyMediaDis\CyMediaDisLog.cpp" />
-    <ClCompile Include="CyMediaDis\CyMediaDisViewBckDraw.cpp" />
-    <ClCompile Include="CyMediaDis\CyMediaDisViewThumbnail.cpp" />
-    <ClCompile Include="CyMediaLicenseW.cpp" />
-    <ClCompile Include="CyMediaParse\CyMediaImageParse.cpp" />
-    <ClCompile Include="CyMediaParse\CyMediaVideoParse.cpp" />
-    <ClCompile Include="CyMediaParse\CyMediaVideoParseBase.cpp" />
-    <ClCompile Include="CyMediaParse\CyMediaVideoParseFfmpeg.cpp" />
-    <ClCompile Include="CyMediaParse\CyMediaVideoParseRaw.cpp" />
-    <QtMoc Include="CyMediaDis\cycustomwidget.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-    <QtMoc Include="CyMediaDis.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-    <ClCompile Include="CyMediaDis\CyDMediaDisBack.cpp" />
-    <ClCompile Include="CyMediaDis\CyDMediaDisScen.cpp" />
-    <ClCompile Include="CyMediaDis\CyMediaDisGrayStretch.cpp" />
-    <ClCompile Include="CyMediaDis\CyMediaDisGrayTest.cpp" />
-    <ClCompile Include="CyMediaDis\CyMediaDisView.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </ClCompile>
-    <ClCompile Include="CyMediaDis\CyMediaRecTimeW.cpp" />
-    <ClCompile Include="CyMediaDis\drawItem\BaseItem.cpp" />
-    <ClCompile Include="CyMediaDis\drawItem\CyDisDrawItem.cpp" />
-    <ClCompile Include="CyMediaDis\drawItem\DrawItemTool.cpp" />
-    <ClCompile Include="CyMediaDis\drawItem\ItemFactory.cpp" />
-    <ClCompile Include="CyMediaDis\drawItem\ItemManager.cpp" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Polygon.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-    <ClCompile Include="CyMediaDis\Histogram\CyQCP.cpp" />
-    <ClCompile Include="CyMediaDis\Histogram\qcustomplot.cpp" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Rect.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\Item_Point.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\Item_Line.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-    <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-    </QtMoc>
-  </ItemGroup>
-  <ItemGroup>
-    <QtMoc Include="CyMediaDis\drawItem\BaseItem.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="CyMediaBaseDef.h" />
-    <ClInclude Include="CyMediaCalc\CyMediaCalc_Bayer.h" />
-    <ClInclude Include="CyMediaCalc\CyMediaCalc_Mono.h" />
-    <ClInclude Include="CyMediaCalc\CyMediaCalc_Rgb.h" />
-    <ClInclude Include="CyMediaCalc\CyMediaCalc_YUV.h" />
-    <ClInclude Include="CyMediaCalc\CyMediaCalc.h" />
-    <ClInclude Include="CyMediaCalc\CyMediaFileFunc.h" />
-    <QtMoc Include="CyMediaDisShow.h" />
-    <ClInclude Include="CyMediaDis\CyMediaDisLog.h" />
-    <QtMoc Include="CyMediaLicenseW.h" />
-    <ClInclude Include="CyMediaParse\CyMediaFormatRegistry.h" />
-    <ClInclude Include="CyMediaParse\CyMediaImageParse.h" />
-    <ClInclude Include="CyMediaParse\CyMediaVideoParse.h" />
-    <ClInclude Include="CyMediaParse\CyMediaVideoParseBase.h" />
-    <ClInclude Include="CyMediaParse\CyMediaVideoParseFfmpeg.h" />
-    <ClInclude Include="CyMediaParse\CyMediaVideoParseRaw.h" />
-    <ClInclude Include="CyMediaParse\stb_image.h" />
-    <ClInclude Include="CyMediaParse\stb_image_write.h" />
-    <ClInclude Include="resource.h" />
-    <QtMoc Include="CyMediaDis\CyMediaDisViewThumbnail.h" />
-    <QtMoc Include="CyMediaDis\CyMediaDisViewBckDraw.h" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Polygon.h" />
-    <QtMoc Include="CyMediaDis.h" />
-    <QtMoc Include="CyMediaDis\cycustomwidget.h" />
-    <QtMoc Include="CyMediaDis\CyMediaRecTimeW.h" />
-    <QtMoc Include="CyMediaDis\CyMediaDisView.h" />
-    <QtMoc Include="CyMediaDis\CyMediaDisGrayTest.h" />
-    <QtMoc Include="CyMediaDis\CyMediaDisGrayStretch.h" />
-    <QtMoc Include="CyMediaDis\CyDMediaDisScen.h" />
-    <QtMoc Include="CyMediaDis\CyDMediaDisBack.h" />
-    <ClInclude Include="CyMediaDis\drawItem\CyDisDrawItem.h" />
-    <QtMoc Include="CyMediaDis\drawItem\DrawItemTool.h" />
-    <ClInclude Include="CyMediaDis\drawItem\ItemFactory.h" />
-    <QtMoc Include="CyMediaDis\Histogram\qcustomplot.h" />
-    <QtMoc Include="CyMediaDis\Histogram\CyQCP.h" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Rect.h" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Point.h" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Line.h" />
-    <QtMoc Include="CyMediaDis\drawItem\ItemManager.h" />
-    <QtMoc Include="CyMediaDis\drawItem\Item_Ellipse.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtRcc Include="CyMedia.qrc" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtTranslation Include="CyMedia_en_US.ts">
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)translate\</QmOutputDir>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">lrelease</BuildAction>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|x64'">lrelease</BuildAction>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">lrelease</BuildAction>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">lrelease</BuildAction>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NoObsolete>
-    </QtTranslation>
-    <QtTranslation Include="CyMedia_zh_CN.ts">
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)translate\</QmOutputDir>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">lrelease</BuildAction>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|x64'">lrelease</BuildAction>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">lrelease</BuildAction>
-      <BuildAction Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">lrelease</BuildAction>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NoObsolete>
-    </QtTranslation>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="CyMedia.rc" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
     <Import Project="$(QtMsBuild)\qt.targets" />

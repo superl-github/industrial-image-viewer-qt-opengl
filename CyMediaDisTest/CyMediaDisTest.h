@@ -2,11 +2,11 @@
 
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaTestCommon.h"
-#include "CyMediaDis.h"
-#include "CyMediaLicenseW.h"
-#include "CyMediaParse/CyMediaImageParse.h"
-#include "CyMediaParse/CyMediaVideoParse.h"
-#include "CyMediaCalc/CyMediaFileFunc.h"
+#include "View/Display.h"
+#include "View/LicenseW.h"
+#include "Parse/ImageParse.h"
+#include "Parse/VideoParse.h"
+#include "Parse/FileFunc.h"
 #include "cyplayslider.h"
 #include "CyPixelFormat.h"
 

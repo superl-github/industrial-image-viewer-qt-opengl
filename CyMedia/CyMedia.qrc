@@ -1,31 +1,30 @@
 <RCC>
-    <qresource prefix="/qrc">
-        <file>HTML/about_qt.html</file>
-        <file>translate/CyMedia_en_US.qm</file>
-        <file>translate/CyMedia_zh_CN.qm</file>
-        <file>ICONS/FlipH.png</file>
-        <file>ICONS/FlipH-hover.png</file>
-        <file>ICONS/FlipV.png</file>
-        <file>ICONS/FlipV-hover.png</file>
-        <file>ICONS/ZommIn.png</file>
-        <file>ICONS/ZoomIn-hover.png</file>
-        <file>ICONS/ZoomOut.png</file>
-        <file>ICONS/ZoomOut-hover.png</file>
-        <file>ICONS/zoonFit.png</file>
-        <file>ICONS/zoonFit-hover.png</file>
-        <file>ICONS/zoonRaw.png</file>
-        <file>ICONS/zoonRaw-hover.png</file>
-        <file>glslSource/Fragment.c</file>
-        <file>glslSource/Fragment_Bayer_AHD.c</file>
-        <file>glslSource/Fragment_Bayer_Bilinear.c</file>
-        <file>glslSource/Fragment_Bayer_Malvar.c</file>
-        <file>glslSource/Fragment_Common.c</file>
-        <file>glslSource/Fragment_Mono.c</file>
-        <file>glslSource/Fragment_Mono_OverSize.c</file>
-        <file>glslSource/Fragment_RGB.c</file>
-        <file>glslSource/Fragment_YUV_Packed.c</file>
-        <file>glslSource/Fragment_YUV_Planar.c</file>
-        <file>glslSource/Fragment_YUV_SemiPlanar.c</file>
-        <file>glslSource/Vertex.c</file>
+    <qresource prefix="/">
+        <file>resources/glslSource/Fragment_Bayer_AHD.c</file>
+        <file>resources/glslSource/Fragment_Bayer_Bilinear.c</file>
+        <file>resources/glslSource/Fragment_Bayer_Malvar.c</file>
+        <file>resources/glslSource/Fragment_Common.c</file>
+        <file>resources/glslSource/Fragment_Mono.c</file>
+        <file>resources/glslSource/Fragment_Mono_OverSize.c</file>
+        <file>resources/glslSource/Fragment_RGB.c</file>
+        <file>resources/glslSource/Fragment_YUV_Packed.c</file>
+        <file>resources/glslSource/Fragment_YUV_Planar.c</file>
+        <file>resources/glslSource/Fragment_YUV_SemiPlanar.c</file>
+        <file>resources/glslSource/Vertex.c</file>
+        <file>resources/HTML/about_qt.html</file>
+        <file>resources/ICONS/FlipH.png</file>
+        <file>resources/ICONS/FlipH-hover.png</file>
+        <file>resources/ICONS/FlipV.png</file>
+        <file>resources/ICONS/FlipV-hover.png</file>
+        <file>resources/ICONS/ZommIn.png</file>
+        <file>resources/ICONS/ZoomIn-hover.png</file>
+        <file>resources/ICONS/ZoomOut.png</file>
+        <file>resources/ICONS/ZoomOut-hover.png</file>
+        <file>resources/ICONS/zoonFit.png</file>
+        <file>resources/ICONS/zoonFit-hover.png</file>
+        <file>resources/ICONS/zoonRaw.png</file>
+        <file>resources/ICONS/zoonRaw-hover.png</file>
+        <file>resources/translate/CyMedia_en_US.qm</file>
+        <file>resources/translate/CyMedia_zh_CN.qm</file>
     </qresource>
 </RCC>

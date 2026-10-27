@@ -1,8 +1,8 @@
 #include "CyMediaDisTest.h"
-#include "CyMediaDis/CyMediaRecTimeW.h"
-#include "CyMediaDis/CyMediaDisGrayStretch.h"
-#include "CyMediaDis/CyMediaDisGrayTest.h"
-#include "CyMediaCalc/CyMediaCalc.h"
+#include "View/Tools/CyMediaRecTimeW.h"
+#include "View/Tools/CyMediaDisGrayStretch.h"
+#include "View/Tools/CyMediaDisGrayTest.h"
+#include "Calculate/CalcYUV.h"
 
 #include <random>
 #include <chrono>
@@ -66,7 +66,8 @@ void CyMediaDisTest::genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& 
     int height = img.height();
 
     switch (type) {
-        // ---------- 随机彩色 ----------
+
+    // ---------- 随机彩色 ----------
     case CyMediaTest::AnalogImage_RandomColor: {
         static std::random_device rd;
         static std::default_random_engine eng(rd());
@@ -79,9 +80,9 @@ void CyMediaDisTest::genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& 
                 pData[idx + 2] = distr(eng); // B
             }
         }
-        break;
-    }
-                                             // ---------- 移动棋盘格 ----------
+    }break;
+
+    // ---------- 移动棋盘格 ----------
     case CyMediaTest::AnalogImage_CheckerBoard: {
         int tileSize = 40;
         // 让棋盘随帧索引移动
@@ -97,10 +98,9 @@ void CyMediaDisTest::genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& 
                 pData[idx + 2] = val;
             }
         }
-        break;
-    }
+    }break;
 
-                                              // ---------- 动态正弦条纹（灰度） ----------
+    // ---------- 动态正弦条纹（灰度） ----------
     case CyMediaTest::AnalogImage_MovingStripes: {
         double freq = 0.02;
         double phase = frameIdx * 0.1;
@@ -114,9 +114,9 @@ void CyMediaDisTest::genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& 
                 pData[idx + 2] = gray;
             }
         }
-    }break;
+    } break;
 
-                                               // ---------- 等离子分形效果 ----------
+    // ---------- 等离子分形效果 ----------
     case CyMediaTest::AnalogImage_Plasma: {
         double t = frameIdx * 0.05;
         for (int h = 0; h < height; ++h) {
@@ -136,6 +136,7 @@ void CyMediaDisTest::genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& 
             }
         }
     }break;
+
     }
 }
 
