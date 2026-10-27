@@ -7,8 +7,9 @@
  */
 
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ParseTypes.h"
 
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>

@@ -1,7 +1,7 @@
 #include "CyMediaDisTest.h"
-#include "View/Tools/CyMediaRecTimeW.h"
-#include "View/Tools/CyMediaDisGrayStretch.h"
-#include "View/Tools/CyMediaDisGrayTest.h"
+#include "View/Widgets/CyMediaRecTimeW.h"
+#include "View/Widgets/CyMediaDisGrayStretch.h"
+#include "View/Widgets/CyMediaDisGrayTest.h"
 #include "Calculate/CalcYUV.h"
 
 #include <random>
@@ -213,7 +213,7 @@ void CyMediaDisTest::initGUI() {
     connect(m_view, &CyMedia::CyMediaDis::imageSizeChanged, this, &CyMediaDisTest::onImageSizeChanged);
     connect(m_view, &CyMedia::CyMediaDis::urlsDrop, this, &CyMediaDisTest::urlsDropOpe);
 
-    m_rawHeaderW = new CyMedia::CyMediaDis_GetRawInfoDialog(this);
+    m_rawHeaderW = new CyMedia::GetRawInfoDialog(this);
     m_image_func = new CyMedia::CyMediaImageParse();
 
     //Replay
@@ -1178,7 +1178,7 @@ void CyMediaDisTest::onOpenRawFile(QString filePath) {
 
         m_rawHeaderW->setOpenInfo(width, height, nbit, pixelFormat, pix_val_type, offset);
         auto re = m_rawHeaderW->exec();
-        if (CyMedia::CyMediaDis_GetRawInfoDialog::Accepted != re) {
+        if (CyMedia::GetRawInfoDialog::Accepted != re) {
             return;
         }
         //应用设置的信息

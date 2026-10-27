@@ -1,9 +1,10 @@
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/Export.h"
 
 #include <QDialog>
 #include <QTextBrowser>
 #include <QPushButton>
+#include <QUrl>
 
 namespace CyMedia {
     /**

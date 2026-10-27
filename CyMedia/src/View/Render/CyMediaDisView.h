@@ -11,7 +11,6 @@
  * @version 1.2.3
  *********************************************************************/
 #pragma once
-#include "CyMediaBaseDef.h"
 
 #include <QGraphicsView>
 #include <QWheelEvent>

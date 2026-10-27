@@ -5,7 +5,7 @@
 #include "View/Widgets/CyQCP.h"
 
 #include "View/Display.h"
-#include "View/DrawItem/DrawItem.h"
+#include "View/Annotation/DrawItem.h"
 
 #include <QThread>
 #include <QToolBar>

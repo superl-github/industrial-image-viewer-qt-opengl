@@ -1,6 +1,6 @@
 #include "CyMediaDisViewBckDraw.h"
 #include "Calculate/Calculate.h"
-#include "View/DisLog.h"
+#include "common/CyMediaLog.h"
 #include "CyMediaDisView.h"
 
 #include <QApplication>
@@ -474,7 +474,7 @@ bool CyMediaDisViewBckDraw::recompileShader(QOpenGLExtraFunctions* f, CyMediaDis
         delete newProgram;
         return false;
     }
-    CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::DEBUG, "GL Program Compilation time %lld ms\n", timer.elapsed());
+    CyMediaLog::instance().log_printf(CyMedia::LogLevel::DEBUG, "GL Program Compilation time %lld ms\n", timer.elapsed());
     // 替换当前程序
     f->glUseProgram(0);
     if (m_shader_program) delete m_shader_program;
@@ -616,7 +616,7 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
 
 void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height, float mulW, float mulH) {
     if (!pVBO) return;
-    CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::DEBUG, "%s: width:%d height:%d\n", __FUNCTION__, width, height);
+    CyMediaLog::instance().log_printf(CyMedia::LogLevel::DEBUG, "%s: width:%d height:%d\n", __FUNCTION__, width, height);
     float usetWmul = 1.0 / mulW;
     float usetHmul = 1.0 / mulH;
     m_verticesArray[0] = { QVector3D(0, 0, 0.0f),  QVector2D(0.0f, 0.0f) };  // v0
@@ -1067,7 +1067,7 @@ bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* d
     }
 
     if (result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED) {
-        CyMediaDisLog::instance().log_printf(CyMedia::LogLevel::WAR, "glClientWaitSync timeout after %lld ns, fallback to glFinish()", elapsed);
+        CyMediaLog::instance().log_printf(CyMedia::LogLevel::WAR, "glClientWaitSync timeout after %lld ns, fallback to glFinish()", elapsed);
         // 回退：强制完成所有命令，确保纹理上传完毕
         f->glFinish();
     }

@@ -8,7 +8,6 @@
  * @version 1.0
  *********************************************************************/
 #pragma once
-#include "CyMediaBaseDef.h"
 
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>

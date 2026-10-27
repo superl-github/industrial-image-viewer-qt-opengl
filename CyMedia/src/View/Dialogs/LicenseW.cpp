@@ -6,7 +6,7 @@
 
 namespace {
     constexpr auto kLgplUrl = "https://www.gnu.org/licenses/lgpl-2.1.html";
-    constexpr auto kTemplatePath = ":/qrc/HTML/about_qt.html";
+    constexpr auto kTemplatePath = ":/resources/HTML/about_qt.html";
 
     QString loadTemplate() {
         QFile f(QString::fromLatin1(kTemplatePath));

@@ -9,10 +9,11 @@
 * @version 1.0
 */
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ParseTypes.h"
 
-#include <xstring>
 #include <filesystem>
+#include <string>
+#include <vector>
 
 namespace CyMedia {
 

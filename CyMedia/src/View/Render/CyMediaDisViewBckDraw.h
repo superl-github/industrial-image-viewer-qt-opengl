@@ -8,7 +8,7 @@
  * @version 1.0
  *********************************************************************/
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ImageTypes.h"
 
 #include <QObject>
 #include <QGraphicsView>

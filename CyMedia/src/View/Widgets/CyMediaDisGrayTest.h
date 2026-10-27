@@ -15,8 +15,8 @@
  * @version 1.0
  */
 #pragma once
-#include "CyMediaBaseDef.h"
-#include "View/DrawItem/BaseItem.h"
+#include "common/ImageTypes.h"
+#include "View/Annotation/BaseItem.h"
 
 #include <QWidget>
 #include <QTabWidget>
@@ -26,6 +26,7 @@
 #include <QRadioButton>
 #include <QAction>
 #include <QCheckBox>
+#include <vector>
 
 namespace CyMedia {
     class CyMediaDis;

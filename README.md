@@ -1,5 +1,11 @@
 # CyMedia 图像/视频处理与显示库
 
+> 文档入口：
+> - 库级说明：[`CyMedia/README.md`](CyMedia/README.md)
+> - 显示模块：[`CyMedia/src/View/README.md`](CyMedia/src/View/README.md)
+> - 示例程序：[`CyMediaDisTest/README.md`](CyMediaDisTest/README.md)
+> - 发布包：[`GenRelease.bat`](GenRelease.bat)
+
 ## 1. 概述
 CyMedia 是一个基于 **Qt5.14.2** 和 **OpenGL** 的 C++ 库，主要用于：
 - **高性能图像显示**（支持 Mono、Bayer、RGB、RGBA、多种 YUV 格式，8/16/31 位深度）
@@ -10,6 +16,29 @@ CyMedia 是一个基于 **Qt5.14.2** 和 **OpenGL** 的 C++ 库，主要用于�
 
 内部采用 **双缓冲纹理**、**OpenGL 着色器** 实现高效渲染，并提供了灰度拉伸、颜色映射、Bayer 去马赛克、YUV 转换等图像增强功能，适用于**工业相机**、**医疗影像**、**科研采集**等场景。
 
+### 1.1 当前目录结构
+
+```text
+CyMedia/
+├── CyMedia/                 # 库工程（DLL）
+│   ├── src/
+│   │   ├── Calculate/       # 纯算法
+│   │   ├── Parse/           # 文件/视频解析
+│   │   ├── common/          # 公共定义 + 日志
+│   │   └── View/            # 显示模块：Pipeline / Render / Annotation / Widgets / Ui / Dialogs
+│   ├── resources/           # ICONS / GLSL / translate / colorMap
+│   ├── 3rdparty/            # FFmpeg / QCustomPlot / stb_image
+│   ├── CyMedia.vcxproj
+│   └── CMakeLists.txt
+├── CyMediaDisTest/          # 示例/冒烟测试程序
+├── OutFile/                 # 构建输出（已忽略）
+├── CMakeLists.txt           # CMake 顶层入口
+├── GenRelease.bat           # 发布包生成
+└── README.md
+```
+
+`View` 的内部结构、数据流和线程模型见 [`CyMedia/src/View/README.md`](CyMedia/src/View/README.md)。
+
 ---
 
 ## 2. 总体架构思维导图（Mermaid）
@@ -18,21 +47,27 @@ CyMedia 是一个基于 **Qt5.14.2** 和 **OpenGL** 的 C++ 库，主要用于�
 mindmap
   root((CyMedia))
     显示模块 CyMediaDis
-      ::: 集成显示、交互、工具
-      核心控件 CyMediaDisView
+      ::: 门面 + UI 适配
+      图像管线 Pipeline
+        帧队列 / 工作线程 / 统计 ImagePipeline
+        格式转换 ImageProcessor
+      渲染层 Render
+        核心控件 CyMediaDisView
         OpenGL 渲染后端 CyMediaDisViewBckDraw
         缩略图导航 CyMediaDisViewThumbnail
         场景管理 CyDMediaDisScen
-      图形绘制子系统
+      标注层 Annotation
         基类 BaseItem
         具体图形 Item_Rect / Item_Line / Item_Ellipse / Item_Point / Item_Polygon
         管理 ItemManager / DrawItemTool
-      辅助工具窗口
+      辅助控件 Widgets
         灰度拉伸 CyMediaDisGrayStretch
         灰度统计 CyMediaDisGrayTest
         录制时间 CyMediaRecTimeW
-      自定义控件
-        CyRangeSlider / CyCheckButton / SaveFileDoneDialog / waitWidget
+        自定义控件 cycustomwidget
+      界面外壳 Ui / Dialogs
+        DisplayToolBar / ImageShowWindow
+        RAW 参数 / License
     计算模块 CyMediaCalc
       ::: 直方图、拉伸参数、颜色转换
       单通道计算（Mono / Bayer / YUV / RGB）
@@ -43,7 +78,7 @@ mindmap
     解析模块 CyMediaParse
       ::: 文件读写
       图像解析/保存（Raw 格式，带 Header 或不带）
-      视频解析（预留）
+      视频解析（Raw / AVI / MP4，FFmpeg）
     公共定义 CyMediaBaseDef
       ::: 枚举、结构、回调
       像素格式 ePixType
@@ -53,7 +88,7 @@ mindmap
     依赖与配置
       Qt（Widgets, OpenGL, Core）
       OpenGL 3.3+
-      第三方库 QCustomPlot（直方图绘图）
+      FFmpeg / QCustomPlot / stb_image
 ```
 
 
@@ -62,6 +97,9 @@ mindmap
 
 ### 3.1 显示模块 (`CyMediaDis`)
 
+显示模块的分层、数据流、线程模型和公开 API 见
+[`CyMedia/src/View/README.md`](CyMedia/src/View/README.md)。
+
 该模块提供完整的图像显示窗口，集成渲染、交互、工具面板。
 
 #### 核心类
@@ -69,10 +107,13 @@ mindmap
 | 类名                      | 职责                                                         |
 | :------------------------ | :----------------------------------------------------------- |
 | `CyMediaDis`              | 主窗口控件（继承 QFrame），包含视图、工具栏、工具面板，对外提供图像更新、缩放、绘制、语言切换等接口。 |
+| `ImagePipeline` / `ImageProcessor` | 与 UI 无关的帧缓存、工作线程、格式转换、帧率统计与像素采样。 |
 | `CyMediaDisView`          | 基于 `QGraphicsView` 的视图控件，负责显示图像、处理鼠标/键盘交互（缩放、平移、旋转）、管理缩略图。 |
 | `CyMediaDisViewBckDraw`   | OpenGL 渲染引擎，管理纹理、着色器、双缓冲，支持多线程异步上传图像数据。 |
 | `CyMediaDisViewThumbnail` | 缩略图导航小窗口，显示全景缩略图并标识当前视口位置，支持拖拽定位。 |
 | `CyDMediaDisScen`         | `QGraphicsScene` 派生类，提供鼠标位置信号和文件拖放支持。    |
+| `DisplayToolBar`          | 顶部缩放/翻转工具栏，独立于门面实现。                       |
+| `CyMediaDis_GetRawInfoDialog` | RAW/裸视频参数对话框，头文件位于 `View/Dialogs/`。         |
 
 #### 主要功能接口（`CyMediaDis`）
 
@@ -93,8 +134,8 @@ mindmap
   `bool setColorMap(const QString& mapName)`
   内置多种伪彩色映射（类似 OpenCV 的 colormap）。
 - **绘图标注**
-  `QUuid addItem(ItemType type)` 添加图形，`removeItem` 删除，支持点、线、矩形、椭圆、多边形。
-  图形可选中、拖拽、调整大小，并发出 `itemDrawed` 等信号。
+  `QUuid addItem(ItemType type)` 添加图形，`removeItem` 清除图形，支持点、线、矩形、椭圆、多边形。
+  图形可选中、拖拽、修改尺寸，并发出 `itemDrawed` 等信号。
 - **缩略图**
   `void setThumbnailEnable(bool enable)` 控制缩略图是否启用。
 - **工具面板**
@@ -113,7 +154,7 @@ mindmap
 - **`BaseItem`**：所有图形项的抽象基类，提供唯一 ID、选择/聚焦、手柄控制、右键菜单框架。
 - **具体图形**：`Item_Rect`, `Item_Line`, `Item_Ellipse`, `Item_Point`, `Item_Polygon`，每个实现自己的绘制和交互逻辑。
 - **`ItemManager`**：管理所有图形项的增删改查，维护选中状态。
-- **`DrawItemTool`**：通过事件过滤器将鼠标事件转发给当前正在绘制的图形项，支持替换模式（绘制新图形自动移除旧图形）。
+- **`DrawItemTool`**：通过事件过滤器将鼠标事件转发给当前正在绘制的图形项，支持替换模式（绘制新图形时替换已有图形）。
 
 ------
 
@@ -138,7 +179,7 @@ mindmap
 
 ### 3.3 解析模块 (`CyMediaParse`)
 
-当前仅实现 `CyMdiaImageParse` 类，负责 Raw 图像的读写。
+当前实现 `CyMediaImageParse` 类，负责 Raw 图像的读写。
 
 | 静态方法                 | 说明                                                         |
 | :----------------------- | :----------------------------------------------------------- |
@@ -147,20 +188,24 @@ mindmap
 | `saveImageToFile`        | 保存图像数据为 Raw 或 BMP（可添加 Header）                   |
 | `getTypeByPath`          | 根据文件扩展名判断图像类型                                   |
 
-未来可扩展支持 TIFF、PNG、JPEG 等（可借助 Qt 的图像读写或第三方库）。
-
 ------
 
-### 3.4 公共定义 (`CyMediaBaseDef.h`)
+### 3.4 公共定义 (`common/`)
 
-包含所有核心枚举、结构体和回调类型：
+公共类型按职责分为独立头文件：
 
-- **`ePixType`**：像素格式，涵盖 MONO、BAYER、RGB、RGBA 及多种 YUV FOURCC。
-- **`ePixelValueType`**：像素数据类型（整型 / float / double）。
-- **`ImageShowInfo`**：描述单帧图像信息（宽高、位深、格式、数据长度），并提供辅助方法判断格式类别、计算行字节数等。
-- **`ImageColorOpe`**：包含 Bayer 插值方法、YUV 转换方法、拉伸类型，用于传递颜色处理参数。
-- **`DemosaicingMethod`**、**`YUVTransMethod`**、**`StretchType`** 等枚举。
-- **`LogCallback`**：日志回调函数类型。
+| 头文件 | 内容 |
+| --- | --- |
+| `common/ImageTypes.h` | `ePixType`、`ePixelValueType`、`ImageShowInfo`、`ImageColorOpe`、色彩参数与像素结构 |
+| `common/ParseTypes.h` | `ImageSuffix`、`VideoSuffix`、`ParseResult`、`VideoParseInfo`、`FrameCallback` |
+| `common/Log.h` | `LogLevel`、`LogCallback` |
+| `common/Language.h` | `eLanguage` |
+| `common/Version.h` | `VERSION` |
+| `common/Export.h` | `CYMEDIA_LIB` 导入/导出宏 |
+| `common/CyMediaBaseDef.h` | 聚合头，一次引入上述定义 |
+
+`Calculate`、`Parse`、`View` 分别引用所需的最小头文件；需要完整公共定义时使用
+`CyMediaBaseDef.h`。
 
 ------
 
@@ -182,7 +227,7 @@ mindmap
 cpp
 
 ```
-#include "CyMediaDis.h"
+#include "View/Display.h"
 
 // 1. 创建显示控件
 CyMedia::CyMediaDis* display = new CyMedia::CyMediaDis(parent);
@@ -211,13 +256,13 @@ cpp
 display->setDrawMode(CyDisDrawItem::ItemType::Rectangle);
 
 // 用户绘制完成后，会发出 itemDrawed 信号
-connect(display, &CyMedia::CyMediaDis::itemDrawed, [](QUuid id){
+connect(display, &CyMedia::CyMediaDis::itemDrawed, [display](QUuid id){
     // 获取该图形项
     auto item = display->getItem(id);
     // 可获取其路径或矩形区域
 });
 
-// 移除所有图形
+// 清空所有图形
 display->clearItem();
 ```
 
@@ -232,7 +277,7 @@ cpp
 
 std::vector<double> histogram;
 double maxVal, minVal, ave;
-CyMediaCalc::computeGrayHistogram(data, info, nullptr, false, 
+CyMediaCalc::computeGrayHistogram(data, info, nullptr, false,
                                    histogram, &maxVal, &minVal, &ave);
 
 // 自动计算拉伸参数
@@ -256,7 +301,7 @@ display->setStreaChPara(start, end);
    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
    ```
 
-   
+
 
    并在渲染线程中使用 `CyMediaDisViewBckDraw::createSharedContext()` 创建共享上下文。
 
@@ -274,7 +319,7 @@ display->setStreaChPara(start, end);
 5. **性能调优**
 
    - 对于高分辨率图像，建议启用 OpenGL（默认开启）。
-   - 若图像更新频繁，可使用 `setTrueDataFps(true)` 统计真实数据帧率（而非渲染帧率）。
+   - 若图像更新频繁，可设置 `setImageStackNum(3~10)` 或使用 `setDirectUpImage(true)` 降低单帧延迟。
 
 6. **日志回调**
    可通过 `setLogCallback` 注册日志回调，便于调试。
@@ -283,16 +328,80 @@ display->setStreaChPara(start, end);
 
 ## 6. 编译与依赖
 
-- **Qt**: 5.14.2 或更高版本（需包含 Widgets, OpenGL, Core 模块）。
-- **OpenGL**: 支持 3.3 Core Profile。
-- **编译器**: MSVC 2019+ / GCC 7+ / Clang 10+。
-- **第三方**: QCustomPlot（已包含在源码中，用于直方图绘制）。
-- **构建**：使用 CMake 或 qmake，需定义 `CYMEDIA_EXPORT` 宏以控制符号导出（Windows DLL）。
+- **Qt**: 5.14.2（需包含 Core、Gui、Widgets、OpenGL 模块）。
+- **OpenGL**: 3.3 Core Profile。
+- **编译器**: MSVC 2022（v143）；CMake 构建当前仅支持 Windows。
+- **第三方**: FFmpeg（`CyMedia/3rdparty/ffmpeg`）、QCustomPlot、stb_image（均在仓库内）。
+- **导出宏**：库目标定义 `CYMEDIA_EXPORT`；使用方不要定义该宏。
+
+### 6.1 Visual Studio
+
+打开根目录 `CyMedia.sln`，选择 `Debug|x64` / `Release|x64` / `Win32` 构建：
+
+```text
+OutFile/x64/Release/CyMedia.dll
+OutFile/x64/Release/CyMedia.lib
+OutFile/CyMediaDisTest/x64/Release/CyMediaDisTest.exe
+```
+
+VS 工程由 Qt VS Tools（`QtMsBuild`）驱动，需要本机安装 Qt VS Tools 并配置 Qt 5.14.2。
+
+### 6.2 CMake
+
+在仓库根目录执行：
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+      -DCMAKE_PREFIX_PATH="C:/Qt/Qt5.14.2/5.14.2/msvc2017_64"
+cmake --build build --config Release --parallel
+```
+
+Win32：
+
+```powershell
+cmake -S . -B build-win32 -G "Visual Studio 17 2022" -A Win32 `
+      -DCMAKE_PREFIX_PATH="C:/Qt/Qt5.14.2/5.14.2/msvc2017"
+cmake --build build-win32 --config Release --parallel
+```
+
+选项：
+
+| 选项 | 默认 | 说明 |
+| --- | --- | --- |
+| `CYMEDIA_BUILD_DEMO` | `ON` | 构建 `CyMediaDisTest` |
+| `CYMEDIA_DEPLOY_QT` | `OFF` | Demo 构建后执行 `windeployqt` |
+| `CMAKE_PREFIX_PATH` | — | Qt 安装目录 |
+
+只构建库：追加 `-DCYMEDIA_BUILD_DEMO=OFF`。
+
+CMake 目标：
+
+- `CyMedia`：`SHARED` 库，自动处理 `AUTOMOC/AUTORCC/AUTOUIC`；
+- `CyMediaDisTest`：可选 Demo，自动复制 `CyMedia.dll`、FFmpeg DLL 和翻译文件到输出目录。
+
+详细命令、安装规则和 CMake 选项见 [`CyMedia/README.md`](CyMedia/README.md#4-构建)。
+
+### 6.3 发布包
+
+```bat
+GenRelease.bat          :: 增量生成
+GenRelease.bat clean    :: 清空输出目录后生成
+```
+
+输出到 `OutFile/CyMedia/`，包含 `include/`、`Bin/`、`Lib/`、`Demo/`。`Demo/` 提供
+`CyMediaDisTest` 源码与 `CMakeLists.txt`，可在包内直接构建。详见
+[`CyMedia/README.md`](CyMedia/README.md#7-发布包)。
 
 ------
 
-## 7. 未来扩展
+## 7. 设计约定
 
-- **视频模块**：`CyMdiaVideo` 预留接口，待实现视频文件解码（可集成 FFmpeg）。
-- **更多图像格式**：完善 `CyMediaParse` 支持 TIFF、PNG、JPEG。
-- **GPU 加速**：部分计算（如直方图）可迁移至 OpenCL 或 CUDA。
+1. **模块方向**：`View` 依赖 `common`、`Calculate`、`Parse`；后三者不依赖 `View`。
+2. **公共类型**：图像类型、解析类型、日志、语言、版本、导出宏分别位于 `common/` 下的独立头文件；`CyMediaBaseDef.h` 是聚合入口。
+3. **服务端**：`ImagePipeline` 负责帧队列、线程、统计和像素采样；`ImageProcessor` 负责 CPU 格式转换。
+4. **渲染层**：`Render` 负责视图、缩略图、场景与 OpenGL 纹理/着色器。
+5. **标注层**：`Annotation` 负责图形项、选中状态和绘制工具；常规业务使用 UUID API。
+6. **界面层**：`Ui`、`Widgets`、`Dialogs` 提供工具栏、面板与对话框。
+7. **构建**：VS 工程与 CMake 共用同一份源文件；发布脚本生成头文件、库、DLL、ColorMap 和 Demo 源码包。
+
+------

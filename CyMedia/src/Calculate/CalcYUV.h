@@ -1,5 +1,7 @@
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ImageTypes.h"
+
+#include <vector>
 
 using namespace CyMedia;
 namespace CyMediaCalc_YUV {

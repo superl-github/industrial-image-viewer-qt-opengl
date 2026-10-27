@@ -20,7 +20,10 @@
 #pragma once
 #include "DrawItem.h"
 
+#include <QFont>
 #include <QGraphicsObject>
+#include <QMap>
+#include <QTimer>
 
 class QPointF;
 class QGraphicsSimpleTextItem;

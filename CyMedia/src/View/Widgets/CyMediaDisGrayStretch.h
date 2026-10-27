@@ -44,13 +44,15 @@
  * @version 1.0
  */
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ImageTypes.h"
 
 #include <QWidget>
 #include <QTabWidget>
 #include <QSpinBox>
 #include <QComboBox>
 #include <QBoxLayout>
+#include <QColor>
+#include <QPointF>
 
 class CyMediaDisGrayStretch : public QWidget {
     Q_OBJECT

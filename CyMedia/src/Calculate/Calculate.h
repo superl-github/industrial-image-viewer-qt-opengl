@@ -1,7 +1,7 @@
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ImageTypes.h"
 
-#include <Vector>
+#include <vector>
 
 using namespace CyMedia;
 namespace CyMediaCalc {

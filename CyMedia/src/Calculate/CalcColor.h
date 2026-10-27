@@ -1,6 +1,6 @@
 // CalcColor.h
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ImageTypes.h"
 
 using namespace CyMedia;
 

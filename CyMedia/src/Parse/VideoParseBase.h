@@ -1,6 +1,6 @@
 // CyMediaVideoParseBase.h
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "common/ParseTypes.h"
 #include <filesystem>
 #include <vector>
 #include <memory>

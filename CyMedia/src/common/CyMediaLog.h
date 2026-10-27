@@ -1,13 +1,15 @@
 #pragma once
-#include "CyMediaBaseDef.h"
+#include "Log.h"
 
-class CyMediaDisLog{
+#include <string>
+
+class CyMediaLog{
 public:
     // 获取单例实例（线程安全）
-    static CyMediaDisLog& instance();
+    static CyMediaLog& instance();
     // 禁止拷贝和赋值
-    CyMediaDisLog(const CyMediaDisLog&) = delete;
-    CyMediaDisLog& operator=(const CyMediaDisLog&) = delete;
+    CyMediaLog(const CyMediaLog&) = delete;
+    CyMediaLog& operator=(const CyMediaLog&) = delete;
 
 public:
     void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
@@ -26,7 +28,7 @@ public:
     void log_printf_Critical(const char* fmt, ...);
 
 private:
-    CyMediaDisLog();
+    CyMediaLog();
 
 private:
     CyMedia::LogCallback m_logCallback = nullptr;

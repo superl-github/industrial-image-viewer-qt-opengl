@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="src\View\Tools\CyMediaRecTimeW.h" />
-    <QtMoc Include="src\View\Tools\CyMediaDisGrayTest.h" />
-    <QtMoc Include="src\View\Tools\CyMediaDisGrayStretch.h" />
+    <QtMoc Include="src\View\Widgets\CyMediaRecTimeW.h" />
+    <QtMoc Include="src\View\Widgets\CyMediaDisGrayTest.h" />
+    <QtMoc Include="src\View\Widgets\CyMediaDisGrayStretch.h" />
     <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image_write.h" />
@@ -32,6 +32,12 @@
     <ClInclude Include="src\Calculate\CalcRgb.h" />
     <ClInclude Include="src\Calculate\CalcYUV.h" />
     <ClInclude Include="src\common\CyMediaBaseDef.h" />
+    <ClInclude Include="src\common\Export.h" />
+    <ClInclude Include="src\common\Version.h" />
+    <ClInclude Include="src\common\Language.h" />
+    <ClInclude Include="src\common\Log.h" />
+    <ClInclude Include="src\common\ImageTypes.h" />
+    <ClInclude Include="src\common\ParseTypes.h" />
     <ClInclude Include="src\Parse\VideoFormatRegistry.h" />
     <ClInclude Include="src\Parse\ImageParse.h" />
     <ClInclude Include="src\Parse\VideoParse.h" />
@@ -39,25 +45,30 @@
     <ClInclude Include="src\Parse\VideoParseFfmpeg.h" />
     <ClInclude Include="src\Parse\VideoParseRaw.h" />
     <ClInclude Include="src\Parse\FileFunc.h" />
-    <ClInclude Include="src\View\DrawItem\DrawItem.h" />
-    <ClInclude Include="src\View\DrawItem\ItemFactory.h" />
+    <ClInclude Include="src\View\Annotation\DrawItem.h" />
+    <ClInclude Include="src\View\Annotation\ItemFactory.h" />
+    <ClInclude Include="src\View\DisplayTypes.h" />
+    <ClInclude Include="src\View\Pipeline\ImagePipeline.h" />
+    <ClInclude Include="src\View\Pipeline\ImageProcessor.h" />
     <QtMoc Include="src\View\Widgets\CyQCP.h" />
     <QtMoc Include="src\View\Widgets\cycustomwidget.h" />
-    <QtMoc Include="src\View\DrawItem\ItemManager.h" />
-    <QtMoc Include="src\View\DrawItem\Item_Rect.h" />
-    <QtMoc Include="src\View\DrawItem\Item_Polygon.h" />
-    <QtMoc Include="src\View\DrawItem\Item_Point.h" />
-    <QtMoc Include="src\View\DrawItem\Item_Line.h" />
-    <QtMoc Include="src\View\DrawItem\Item_Ellipse.h" />
-    <QtMoc Include="src\View\DrawItem\DrawItemTool.h" />
-    <QtMoc Include="src\View\DrawItem\BaseItem.h" />
-    <QtMoc Include="src\View\Core\CyDMediaDisScen.h" />
-    <QtMoc Include="src\View\Core\CyMediaDisView.h" />
-    <QtMoc Include="src\View\Core\CyMediaDisViewBckDraw.h" />
-    <QtMoc Include="src\View\Core\CyMediaDisViewThumbnail.h" />
-    <ClInclude Include="src\View\DisLog.h" />
-    <QtMoc Include="src\View\LicenseW.h" />
-    <QtMoc Include="src\View\DisShow.h" />
+    <QtMoc Include="src\View\Annotation\ItemManager.h" />
+    <QtMoc Include="src\View\Annotation\Item_Rect.h" />
+    <QtMoc Include="src\View\Annotation\Item_Polygon.h" />
+    <QtMoc Include="src\View\Annotation\Item_Point.h" />
+    <QtMoc Include="src\View\Annotation\Item_Line.h" />
+    <QtMoc Include="src\View\Annotation\Item_Ellipse.h" />
+    <QtMoc Include="src\View\Annotation\DrawItemTool.h" />
+    <QtMoc Include="src\View\Annotation\BaseItem.h" />
+    <QtMoc Include="src\View\Render\CyDMediaDisScen.h" />
+    <QtMoc Include="src\View\Render\CyMediaDisView.h" />
+    <QtMoc Include="src\View\Render\CyMediaDisViewBckDraw.h" />
+    <QtMoc Include="src\View\Render\CyMediaDisViewThumbnail.h" />
+    <ClInclude Include="src\common\CyMediaLog.h" />
+    <QtMoc Include="src\View\Dialogs\LicenseW.h" />
+    <QtMoc Include="src\View\Dialogs\RawInfoDialog.h" />
+    <QtMoc Include="src\View\Ui\ImageShowWindow.h" />
+    <QtMoc Include="src\View\Ui\DisplayToolBar.h" />
     <QtMoc Include="src\View\Display.h" />
   </ItemGroup>
   <ItemGroup>
@@ -74,21 +85,25 @@
     <ClCompile Include="src\Parse\VideoParseFfmpeg.cpp" />
     <ClCompile Include="src\Parse\VideoParseRaw.cpp" />
     <ClCompile Include="src\Parse\FileFunc.cpp" />
-    <ClCompile Include="src\View\Core\CyDMediaDisScen.cpp" />
-    <ClCompile Include="src\View\Core\CyMediaDisView.cpp" />
-    <ClCompile Include="src\View\Core\CyMediaDisViewBckDraw.cpp" />
-    <ClCompile Include="src\View\Core\CyMediaDisViewThumbnail.cpp" />
-    <ClCompile Include="src\View\DisLog.cpp" />
-    <ClCompile Include="src\View\DisShow.cpp" />
-    <ClCompile Include="src\View\LicenseW.cpp" />
-    <ClCompile Include="src\View\DrawItem\BaseItem.cpp" />
-    <ClCompile Include="src\View\DrawItem\DrawItem.cpp" />
-    <ClCompile Include="src\View\DrawItem\DrawItemTool.cpp" />
-    <ClCompile Include="src\View\DrawItem\ItemFactory.cpp" />
-    <ClCompile Include="src\View\DrawItem\ItemManager.cpp" />
-    <ClCompile Include="src\View\Tools\CyMediaDisGrayStretch.cpp" />
-    <ClCompile Include="src\View\Tools\CyMediaDisGrayTest.cpp" />
-    <ClCompile Include="src\View\Tools\CyMediaRecTimeW.cpp" />
+    <ClCompile Include="src\View\Render\CyDMediaDisScen.cpp" />
+    <ClCompile Include="src\View\Render\CyMediaDisView.cpp" />
+    <ClCompile Include="src\View\Render\CyMediaDisViewBckDraw.cpp" />
+    <ClCompile Include="src\View\Render\CyMediaDisViewThumbnail.cpp" />
+    <ClCompile Include="src\View\Pipeline\ImagePipeline.cpp" />
+    <ClCompile Include="src\View\Pipeline\ImageProcessor.cpp" />
+    <ClCompile Include="src\common\CyMediaLog.cpp" />
+    <ClCompile Include="src\View\Ui\ImageShowWindow.cpp" />
+    <ClCompile Include="src\View\Ui\DisplayToolBar.cpp" />
+    <ClCompile Include="src\View\Dialogs\LicenseW.cpp" />
+    <ClCompile Include="src\View\Dialogs\RawInfoDialog.cpp" />
+    <ClCompile Include="src\View\Annotation\BaseItem.cpp" />
+    <ClCompile Include="src\View\Annotation\DrawItem.cpp" />
+    <ClCompile Include="src\View\Annotation\DrawItemTool.cpp" />
+    <ClCompile Include="src\View\Annotation\ItemFactory.cpp" />
+    <ClCompile Include="src\View\Annotation\ItemManager.cpp" />
+    <ClCompile Include="src\View\Widgets\CyMediaDisGrayStretch.cpp" />
+    <ClCompile Include="src\View\Widgets\CyMediaDisGrayTest.cpp" />
+    <ClCompile Include="src\View\Widgets\CyMediaRecTimeW.cpp" />
     <ClCompile Include="src\View\Widgets\CyQCP.cpp" />
     <QtMoc Include="src\View\Widgets\cycustomwidget.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
@@ -100,7 +115,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="src\View\DrawItem\Item_Rect.cpp">
+    <QtMoc Include="src\View\Annotation\Item_Rect.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -110,7 +125,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="src\View\DrawItem\Item_Polygon.cpp">
+    <QtMoc Include="src\View\Annotation\Item_Polygon.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -120,7 +135,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="src\View\DrawItem\Item_Point.cpp">
+    <QtMoc Include="src\View\Annotation\Item_Point.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -130,7 +145,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="src\View\DrawItem\Item_Line.cpp">
+    <QtMoc Include="src\View\Annotation\Item_Line.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -140,7 +155,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </QtMoc>
-    <QtMoc Include="src\View\DrawItem\Item_Ellipse.cpp">
+    <QtMoc Include="src\View\Annotation\Item_Ellipse.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>

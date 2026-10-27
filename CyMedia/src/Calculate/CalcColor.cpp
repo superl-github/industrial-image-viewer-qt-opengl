@@ -1,5 +1,8 @@
 #include "CalcColor.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace CyMediaCalc {
 
 RgbPixelF srgb2linear(RgbPixelF& srgb) {

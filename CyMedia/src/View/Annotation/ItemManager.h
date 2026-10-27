@@ -38,7 +38,7 @@ namespace CyDisDrawItem {
         int itemCount();
         BaseItem* getItem(QUuid id);
 
-        QList<BaseItem*>& items() { return m_items; }
+        const QList<BaseItem*>& items() { return m_items; }
         QUuid selectedItem() const;
         QUuid getLastItem();
 

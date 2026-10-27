@@ -1,7 +1,9 @@
 #pragma once
-#include "common\CyMediaBaseDef.h"
+#include "common/ParseTypes.h"
 
 #include <QObject>
+#include <QString>
+#include <vector>
 
 namespace CyMedia {
     class CYMEDIA_LIB FileFunc : public QObject {

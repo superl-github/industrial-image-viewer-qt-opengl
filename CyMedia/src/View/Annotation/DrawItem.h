@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "CyMediaBaseDef.h"
+#include "View/DisplayTypes.h"
 
 #include <vector>
 
@@ -25,16 +25,6 @@
 #include <QPainter>
 
 namespace CyDisDrawItem {
-    enum ItemType {
-        Invalid = 0,
-        Point,
-        Rectangle,
-        Line,
-        Ellipse,
-        Polygon,
-        //Text, Image...
-    };
-
     enum HandlePosition {
         TopLeft = 0, Top, TopRight,
         Left, Center, Right,

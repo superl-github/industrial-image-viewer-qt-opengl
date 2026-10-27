@@ -3,7 +3,8 @@
 #include "ui_CyMediaDisTest.h"
 #include "CyMediaTestCommon.h"
 #include "View/Display.h"
-#include "View/LicenseW.h"
+#include "View/Dialogs/RawInfoDialog.h"
+#include "View/Dialogs/LicenseW.h"
 #include "Parse/ImageParse.h"
 #include "Parse/VideoParse.h"
 #include "Parse/FileFunc.h"
@@ -114,7 +115,7 @@ private:
     QAction* m_OldLangugeAct = nullptr;
     Ui::CyMediaDisTestClass ui;
     CyMedia::CyMediaDis* m_view = nullptr;
-    CyMedia::CyMediaDis_GetRawInfoDialog* m_rawHeaderW = nullptr;
+    CyMedia::GetRawInfoDialog* m_rawHeaderW = nullptr;
     CyMedia::CyMediaImageParse* m_image_func;
 
     //status

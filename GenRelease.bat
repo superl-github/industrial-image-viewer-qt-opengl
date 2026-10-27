@@ -1,83 +1,199 @@
 @echo off
+setlocal EnableExtensions EnableDelayedExpansion
 
-::DirVariable
+:: ============================================================================
+:: CyMedia release package generator
+:: Usage:
+::   GenRelease.bat        Incremental package
+::   GenRelease.bat clean  Remove old package first
+:: ============================================================================
+
 set "batDir=%~dp0"
-set "LIBSrcDir=%batDir%\OutFile"
-set "GenDir=%batDir%\OutFile\CyMedia"
-set "GenDir_include=%GenDir%\include\"
+if "%batDir:~-1%"=="\" set "batDir=%batDir:~0,-1%"
 
-set "GenDir_Bin=%GenDir%\Bin\"
-set "GenDir_Bin_32=%GenDir%\Bin\Win32"
-set "GenDir_Bin_64=%GenDir%\Bin\x64"
+set "srcRoot=%batDir%\CyMedia"
+set "demoRoot=%batDir%\CyMediaDisTest"
+set "buildRoot=%batDir%\OutFile"
 
-set "GenDir_Lib_32=%GenDir%\Lib\Win32"
-set "GenDir_Lib_64=%GenDir%\Lib\x64"
+set "genDir=%buildRoot%\CyMedia_Release"
+set "incDir=%genDir%\include"
+set "binDir=%genDir%\Bin"
+set "libDir=%genDir%\Lib"
+set "demoOut=%genDir%\Demo"
 
-set "GenDir_Demo=%GenDir%\Demo"
+set "doClean=0"
+if /I "%~1"=="clean" set "doClean=1"
 
-::mackDir
-md "%GenDir_include%" 2>nul
-md "%GenDir_include%\View\" 2>nul
-md "%GenDir_include%\View\DrawItem\" 2>nul
-md "%GenDir_include%\Parse\" 2>nul
+echo ============================================================================
+echo  CyMedia release package
+echo  Source : %srcRoot%
+echo  Output : %genDir%
+echo ============================================================================
 
+if not exist "%buildRoot%" (
+    echo [ERROR] Build output directory not found: %buildRoot%
+    echo         Build CyMedia.sln or the CMake project first.
+    exit /b 1
+)
 
-md "%GenDir_Bin_32%\Debug\" 2>nul
-md "%GenDir_Bin_32%\Release\" 2>nul
-md "%GenDir_Bin_64%\Debug\" 2>nul
-md "%GenDir_Bin_64%\Release\" 2>nul
-md "%GenDir_Bin%\colorMap\" 2>nul
+if "%doClean%"=="1" (
+    echo [INFO] Cleaning old package...
+    if exist "%genDir%" rmdir /s /q "%genDir%"
+)
 
-md "%GenDir_Lib_32%\Debug\" 2>nul
-md "%GenDir_Lib_32%\Release\" 2>nul
-md "%GenDir_Lib_64%\Debug\" 2>nul
-md "%GenDir_Lib_64%\Release\" 2>nul
+call :MakeDir "%incDir%\View"
+call :MakeDir "%incDir%\View\Annotation"
+call :MakeDir "%incDir%\View\Dialogs"
+call :MakeDir "%incDir%\View\Widgets"
+call :MakeDir "%incDir%\Parse"
+call :MakeDir "%incDir%\Calculate"
+call :MakeDir "%incDir%\common"
 
-md "%GenDir_Demo%" 2>nul
+call :MakeDir "%binDir%\x64\Debug"
+call :MakeDir "%binDir%\x64\Release"
+call :MakeDir "%binDir%\Win32\Debug"
+call :MakeDir "%binDir%\Win32\Release"
+call :MakeDir "%binDir%\colorMap"
 
-::doc
-copy "README.md" "%GenDir%"
+call :MakeDir "%libDir%\x64\Debug"
+call :MakeDir "%libDir%\x64\Release"
+call :MakeDir "%libDir%\Win32\Debug"
+call :MakeDir "%libDir%\Win32\Release"
 
-::include->CyMediaDis
-echo "copy Header"
-copy "%batDir%\CyMedia\src\common\CyMediaBaseDef.h" "%GenDir_include%"
-copy "%batDir%\CyMedia\src\View\Display.h" "%GenDir_include%"
-copy "%batDir%\CyMedia\src\View\DrawItem\BaseItem.h" "%GenDir_include%"
-copy "%batDir%\CyMedia\src\View\DrawItem\BaseItem.h" "%GenDir_include%"
-copy "%batDir%\CyMedia\LicenseW.h" "%GenDir_include%"
+call :MakeDir "%demoOut%"
 
-::include->CyMediaParse
-copy "%batDir%\CyMedia\src\Parse\ImageParse.h" "%GenDir_include%\Parse"
-copy "%batDir%\CyMedia\src\Parse\VideoParse.h" "%GenDir_include%\Parse"
+:: ----------------------------------------------------------------------------
+:: Documentation
+:: ----------------------------------------------------------------------------
+echo [INFO] Copying documentation...
+if exist "%srcRoot%\README.md" (
+    copy /y "%srcRoot%\README.md" "%genDir%\README.md" >nul
+) else (
+    if exist "%batDir%\README.md" copy /y "%batDir%\README.md" "%genDir%\README.md" >nul
+)
+if exist "%srcRoot%\src\View\README.md" (
+    copy /y "%srcRoot%\src\View\README.md" "%incDir%\View\README.md" >nul
+)
+if exist "%batDir%\Third-Party_Licenses" (
+    xcopy /y /i /e "%batDir%\Third-Party_Licenses\*" "%genDir%\Third-Party_Licenses\" >nul
+)
 
+:: ----------------------------------------------------------------------------
+:: Public headers
+:: ----------------------------------------------------------------------------
+echo [INFO] Copying headers...
+call :CopyFile "%srcRoot%\src\common\CyMediaBaseDef.h" "%incDir%\"
+call :CopyFile "%srcRoot%\src\common\CyMediaBaseDef.h" "%incDir%\common\"
+call :CopyHeaders "%srcRoot%\src\common" "%incDir%\common"
 
-::Bin->colorMaP
-echo "copy ColorMap"
-xcopy "%batDir%\CyMedia\resources\colorMap_ALL" "%GenDir_Bin%colorMap\" /i/s/y
+call :CopyFile "%srcRoot%\src\View\Display.h" "%incDir%\View\"
+call :CopyFile "%srcRoot%\src\View\DisplayTypes.h" "%incDir%\View\"
+call :CopyFile "%srcRoot%\src\View\Display.h" "%incDir%\"
+call :CopyFile "%srcRoot%\src\View\DisplayTypes.h" "%incDir%\"
+call :CopyFile "%srcRoot%\src\View\Annotation\BaseItem.h" "%incDir%\View\Annotation\"
+call :CopyFile "%srcRoot%\src\View\Annotation\DrawItem.h" "%incDir%\View\Annotation\"
+call :CopyHeaders "%srcRoot%\src\View\Dialogs" "%incDir%\View\Dialogs"
+call :CopyFile "%srcRoot%\src\View\Widgets\CyMediaDisGrayStretch.h" "%incDir%\View\Widgets\"
+call :CopyFile "%srcRoot%\src\View\Widgets\CyMediaDisGrayTest.h" "%incDir%\View\Widgets\"
+call :CopyFile "%srcRoot%\src\View\Widgets\CyMediaRecTimeW.h" "%incDir%\View\Widgets\"
 
-::Lib/Bin->x64
-echo "copy Bin/Lib->x64"
-copy "%LIBSrcDir%\x64\Debug\CyMedia.lib" "%GenDir_Lib_64%\Debug\"
-copy "%LIBSrcDir%\x64\Debug\CyMedia.pdb" "%GenDir_Lib_64%\Debug\"
-copy "%LIBSrcDir%\x64\Debug\CyMedia.dll" "%GenDir_Bin_64%\Debug\"
+call :CopyFile "%srcRoot%\src\Parse\ImageParse.h" "%incDir%\Parse\"
+call :CopyFile "%srcRoot%\src\Parse\VideoParse.h" "%incDir%\Parse\"
+call :CopyFile "%srcRoot%\src\Parse\VideoParseBase.h" "%incDir%\Parse\"
+call :CopyFile "%srcRoot%\src\Parse\FileFunc.h" "%incDir%\Parse\"
 
-xcopy "%batDir%\CyMedia\3rdparty\ffmpeg\Bin\x64" "%GenDir_Bin_64%\Debug\" /i/s/y
+call :CopyHeaders "%srcRoot%\src\Calculate" "%incDir%\Calculate"
 
-copy "%LIBSrcDir%\x64\Release\CyMedia.lib" "%GenDir_Lib_64%\Release\"
-copy "%LIBSrcDir%\x64\Release\CyMedia.dll" "%GenDir_Bin_64%\Release\"
+:: ----------------------------------------------------------------------------
+:: Bin / Lib
+:: ----------------------------------------------------------------------------
+echo [INFO] Copying CyMedia binaries and libs...
 
-xcopy "%batDir%\CyMedia\3rdparty\ffmpeg\Bin\x64" "%GenDir_Bin_64%\Release\" /i/s/y
+call :CopyArch "x64" "Debug"
+call :CopyArch "x64" "Release"
+call :CopyArch "Win32" "Debug"
+call :CopyArch "Win32" "Release"
 
-::Lib/Bin->Win32
-echo "copy Bin/Lib->Win32"
-copy "%LIBSrcDir%\Win32\Debug\CyMedia.lib" "%GenDir_Lib_32%\Debug\"
-copy "%LIBSrcDir%\Win32\Debug\CyMedia.pdb" "%GenDir_Lib_32%\Debug\"
-copy "%LIBSrcDir%\Win32\Debug\CyMedia.dll" "%GenDir_Bin_32%\Debug\"
+:: FFmpeg runtime DLLs
+if exist "%srcRoot%\3rdparty\ffmpeg\Bin\x64" (
+    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\x64\*" "%binDir%\x64\Debug\" >nul
+    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\x64\*" "%binDir%\x64\Release\" >nul
+)
+if exist "%srcRoot%\3rdparty\ffmpeg\Bin\Win32" (
+    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\Win32\*" "%binDir%\Win32\Debug\" >nul
+    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\Win32\*" "%binDir%\Win32\Release\" >nul
+)
 
-xcopy "%batDir%\CyMedia\3rdparty\ffmpeg\Bin\Win32" "%GenDir_Bin_32%\Debug\" /i/s/y
+:: Color maps are external runtime data (not embedded in the DLL).
+if exist "%srcRoot%\resources\colorMap_ALL" (
+    echo [INFO] Copying ColorMap...
+    xcopy /y /i /e "%srcRoot%\resources\colorMap_ALL\*" "%binDir%\colorMap\" >nul
+)
 
-copy "%LIBSrcDir%\Win32\Release\CyMedia.lib" "%GenDir_Lib_32%\Release\"
-copy "%LIBSrcDir%\Win32\Release\CyMedia.dll" "%GenDir_Bin_32%\Release\"
+:: ----------------------------------------------------------------------------
+:: Demo: ship the CyMediaDisTest project source, not a prebuilt application
+:: ----------------------------------------------------------------------------
+echo [INFO] Copying CyMediaDisTest source + CMake (no prebuilt executable)...
+if exist "%demoOut%" rmdir /s /q "%demoOut%"
+call :MakeDir "%demoOut%\CyMediaDisTest"
+if exist "%demoRoot%" (
+    robocopy "%demoRoot%" "%demoOut%\CyMediaDisTest" /E /XD ".vs" "build" "Debug" "Release" "x64" "Win32" /XF "*.user" "*.aps" "*.sdf" "*.VC.db" >nul
+    if errorlevel 8 (
+        echo   [WARN] Failed to copy CyMediaDisTest source project.
+    ) else (
+        echo   [OK] Demo source: Demo\CyMediaDisTest
+    )
+) else (
+    echo   [SKIP] CyMediaDisTest source directory not found.
+)
 
-xcopy "%batDir%\CyMedia\3rdparty\ffmpeg\Bin\Win32" "%GenDir_Bin_32%\Release\" /i/s/y
-::Demo
+echo.
+echo ============================================================================
+echo  Package generated: %genDir%
+echo    include\   public headers + View README
+echo    Bin\       CyMedia.dll + FFmpeg DLLs + colorMap
+echo    Lib\       CyMedia.lib + PDB
+echo    Demo\      CyMediaDisTest source + CMake (no prebuilt exe)
+echo ============================================================================
+
+endlocal & exit /b 0
+
+:: ============================================================================
+:: Helpers
+:: ============================================================================
+
+:MakeDir
+if not exist "%~1" mkdir "%~1" >nul 2>nul
+exit /b 0
+
+:CopyFile
+if not exist "%~1" (
+    echo   [WARN] Missing file: %~1
+    exit /b 0
+)
+if not exist "%~2" mkdir "%~2" >nul 2>nul
+copy /y "%~1" "%~2" >nul
+if errorlevel 1 echo   [WARN] Copy failed: %~1
+exit /b 0
+
+:CopyHeaders
+if not exist "%~1\" (
+    echo   [WARN] Missing header directory: %~1
+    exit /b 0
+)
+if not exist "%~2" mkdir "%~2" >nul 2>nul
+xcopy /y /i "%~1\*.h" "%~2\" >nul 2>nul
+if errorlevel 1 echo   [WARN] Header copy failed: %~1
+exit /b 0
+
+:CopyArch
+set "arch=%~1"
+set "cfg=%~2"
+set "outLib=%libDir%\%arch%\%cfg%"
+set "outBin=%binDir%\%arch%\%cfg%"
+call :CopyFile "%buildRoot%\%arch%\%cfg%\CyMedia.dll" "%outBin%\"
+call :CopyFile "%buildRoot%\%arch%\%cfg%\CyMedia.lib" "%outLib%\"
+if /I "%cfg%"=="Debug" (
+    call :CopyFile "%buildRoot%\%arch%\%cfg%\CyMedia.pdb" "%outLib%\"
+)
+exit /b 0
