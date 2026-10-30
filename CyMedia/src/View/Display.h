@@ -37,7 +37,7 @@
  *
  *  ## 线程模型（重要）
  *  - `upImageData()` 可从任意线程调用；内部有有界帧队列 + 独立处理线程。
- *  - 慢速数据源（< 2 FPS）会自动逐帧缓存原始帧，便于参数变化后重处理；
+ *  - 慢速数据源会自动逐帧缓存原始帧，便于参数变化后重处理；
  *    低延迟的单帧/同步场景可用 `setDirectUpImage(true)` 强制直接处理。
  *  - 所有信号默认在控件所属线程（通常是 UI 线程）投递。
  *  - OpenGL 需要 Qt 共享上下文，务必在 `QApplication` 之前设置
@@ -73,6 +73,7 @@ namespace CyDisDrawItem {
 }
 
 namespace CyMedia {
+
     /**
      * @class CyMedia::CyMediaDis
      * @brief 高性能图像显示与交互控件（Qt QFrame 集成窗口）。
@@ -80,14 +81,15 @@ namespace CyMedia {
      * @details
      *  对外只暴露"输入图像 / 设置显示 / 操作视图 / 管理标注"四类能力。
      *  内部由 `privateData` 组合渲染层、图像管线、标注层和辅助面板。
+     * @threadsafety
+     *  upImageData / setDirectUpImage / registerImageCallBack：任意线程
+     *  其余所有 API：必须从对象所属线程（通常 UI）调用
+     *  回调 registerImageCallBack：worker 线程执行
      */
     class CYMEDIA_LIB CyMediaDis : public QFrame {
         Q_OBJECT
 
     public:
-        /// 图像处理完成后的回调（在工作线程中调用；data 仅在该回调期间有效）。
-        using CyMediaDisImageCallBack = CyMedia::ImageFrameCallback;
-
         /// 图形标注类型的短别名，便于业务代码书写。
         using DrawItemType = CyDisDrawItem::ItemType;
 
@@ -98,7 +100,7 @@ namespace CyMedia {
          * @param titleName 窗口标题。
          * @return 窗口指针；无父窗口时关闭自动释放。
          */
-        static QWidget* imgShow(CyMedia::ImageShowInfo info, void* data, QString titleName = QString());
+        static QWidget* imgShow(CyMedia::ImageShowInfo info, void* data, const QString& title = {}, QWidget* parent = nullptr);
 
     public:
         explicit CyMediaDis(QWidget* parent = nullptr);
@@ -112,11 +114,9 @@ namespace CyMedia {
         /// 文件/URL 被拖入视图。
         void urlsDrop(QList<QUrl> urls);
         /// 鼠标在视图上按下。
-        void PressOnView();
+        void pressOnView();
         /// 鼠标在视图上双击。
         void DoubleClickOnView();
-        /// 视图被点击（与 PressOnView 等价）。
-        void pressOnView();
         /// 直接更新模式下，需要外部重新提供一帧图像。
         void needUpImage();
 
@@ -124,9 +124,9 @@ namespace CyMedia {
          * @brief 鼠标所在像素的坐标与颜色。
          * @param signlR 为 true 时 r 表示灰度值，g/b 无效。
          */
-        void upPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR);
+        void upPosPix(qint32 x, qint32 y, double r, double g, double b, bool isGray);
         /// 图像尺寸或位深变化。
-        void imageSizeChanged(quint32 w, quint32 h, int nbit);
+        void imageSizeChanged(int32_t w, int32_t h, int nbit);
         /// 缩放倍数变化。
         void zoomValueChange(double value);
 
@@ -150,11 +150,11 @@ namespace CyMedia {
         static QString pixelFormatStr(CyMedia::ePixType format);
 
         //==================== 国际化与日志 ====================
-        CyMedia::eLanguage currentLanguage();
+        CyMedia::eLanguage currentLanguage() const;
         bool setLanguage(CyMedia::eLanguage lang);
 
         /// 设置日志等级（TRACE~OFF）。
-        void setlogLevel(CyMedia::LogLevel level);
+        void setLogLevel(CyMedia::LogLevel level);
         /// 注册日志回调；pUser 会在回调时原样传回。
         void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
 
@@ -179,28 +179,32 @@ namespace CyMedia {
         bool upImageData(const CyMedia::ImageShowInfo& info, void* data, bool force = false);
 
         /// 当前是否处于"直接处理、不入队"模式。
-        bool upIamgeIsDirect();
+        bool isDirectMode();
         /// 设置直接处理模式（低帧率/单帧场景可降低延迟）。
         void setDirectUpImage(bool flag);
 
         /// 注册处理完成回调（工作线程调用，禁止耗时操作）。
-        void registerImageCallBack(CyMediaDisImageCallBack func, void* pUser);
+        void registerImageCallBack(CyMedia::ImageFrameCallback func, void* pUser);
 
         /// 是否已有有效图像。
-        bool haveDate(void);
+        bool hasImage(void) const;
         /// 清空图像与标注交互状态。
         void clearImage(void);
 
-        /// 当前显示图像的信息（引用，调用方不应跨线程长期持有）。
-        CyMedia::ImageShowInfo& imageinfo();
+        /// 当前显示图像的信息。
+        ImageShowInfo imageInfoCopy() const;
         /// 当前显示帧率。
-        double displayFps(void);
+        double displayFps(void) const;
+        /// 数据处理帧率
+        double  dataFps() const; 
+        /// 当前是否慢速数据流
+        bool isDataSlow() const;
 
         //==================== 显示效果 ====================
         CyMedia::StretchType stretchType();
         void setStretchType(CyMedia::StretchType type);
         /// 设置手动拉伸阈值（start/end 以当前位深为上限）。
-        void setStreaChPara(uint32_t start = 0, uint32_t end = 0);
+        void setStretchPara(uint32_t start = 0, uint32_t end = 0);
 
         CyMedia::DemosaicingMethod Demosaic();
         void setDemosaic(CyMedia::DemosaicingMethod method);
@@ -218,12 +222,12 @@ namespace CyMedia {
         void zoomOut();
         void zoomAuto();
         /// 1:1 显示；reset=true 时同时重置旋转/镜像。
-        void zoomraw(bool reset);
+        void zoomRaw(bool reset);
 
         //==================== 工具栏/缩略图 ====================
         CyDisDrawItem::ItemType drawMode();
         void setDrawMode(CyDisDrawItem::ItemType mode);
-        void setThemeColor(QColor color);
+        void setThemeColor(const QColor color);
 
         bool toolBarVisible(void);
         void setToolBarVisible(bool show);
@@ -236,15 +240,15 @@ namespace CyMedia {
         bool thumbnailAutoEnable();
         void setThumbnailAutoEnable(bool enable);
         QSize thumbnailAutoEnableSize();
-        void setThumbnailAutoEnableSize(QSize size);
+        void setThumbnailAutoEnableSize(const QSize size);
 
         //==================== 图形标注（稳定 API：UUID） ====================
         /// 在图像中心添加默认尺寸的标注项，返回 UUID。
         QUuid addItem(CyDisDrawItem::ItemType itemType);
         /// 用场景坐标路径添加标注项。
-        QUuid addItem(CyDisDrawItem::ItemType itemType, QPainterPath path);
+        QUuid addItem(CyDisDrawItem::ItemType itemType, const QPainterPath& path);
         /// 删除指定 UUID 的标注项。
-        void removeItme(QUuid id);
+        void removeItem(QUuid id);
         int itemCount();
         void setItemSelected(QUuid id);
         void clearItem();
@@ -252,17 +256,16 @@ namespace CyMedia {
         bool isSingleItemMode();
         void setSingleItemMode(bool flag);
 
-        QUuid getLaseItem();
+        QUuid getLastItem();
         bool isDrawing();
 
         //==================== 图形标注（高级：直接访问实现） ====================
         /**
          * @brief 获取内部标注项列表。
-         * @note 高级接口：返回的是实现层对象，修改列表会破坏内部一致性。
          */
-        const QList<CyDisDrawItem::BaseItem*>& items();
+        QList<CyDisDrawItem::BaseItem*> items() const;//不用引用，QList 隐式共享代价小
         /// 按 UUID 取标注项；不存在返回 nullptr。
-        CyDisDrawItem::BaseItem* getItem(QUuid& id);
+        CyDisDrawItem::BaseItem* getItem(const QUuid& id);
 
         //==================== 录像计时器 ====================
         bool recTimeVisible();

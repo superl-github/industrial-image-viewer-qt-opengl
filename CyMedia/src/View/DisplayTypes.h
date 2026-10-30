@@ -51,6 +51,6 @@ namespace CyMedia {
      * @details 参数依次为：处理后的图像信息、数据指针、用户上下文。
      *          回调在工作线程中执行，data 仅在回调期间有效。
      */
-    using ImageFrameCallback = std::function<void(ImageShowInfo&, uint8_t*, void*)>;
+    using ImageFrameCallback = std::function<void(const ImageShowInfo&, const uint8_t*, void*)>;
 }
 

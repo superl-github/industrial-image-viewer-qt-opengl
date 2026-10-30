@@ -43,8 +43,8 @@
     <Filter Include="3rdparty\stb_image">
       <UniqueIdentifier>{de1ca932-2326-4c9f-bfde-48a89320e92a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="translate">
-      <UniqueIdentifier>{30869a82-7360-4180-b977-17de1dc9be56}</UniqueIdentifier>
+    <Filter Include="src\I18n">
+      <UniqueIdentifier>{fd680b77-374f-4601-b1bd-154077f193db}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -132,6 +132,7 @@
     <ClInclude Include="3rdparty\stb_image\stb_image_write.h">
       <Filter>3rdparty\stb_image</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Calculate\Calculate.cpp">
@@ -233,17 +234,12 @@
     <ClCompile Include="3rdparty\qcustomplot\qcustomplot.cpp">
       <Filter>3rdparty\qcustomplot</Filter>
     </ClCompile>
+    <ClCompile Include="src\common\CyMediaI18n.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="CyMedia.qrc" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtTranslation Include="resources\translate\CyMedia_en_US.ts">
-      <Filter>translate</Filter>
-    </QtTranslation>
-    <QtTranslation Include="resources\translate\CyMedia_zh_CN.ts">
-      <Filter>translate</Filter>
-    </QtTranslation>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="src\View\Display.cpp">
@@ -336,5 +332,19 @@
     <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h">
       <Filter>3rdparty\qcustomplot</Filter>
     </QtMoc>
+    <QtMoc Include="src\common\CyMediaI18n.h">
+      <Filter>src\common</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <QtTranslation Include="src\I18n\CyMedia_en_US.ts">
+      <Filter>src\I18n</Filter>
+    </QtTranslation>
+    <QtTranslation Include="src\I18n\CyMedia_zh_CN.ts">
+      <Filter>src\I18n</Filter>
+    </QtTranslation>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
 </Project>

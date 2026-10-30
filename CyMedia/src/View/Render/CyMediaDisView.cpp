@@ -303,7 +303,7 @@ void CyMediaDisView::zoomRaw(bool Reset /*= true*/) {
     }
 }
 
-bool CyMediaDisView::isHriMirror() {
+bool CyMediaDisView::isHoriMirror() {
     return d->hIsMirror;
 }
 
@@ -311,7 +311,7 @@ bool CyMediaDisView::isVerMirror() {
     return d->vIsMirror;
 }
 
-void CyMediaDisView::hriMirror(void) {
+void CyMediaDisView::horiMirror(void) {
     if (!this->scene() || !m_backDraw->haveImage())
         return;
 

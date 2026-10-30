@@ -11,8 +11,8 @@ CyMedia 是一个基于 **Qt5.14.2** 和 **OpenGL** 的 C++ 库，主要用于�
 - **高性能图像显示**（支持 Mono、Bayer、RGB、RGBA、多种 YUV 格式，8/16/31 位深度）
 - **图像计算**（直方图统计、灰度拉伸、颜色空间转换、均匀度等）
 - **交互式绘图**（点、线、矩形、椭圆、多边形等 ROI 标注）
-- **图像文件解析/保存**（目前支持 Raw 格式，可扩展）
-- **视频文件解析**（预留接口，尚未实现）
+- **图像文件解析/保存**：Raw（带/不带头）+ BMP、PNG、JPEG（8 位）
+- **视频文件解析**：带自定义头的 Raw 视频、AVI、MP4（FFmpeg），输出 RGB888
 
 内部采用 **双缓冲纹理**、**OpenGL 着色器** 实现高效渲染，并提供了灰度拉伸、颜色映射、Bayer 去马赛克、YUV 转换等图像增强功能，适用于**工业相机**、**医疗影像**、**科研采集**等场景。
 
@@ -77,8 +77,8 @@ mindmap
       图像格式解包（Mono10P/12P 等）
     解析模块 CyMediaParse
       ::: 文件读写
-      图像解析/保存（Raw 格式，带 Header 或不带）
-      视频解析（Raw / AVI / MP4，FFmpeg）
+      图像：Raw（带/不带头）、BMP/PNG/JPEG（8 位）
+      视频：Raw（自定义头）、AVI、MP4（FFmpeg → RGB888）
     公共定义 CyMediaBaseDef
       ::: 枚举、结构、回调
       像素格式 ePixType
@@ -179,14 +179,37 @@ mindmap
 
 ### 3.3 解析模块 (`CyMediaParse`)
 
-当前实现 `CyMediaImageParse` 类，负责 Raw 图像的读写。
+解析层分为图像解析 `CyMediaImageParse` 与视频解析 `VideoParser`。两者都通过后缀选择解析器；`.raw` 同时可能表示图像或视频，需要按业务选择对应 API。
 
-| 静态方法                 | 说明                                                         |
-| :----------------------- | :----------------------------------------------------------- |
-| `openImage`              | 打开带 Header 的 Raw 文件（Header 结构见 `RawImageHeadInfo`） |
-| `openImage_NotHeaderRaw` | 打开无 Header 的 Raw 文件，需指定宽高、位深、偏移等参数      |
-| `saveImageToFile`        | 保存图像数据为 Raw 或 BMP（可添加 Header）                   |
-| `getTypeByPath`          | 根据文件扩展名判断图像类型                                   |
+#### 图像
+
+| 能力 | 格式 | 说明 |
+| --- | --- | --- |
+| 读取 | Raw（带 `ImageShowInfo` 头） | `openImage()`；文件长度校验 `sizeof(ImageShowInfo) + info.length` |
+| 读取 | Raw（无头） | `openImage_NotHeaderRaw()`；调用方提供 `info`、`dataOffset` |
+| 读取 | BMP / PNG / JPEG | `openImage()`；stb_image 解码为 8 位，通道数映射为 Mono/RGB/RGBA |
+| 保存 | Raw（可带 `ImageShowInfo` 头） | `saveImageToFile()`；`ImageSaveOpe::rawAddHead` 控制是否写头 |
+| 保存 | BMP / PNG / JPEG | `saveImageToFile()`；仅 `info.bit == 8` |
+
+说明：
+
+- `getTypeByPath()` 识别 `.raw`、`.bmp`、`.tif/.tiff`、`.png`、`.jpg/.jpeg`。
+- TIFF 后缀可以被识别，但当前图像解码基于 stb_image，TIFF 解码不在支持范围内。
+- 带图像头的 Raw 头结构是 `CyMedia::ImageShowInfo`，读写时按该结构校验长度。
+- 保存路径只支持 8 位数据；非 8 位返回 `ParseResult::UNSUPPORTED`。
+
+#### 视频
+
+| 容器/后缀 | 解析器 | 说明 |
+| --- | --- | --- |
+| `.raw` / `.rawv` | `VideoParseRaw` | 自定义 `RawFileHeader`：version、bit、color、width、height、rate、frameLength；固定帧长 |
+| `.avi` | `VideoParseFfmpeg` | FFmpeg 解码，输出 RGB888，8 位 |
+| `.mp4` | `VideoParseFfmpeg` | FFmpeg 解码，输出 RGB888，8 位 |
+
+- `VideoParser::open()` 通过 `getvideoTypeByPath()` 选择解析器；后缀不在上述范围时返回 `UNSUPPORTED`。
+- Raw 视频 `format=false` 读取文件头；`format=true` 使用调用方提供的 `VideoParseInfo`（宽高、位深、格式、帧长、帧率、偏移）。
+- `getFrame()` 的帧索引从 `1` 开始，范围 `1 ~ getFrameCount()`。
+- `.mkv`、`.mov`、`.wmv` 等容器后缀不进入当前 `VideoSuffix` 路由，即使 FFmpeg 本身可以解码。
 
 ------
 
@@ -388,7 +411,7 @@ GenRelease.bat          :: 增量生成
 GenRelease.bat clean    :: 清空输出目录后生成
 ```
 
-输出到 `OutFile/CyMedia/`，包含 `include/`、`Bin/`、`Lib/`、`Demo/`。`Demo/` 提供
+输出到 `OutFile/CyMedia_Release/`，包含 `include/`、`Bin/`、`Lib/`、`Demo/`。`Demo/` 提供
 `CyMediaDisTest` 源码与 `CMakeLists.txt`，可在包内直接构建。详见
 [`CyMedia/README.md`](CyMedia/README.md#7-发布包)。
 

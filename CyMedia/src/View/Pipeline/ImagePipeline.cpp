@@ -14,6 +14,8 @@
 #include <cstring>
 #include <memory>
 
+#define LOW_SPEED_DATA_FPS (2.1)
+
 namespace CyMedia {
     namespace {
         uint8_t* allocAligned(uint32_t bytes) {
@@ -442,7 +444,7 @@ namespace CyMedia {
 
             const double fps = 1000.0 * double(fpsCount) / double(elapsed);
             dataFps.store(fps, std::memory_order_release);
-            dataSlow.store(fps < 2.1, std::memory_order_release);
+            dataSlow.store(fps < LOW_SPEED_DATA_FPS, std::memory_order_release);
             fpsCount = 0;
             fpsTimer.restart();
         }

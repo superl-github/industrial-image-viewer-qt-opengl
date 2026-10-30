@@ -25,7 +25,7 @@ cmake --build build --config Release --parallel
 发布包的目录结构是：
 
 ```text
-CyMedia/
+CyMedia_Release/
 ├── include/
 ├── Bin/<arch>/<config>/
 ├── Lib/<arch>/<config>/

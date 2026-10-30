@@ -25,6 +25,7 @@
     <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image_write.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\Calculate\CalcColor.h" />
     <ClInclude Include="src\Calculate\Calculate.h" />
     <ClInclude Include="src\Calculate\CalcBayer.h" />
@@ -32,6 +33,7 @@
     <ClInclude Include="src\Calculate\CalcRgb.h" />
     <ClInclude Include="src\Calculate\CalcYUV.h" />
     <ClInclude Include="src\common\CyMediaBaseDef.h" />
+    <QtMoc Include="src\common\CyMediaI18n.h" />
     <ClInclude Include="src\common\Export.h" />
     <ClInclude Include="src\common\Version.h" />
     <ClInclude Include="src\common\Language.h" />
@@ -79,6 +81,7 @@
     <ClCompile Include="src\Calculate\CalcMono.cpp" />
     <ClCompile Include="src\Calculate\CalcRgb.cpp" />
     <ClCompile Include="src\Calculate\CalcYUV.cpp" />
+    <ClCompile Include="src\common\CyMediaI18n.cpp" />
     <ClCompile Include="src\Parse\ImageParse.cpp" />
     <ClCompile Include="src\Parse\VideoParse.cpp" />
     <ClCompile Include="src\Parse\VideoParseBase.cpp" />
@@ -180,22 +183,11 @@
     <QtRcc Include="CyMedia.qrc" />
   </ItemGroup>
   <ItemGroup>
-    <QtTranslation Include="resources\translate\CyMedia_en_US.ts">
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</NoObsolete>
-      <NoObsolete Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</NoObsolete>
-    </QtTranslation>
-    <QtTranslation Include="resources\translate\CyMedia_zh_CN.ts">
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
-      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
-    </QtTranslation>
+    <QtTranslation Include="src\I18n\CyMedia_en_US.ts" />
+    <QtTranslation Include="src\I18n\CyMedia_zh_CN.ts" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{52077782-F739-44E3-ABDE-40765948B425}</ProjectGuid>

@@ -33,6 +33,7 @@ echo ===========================================================================
 if not exist "%buildRoot%" (
     echo [ERROR] Build output directory not found: %buildRoot%
     echo         Build CyMedia.sln or the CMake project first.
+    pause
     exit /b 1
 )
 
@@ -67,15 +68,16 @@ call :MakeDir "%demoOut%"
 :: ----------------------------------------------------------------------------
 echo [INFO] Copying documentation...
 if exist "%srcRoot%\README.md" (
-    copy /y "%srcRoot%\README.md" "%genDir%\README.md" >nul
+    xcopy /y /d /i "%srcRoot%\README.md" "%genDir%\README.md" >nul
 ) else (
-    if exist "%batDir%\README.md" copy /y "%batDir%\README.md" "%genDir%\README.md" >nul
+    if exist "%batDir%\README.md" xcopy /y /d /i "%batDir%\README.md" "%genDir%\README.md" >nul
 )
 if exist "%srcRoot%\src\View\README.md" (
-    copy /y "%srcRoot%\src\View\README.md" "%incDir%\View\README.md" >nul
+    xcopy /y /d /i "%srcRoot%\src\View\README.md" "%incDir%\View\README.md" >nul
 )
+
 if exist "%batDir%\Third-Party_Licenses" (
-    xcopy /y /i /e "%batDir%\Third-Party_Licenses\*" "%genDir%\Third-Party_Licenses\" >nul
+    xcopy /y /d /i /e "%batDir%\Third-Party_Licenses\*" "%genDir%\Third-Party_Licenses\" >nul
 )
 
 :: ----------------------------------------------------------------------------
@@ -116,28 +118,26 @@ call :CopyArch "Win32" "Release"
 
 :: FFmpeg runtime DLLs
 if exist "%srcRoot%\3rdparty\ffmpeg\Bin\x64" (
-    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\x64\*" "%binDir%\x64\Debug\" >nul
-    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\x64\*" "%binDir%\x64\Release\" >nul
+    xcopy /y /d /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\x64\*" "%binDir%\x64\Debug\" >nul
+    xcopy /y /d /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\x64\*" "%binDir%\x64\Release\" >nul
 )
 if exist "%srcRoot%\3rdparty\ffmpeg\Bin\Win32" (
-    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\Win32\*" "%binDir%\Win32\Debug\" >nul
-    xcopy /y /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\Win32\*" "%binDir%\Win32\Release\" >nul
+    xcopy /y /d /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\Win32\*" "%binDir%\Win32\Debug\" >nul
+    xcopy /y /d /i /e "%srcRoot%\3rdparty\ffmpeg\Bin\Win32\*" "%binDir%\Win32\Release\" >nul
 )
-
 :: Color maps are external runtime data (not embedded in the DLL).
 if exist "%srcRoot%\resources\colorMap_ALL" (
     echo [INFO] Copying ColorMap...
-    xcopy /y /i /e "%srcRoot%\resources\colorMap_ALL\*" "%binDir%\colorMap\" >nul
+    xcopy /y /d /i /e "%srcRoot%\resources\colorMap_ALL\*" "%binDir%\colorMap\" >nul
 )
 
 :: ----------------------------------------------------------------------------
 :: Demo: ship the CyMediaDisTest project source, not a prebuilt application
 :: ----------------------------------------------------------------------------
 echo [INFO] Copying CyMediaDisTest source + CMake (no prebuilt executable)...
-if exist "%demoOut%" rmdir /s /q "%demoOut%"
 call :MakeDir "%demoOut%\CyMediaDisTest"
 if exist "%demoRoot%" (
-    robocopy "%demoRoot%" "%demoOut%\CyMediaDisTest" /E /XD ".vs" "build" "Debug" "Release" "x64" "Win32" /XF "*.user" "*.aps" "*.sdf" "*.VC.db" >nul
+    robocopy "%demoRoot%" "%demoOut%\CyMediaDisTest" /E /XO /XD ".vs" "build" "Debug" "Release" "x64" "Win32" /XF "*.user" "*.aps" "*.sdf" "*.VC.db" >nul
     if errorlevel 8 (
         echo   [WARN] Failed to copy CyMediaDisTest source project.
     ) else (
@@ -157,6 +157,10 @@ echo    Demo\      CyMediaDisTest source + CMake (no prebuilt exe)
 echo ============================================================================
 
 endlocal & exit /b 0
+@REM echo.
+@REM echo Press any key to exit...
+@REM pause >nul
+@REM endlocal & exit /b 0
 
 :: ============================================================================
 :: Helpers
@@ -172,8 +176,8 @@ if not exist "%~1" (
     exit /b 0
 )
 if not exist "%~2" mkdir "%~2" >nul 2>nul
-copy /y "%~1" "%~2" >nul
-if errorlevel 1 echo   [WARN] Copy failed: %~1
+xcopy /y /d /i "%~1" "%~2" >nul
+if errorlevel 2 echo   [WARN] Copy failed: %~1
 exit /b 0
 
 :CopyHeaders
@@ -182,8 +186,8 @@ if not exist "%~1\" (
     exit /b 0
 )
 if not exist "%~2" mkdir "%~2" >nul 2>nul
-xcopy /y /i "%~1\*.h" "%~2\" >nul 2>nul
-if errorlevel 1 echo   [WARN] Header copy failed: %~1
+xcopy /y /d /i "%~1\*.h" "%~2\" >nul 2>nul
+if errorlevel 2 echo   [WARN] Header copy failed: %~1
 exit /b 0
 
 :CopyArch

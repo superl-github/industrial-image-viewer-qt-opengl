@@ -175,157 +175,223 @@ Qt 相关库遵循 GNU 宽通用公共许可证 2.1 版 (LGPLv2.1)。</translati
     <name>CyMedia::CyMediaDis_GetRawInfoDialog</name>
     <message>
         <source>Image width(number of columns)</source>
-        <translation>图像宽度（列数）</translation>
+        <translation type="vanished">图像宽度（列数）</translation>
     </message>
     <message>
         <source>Image height(number of line)</source>
-        <translation>图像高度（行数）</translation>
+        <translation type="vanished">图像高度（行数）</translation>
     </message>
     <message>
         <source>Bit width</source>
-        <translation>位宽</translation>
+        <translation type="vanished">位宽</translation>
     </message>
     <message>
         <source>Pixel data format</source>
-        <translation>像素数据格式</translation>
+        <translation type="vanished">像素数据格式</translation>
     </message>
     <message>
         <source>Pixel format</source>
-        <translation>像素格式</translation>
+        <translation type="vanished">像素格式</translation>
     </message>
     <message>
         <source>Data head offset</source>
-        <translation>数据头偏移量</translation>
+        <translation type="vanished">数据头偏移量</translation>
     </message>
     <message>
         <source>confirm</source>
-        <translation>确认</translation>
+        <translation type="vanished">确认</translation>
     </message>
     <message>
         <source>cancle</source>
-        <translation>取消</translation>
+        <translation type="vanished">取消</translation>
     </message>
     <message>
         <source>Fps</source>
-        <translation>帧率(如果视频)</translation>
+        <translation type="vanished">帧率(如果视频)</translation>
+    </message>
+</context>
+<context>
+    <name>CyMedia::DisplayToolBar</name>
+    <message>
+        <source>Zoom In</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zoom Out</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Actual Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fit to window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Flip Horizontal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Flip Vertical</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CyMedia::GetRawInfoDialog</name>
+    <message>
+        <source>Image width(number of columns)</source>
+        <translation type="unfinished">图像宽度（列数）</translation>
+    </message>
+    <message>
+        <source>Image height(number of line)</source>
+        <translation type="unfinished">图像高度（行数）</translation>
+    </message>
+    <message>
+        <source>Bit width</source>
+        <translation type="unfinished">位宽</translation>
+    </message>
+    <message>
+        <source>Pixel data format</source>
+        <translation type="unfinished">像素数据格式</translation>
+    </message>
+    <message>
+        <source>Pixel format</source>
+        <translation type="unfinished">像素格式</translation>
+    </message>
+    <message>
+        <source>Data head offset</source>
+        <translation type="unfinished">数据头偏移量</translation>
+    </message>
+    <message>
+        <source>Fps</source>
+        <translation type="unfinished">帧率(如果视频)</translation>
+    </message>
+    <message>
+        <source>confirm</source>
+        <translation type="unfinished">确认</translation>
+    </message>
+    <message>
+        <source>cancle</source>
+        <translation type="unfinished">取消</translation>
     </message>
 </context>
 <context>
     <name>CyMediaDisGrayStretch</name>
     <message>
         <source>Automatic</source>
-        <translation type="vanished">自动</translation>
+        <translation>自动</translation>
     </message>
     <message>
         <source>Stretching methods</source>
-        <translation type="vanished">拉伸模式</translation>
+        <translation>拉伸模式</translation>
     </message>
     <message>
         <source>Gray</source>
-        <translation type="vanished">Gray</translation>
+        <translation>Gray</translation>
     </message>
     <message>
         <source>HSV</source>
-        <translation type="vanished">HSV</translation>
+        <translation>HSV</translation>
     </message>
     <message>
         <source>Lab</source>
-        <translation type="vanished">Lab</translation>
+        <translation>Lab</translation>
     </message>
     <message>
         <source>Grayscale</source>
-        <translation type="vanished">灰度</translation>
+        <translation>灰度</translation>
     </message>
     <message>
         <source>Quantity</source>
-        <translation type="vanished">数量</translation>
+        <translation>数量</translation>
     </message>
     <message>
         <source>Brightness</source>
-        <translation type="vanished">亮度</translation>
+        <translation>亮度</translation>
     </message>
 </context>
 <context>
     <name>CyMediaDisGrayTest</name>
     <message>
         <source>Channel</source>
-        <translation type="vanished">通道</translation>
+        <translation>通道</translation>
     </message>
     <message>
         <source>Average</source>
-        <translation type="vanished">平均值</translation>
+        <translation>平均值</translation>
     </message>
     <message>
         <source>Maximum</source>
-        <translation type="vanished">最大值</translation>
+        <translation>最大值</translation>
     </message>
     <message>
         <source>Minimum</source>
-        <translation type="vanished">最小值</translation>
+        <translation>最小值</translation>
     </message>
     <message>
         <source>std</source>
-        <translation type="vanished">标准差</translation>
+        <translation>标准差</translation>
     </message>
     <message>
         <source>Uniformity</source>
-        <translation type="vanished">均匀度</translation>
+        <translation>均匀度</translation>
     </message>
     <message>
         <source>Gray</source>
-        <translation type="vanished">灰度</translation>
+        <translation>灰度</translation>
     </message>
     <message>
         <source>Red</source>
-        <translation type="vanished">红</translation>
+        <translation>红</translation>
     </message>
     <message>
         <source>Green</source>
-        <translation type="vanished">绿</translation>
+        <translation>绿</translation>
     </message>
     <message>
         <source>Blue</source>
-        <translation type="vanished">蓝</translation>
+        <translation>蓝</translation>
     </message>
     <message>
         <source>None</source>
-        <translation type="vanished">无</translation>
+        <translation>无</translation>
     </message>
     <message>
         <source>Point</source>
-        <translation type="vanished">点</translation>
+        <translation>点</translation>
     </message>
     <message>
         <source>Rectangle</source>
-        <translation type="vanished">矩形</translation>
+        <translation>矩形</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">线</translation>
+        <translation>线</translation>
     </message>
     <message>
         <source>Ellipse</source>
-        <translation type="vanished">椭圆</translation>
+        <translation>椭圆</translation>
     </message>
     <message>
         <source>Reset shaft</source>
-        <translation type="vanished">重置轴</translation>
+        <translation>重置轴</translation>
     </message>
     <message>
         <source>Horizontal axis</source>
-        <translation type="vanished">水平线</translation>
+        <translation>水平线</translation>
     </message>
     <message>
         <source>Grayscale</source>
-        <translation type="vanished">灰度</translation>
+        <translation>灰度</translation>
     </message>
     <message>
         <source>Quantity</source>
-        <translation type="vanished">数量</translation>
+        <translation>数量</translation>
     </message>
     <message>
         <source>Polygon</source>
-        <translation type="vanished">多边形</translation>
+        <translation>多边形</translation>
     </message>
 </context>
 <context>

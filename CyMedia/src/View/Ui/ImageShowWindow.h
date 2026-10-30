@@ -20,7 +20,7 @@ namespace CyMedia {
      * @brief 单图预览窗口。
      * @details 仅供 `CyMediaDis::imgShow()` 内部使用；调用方拿到的是 `QWidget*`。
      */
-    class CYMEDIA_LIB ImageShowWindow : public QWidget {
+    class ImageShowWindow : public QWidget {
         Q_OBJECT
 
     public:

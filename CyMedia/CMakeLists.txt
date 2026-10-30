@@ -94,6 +94,8 @@ set(CYMEDIA_HEADERS
     src/Parse/VideoParseRaw.h
 
     src/common/CyMediaBaseDef.h
+    src/common/CyMediaI18n.h
+    src/common/CyMediaI18n.cpp
     src/common/Export.h
     src/common/Version.h
     src/common/Language.h
@@ -101,6 +103,9 @@ set(CYMEDIA_HEADERS
     src/common/ImageTypes.h
     src/common/ParseTypes.h
     src/common/DisLog.h
+
+    src/I18n/CyMedia_en_US.ts
+    src/I18n/CyMedia_zh_CN.ts
 
     src/View/Display.h
     src/View/DisplayTypes.h

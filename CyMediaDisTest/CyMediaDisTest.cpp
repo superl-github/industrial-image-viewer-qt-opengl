@@ -206,7 +206,7 @@ void CyMediaDisTest::initGUI() {
     m_view->setDirectUpImage(false);
     m_view->setYUVMethod(CyMedia::YUVTRANS_Y);
     m_view->setLogCallback(&CyMediaDisTest::cyMediaLogCallBack, this);
-    m_view->setlogLevel(CyMedia::LogLevel::DEBUG);
+    m_view->setLogLevel(CyMedia::LogLevel::DEBUG);
     m_view->setThumbnailAutoEnable(false);
     m_view->setThumbnailEnable(true);
     connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, &CyMediaDisTest::onViewUpPosPix);
@@ -1352,7 +1352,7 @@ void CyMediaDisTest::thread_acquisition() {
     info.width = 1282;
     info.height = 1024;
     info.bit = 8;
-    info.format = m_test_yuv_format;
+    info.format = CyMedia::RGB;
     info.upLenth();
     QImage img(info.width, info.height, QImage::Format_RGB888);
 
@@ -1372,15 +1372,18 @@ void CyMediaDisTest::thread_acquisition() {
         //生成 RGB888 测试图案
         genAnalogImage(m_analog_img_type, img, framId);
         //格式转换
-        info.format = m_test_yuv_format;
-        info.upLenth();
-        if (info.format == CyMedia::FOURCC_NV12) {
+        m_test_yuv_format = info.format;
+        if (m_test_yuv_format == CyMedia::FOURCC_NV12) {
             CyMediaTest::rgbToNV12(img.bits(), info.width, info.height, yuvBuf);
             m_view->upImageData(info, yuvBuf.data());
+            info.format = m_test_yuv_format;
+            info.upLenth();
         }
-        else if (info.format == CyMedia::FOURCC_NV21) {
+        else if (m_test_yuv_format == CyMedia::FOURCC_NV21) {
             CyMediaTest::rgbToNV21(img.bits(), info.width, info.height, yuvBuf);
             m_view->upImageData(info, yuvBuf.data());
+            info.format = m_test_yuv_format;
+            info.upLenth();
         }
         else {
             // RGB 直传

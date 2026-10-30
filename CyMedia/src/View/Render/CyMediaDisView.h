@@ -92,9 +92,9 @@ public:
     void zoomAuto(void);
     void zoomRaw(bool Reset = true);
 
-    bool isHriMirror();
+    bool isHoriMirror();
     bool isVerMirror();
-    void hriMirror(void);
+    void horiMirror(void);
     void verMirror(void);
 
     double rotateValue(void);

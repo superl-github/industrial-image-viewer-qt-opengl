@@ -1,6 +1,6 @@
 # CyMedia 库
 
-> 版本：`V 1.2.7`  
+> 版本：`V 1.3.0`  
 > 平台：Windows / Qt 5.14.2 / MSVC 2022  
 > 显示模块详细设计见源码树 `src/View/README.md`（发布包内为 `include/View/README.md`）。
 
@@ -13,10 +13,36 @@ CyMedia 编译为 `CyMedia.dll` + `CyMedia.lib`。
 | 模块 | 职责 | Qt UI 依赖 |
 | --- | --- | --- |
 | `Calculate` | 直方图、拉伸参数、Bayer/YUV 转换、颜色空间转换 | 否 |
-| `Parse` | Raw 图像、Raw 视频、FFmpeg 视频解析 | 否 |
+| `Parse` | 图像 Raw/BMP/PNG/JPEG；视频 Raw/AVI/MP4 | 否 |
 | `common` | 像素类型、图像信息、解析类型、日志、版本、导出宏 | 否 |
 | `View` | 图像显示、交互、标注、OpenGL 渲染、处理管线 | 是 |
 | `CyMediaDisTest` | 示例与冒烟测试程序 | 是 |
+
+### 1.1 解析格式
+
+图像（`CyMediaImageParse`）：
+
+| 操作 | 格式 | 说明 |
+| --- | --- | --- |
+| 读取 | Raw（带 `ImageShowInfo` 头） | `openImage()` |
+| 读取 | Raw（无头） | `openImage_NotHeaderRaw()`，调用方提供宽高/位深/格式/偏移 |
+| 读取 | BMP / PNG / JPEG | stb_image，8 位，Mono/RGB/RGBA |
+| 保存 | Raw（可带 `ImageShowInfo` 头） | `ImageSaveOpe::rawAddHead` 控制写头 |
+| 保存 | BMP / PNG / JPEG | 仅 `info.bit == 8` |
+
+- `.tif/.tiff` 后缀可被 `getTypeByPath()` 识别，但 stb_image 不提供 TIFF 解码。
+- `.raw` 同时可能表示图像或视频，按业务选择 `CyMediaImageParse` 或 `VideoParser`。
+
+视频（`VideoParser`）：
+
+| 后缀 | 解析器 | 输出 |
+| --- | --- | --- |
+| `.raw` / `.rawv` | `VideoParseRaw` | 自定义 `RawFileHeader`，固定帧长 |
+| `.avi` | `VideoParseFfmpeg` | FFmpeg 解码，RGB888，8 位 |
+| `.mp4` | `VideoParseFfmpeg` | FFmpeg 解码，RGB888，8 位 |
+
+`.mkv`、`.mov`、`.wmv` 等后缀不进入当前 `VideoSuffix` 路由。Raw 视频 `format=false` 读取文件头，
+`format=true` 使用调用方提供的 `VideoParseInfo`；帧索引从 1 开始。
 
 ---
 
@@ -218,7 +244,7 @@ GenRelease.bat clean    :: 清空输出目录后生成
 ```
 
 ```text
-OutFile/CyMedia/
+OutFile/CyMedia_Release/
 ├── README.md
 ├── include/
 │   ├── CyMediaBaseDef.h
@@ -240,7 +266,7 @@ OutFile/CyMedia/
 `Demo/CyMediaDisTest` 提供源码、CMakeLists、UI/qrc、翻译与资源，不包含预编译 exe 或 DLL。包内构建：
 
 ```powershell
-cmake -S OutFile/CyMedia/Demo/CyMediaDisTest -B build-demo `
+cmake -S OutFile/CyMedia_Release/Demo/CyMediaDisTest -B build-demo `
       -G "Visual Studio 17 2022" -A x64 `
       -DCMAKE_PREFIX_PATH="C:/Qt/Qt5.14.2/5.14.2/msvc2017_64"
 cmake --build build-demo --config Release --parallel
