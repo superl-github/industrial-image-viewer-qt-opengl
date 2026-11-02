@@ -1,5 +1,5 @@
 #pragma once
-#include "common/Export.h"
+#include "../../common/Export.h"
 
 #include <QDialog>
 #include <QTextBrowser>

@@ -1,6 +1,6 @@
 // CyMediaI18n.cpp
 #include "CyMediaI18n.h"
-#include "common/CyMediaLog.h"
+#include "./CyMediaLog.h"
 
 #include <QCoreApplication>
 #include <QThread>

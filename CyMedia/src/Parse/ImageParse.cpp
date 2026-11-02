@@ -1,5 +1,5 @@
 #include "ImageParse.h"
-#include "Calculate/Calculate.h"
+#include "../Calculate/Calculate.h"
 
 #define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION

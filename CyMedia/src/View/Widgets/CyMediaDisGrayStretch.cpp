@@ -1,8 +1,8 @@
 #include "CyMediaDisGrayStretch.h"
 
-#include "Calculate/Calculate.h"
-#include "View/Widgets/CyQCP.h"
-#include "View/Widgets/cycustomwidget.h"
+#include "../../Calculate/Calculate.h"
+#include "../Widgets/CyQCP.h"
+#include "../Widgets/cycustomwidget.h"
 
 #include <QToolTip>
 #include <QBoxLayout>

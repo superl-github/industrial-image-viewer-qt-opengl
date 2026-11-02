@@ -1,5 +1,5 @@
 #pragma once
-#include "common/ParseTypes.h"
+#include "../common/ParseTypes.h"
 
 #include <QObject>
 #include <QString>

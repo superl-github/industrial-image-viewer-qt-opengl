@@ -1,6 +1,6 @@
 #include "CalcRgb.h"
 #include "CalcColor.h"
-#include "3rdparty/stb_image/stb_image.h"
+#include "stb_image.h"
 
 #include <algorithm>
 #include <cmath>

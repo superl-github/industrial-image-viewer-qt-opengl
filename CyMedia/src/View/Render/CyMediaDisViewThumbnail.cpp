@@ -1,7 +1,7 @@
 #include "CyMediaDisViewThumbnail.h"
 #include "CyMediaDisView.h"
 #include "CyMediaDisViewBckDraw.h"
-#include "Calculate/Calculate.h"
+#include "../../Calculate/Calculate.h"
 
 CyMediaDisViewThumbnail::CyMediaDisViewThumbnail(CyMediaDisView* parentView, QWidget* parent /*= nullptr*/)
 : QOpenGLWidget(parent)

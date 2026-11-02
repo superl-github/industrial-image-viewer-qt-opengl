@@ -431,7 +431,6 @@ FodyWeavers.xsd
 # my ignore
 /CyMedia/CyMediaDis/colorMap_ALL
 /.vs/CyMedia
-/CyMediaDisTest/Icon
 /OutFile
 /Doxygen
 开发说明.md

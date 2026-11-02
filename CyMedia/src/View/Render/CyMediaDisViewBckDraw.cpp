@@ -1,7 +1,7 @@
 #include "CyMediaDisViewBckDraw.h"
-#include "Calculate/Calculate.h"
-#include "common/CyMediaLog.h"
 #include "CyMediaDisView.h"
+#include "../../Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
 
 #include <QApplication>
 #include <QThread>

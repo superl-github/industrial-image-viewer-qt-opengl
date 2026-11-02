@@ -1,6 +1,6 @@
 
 #include "CyMediaDisView.h"
-#include "Calculate/Calculate.h"
+#include "../../Calculate/Calculate.h"
 #include "CyMediaDisViewBckDraw.h"
 #include "CyMediaDisViewThumbnail.h"
 

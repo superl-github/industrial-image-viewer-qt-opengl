@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "View/DisplayTypes.h"
+#include "../DisplayTypes.h"
 
 #include <vector>
 

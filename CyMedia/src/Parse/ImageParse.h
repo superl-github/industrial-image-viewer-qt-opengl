@@ -9,7 +9,7 @@
 * @version 1.0
 */
 #pragma once
-#include "common/ParseTypes.h"
+#include "../common/ParseTypes.h"
 
 #include <filesystem>
 #include <string>

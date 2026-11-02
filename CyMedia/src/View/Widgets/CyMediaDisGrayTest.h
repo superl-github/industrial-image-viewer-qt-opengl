@@ -15,8 +15,8 @@
  * @version 1.0
  */
 #pragma once
-#include "common/ImageTypes.h"
-#include "View/Annotation/BaseItem.h"
+#include "../../common/ImageTypes.h"
+#include "../Annotation/BaseItem.h"
 
 #include <QWidget>
 #include <QTabWidget>

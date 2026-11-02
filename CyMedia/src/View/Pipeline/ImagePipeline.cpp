@@ -1,8 +1,8 @@
 #include "ImagePipeline.h"
 
 #include "ImageProcessor.h"
-#include "common/CyMediaLog.h"
-#include "Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
+#include "../../Calculate/Calculate.h"
 
 #include <QElapsedTimer>
 #include <QMutex>

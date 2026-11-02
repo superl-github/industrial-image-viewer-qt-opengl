@@ -26,8 +26,8 @@
  */
 #pragma once
 
-#include "common/Export.h"
-#include "common/Language.h"
+#include "./Export.h"
+#include "./Language.h"
 
 #include <QObject>
 #include <QPointer>

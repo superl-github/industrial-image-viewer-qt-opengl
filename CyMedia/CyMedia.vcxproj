@@ -296,7 +296,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
@@ -324,7 +324,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
@@ -342,7 +342,7 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <QtMoc>
       <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>
@@ -365,7 +365,7 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>CYMEDIA_EXPORT;QT_NO_PRINTER</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\common\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)3rdparty\ffmpeg\include\$(Platform)\;$(ProjectDir)3rdparty\qcustomplot\;$(ProjectDir)3rdparty\stb_image\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <QtMoc>
       <QtMocDir>$(SolutionDir)OutFile\BuildTemp\$(ProjectName)\$(Platform)\$(Configuration)\moc\</QtMocDir>

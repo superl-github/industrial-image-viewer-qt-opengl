@@ -17,8 +17,8 @@
  */
 #pragma once
 
-#include "CyMediaBaseDef.h"
-#include "View/DisplayTypes.h"
+#include "../../common/CyMediaBaseDef.h"
+#include "../DisplayTypes.h"
 
 #include <cstdint>
 

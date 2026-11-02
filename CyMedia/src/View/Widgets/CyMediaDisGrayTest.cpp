@@ -1,11 +1,11 @@
 #include "CyMediaDisGrayTest.h"
 
-#include "Calculate/Calculate.h"
-#include "View/Widgets/cycustomwidget.h"
-#include "View/Widgets/CyQCP.h"
+#include "../../Calculate/Calculate.h"
+#include "../Widgets/cycustomwidget.h"
+#include "../Widgets/CyQCP.h"
 
-#include "View/Display.h"
-#include "View/Annotation/DrawItem.h"
+#include "../Display.h"
+#include "../Annotation/DrawItem.h"
 
 #include <QThread>
 #include <QToolBar>

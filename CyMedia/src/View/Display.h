@@ -53,9 +53,9 @@
  */
 #pragma once
 
-#include "common/Export.h"
-#include "common/Language.h"
-#include "common/Log.h"
+#include "../common/Export.h"
+#include "../common/Language.h"
+#include "../common/Log.h"
 #include "DisplayTypes.h"
 
 #include <QColor>

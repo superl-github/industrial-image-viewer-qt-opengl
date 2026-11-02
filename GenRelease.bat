@@ -68,12 +68,12 @@ call :MakeDir "%demoOut%"
 :: ----------------------------------------------------------------------------
 echo [INFO] Copying documentation...
 if exist "%srcRoot%\README.md" (
-    xcopy /y /d /i "%srcRoot%\README.md" "%genDir%\README.md" >nul
+    call :CopyFile "%srcRoot%\README.md" "%genDir%\"
 ) else (
-    if exist "%batDir%\README.md" xcopy /y /d /i "%batDir%\README.md" "%genDir%\README.md" >nul
+    if exist "%batDir%\README.md" call :CopyFile "%batDir%\README.md" "%genDir%\"
 )
 if exist "%srcRoot%\src\View\README.md" (
-    xcopy /y /d /i "%srcRoot%\src\View\README.md" "%incDir%\View\README.md" >nul
+    call :CopyFile "%srcRoot%\src\View\README.md" "%incDir%\View\"
 )
 
 if exist "%batDir%\Third-Party_Licenses" (
@@ -84,8 +84,6 @@ if exist "%batDir%\Third-Party_Licenses" (
 :: Public headers
 :: ----------------------------------------------------------------------------
 echo [INFO] Copying headers...
-call :CopyFile "%srcRoot%\src\common\CyMediaBaseDef.h" "%incDir%\"
-call :CopyFile "%srcRoot%\src\common\CyMediaBaseDef.h" "%incDir%\common\"
 call :CopyHeaders "%srcRoot%\src\common" "%incDir%\common"
 
 call :CopyFile "%srcRoot%\src\View\Display.h" "%incDir%\View\"

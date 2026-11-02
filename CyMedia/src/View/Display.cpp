@@ -1,19 +1,19 @@
 #include "Display.h"
 
-#include "common/CyMediaLog.h"
-#include "common/CyMediaI18n.h"
-#include "View/Pipeline/ImagePipeline.h"
-#include "View/Render/CyDMediaDisScen.h"
-#include "View/Render/CyMediaDisView.h"
-#include "View/Render/CyMediaDisViewBckDraw.h"
-#include "View/Ui/DisplayToolBar.h"
-#include "View/Ui/ImageShowWindow.h"
-#include "View/Widgets/CyMediaDisGrayStretch.h"
-#include "View/Widgets/CyMediaDisGrayTest.h"
-#include "View/Widgets/CyMediaRecTimeW.h"
+#include "../common/CyMediaLog.h"
+#include "../common/CyMediaI18n.h"
+#include "Pipeline/ImagePipeline.h"
+#include "Render/CyDMediaDisScen.h"
+#include "Render/CyMediaDisView.h"
+#include "Render/CyMediaDisViewBckDraw.h"
+#include "Ui/DisplayToolBar.h"
+#include "Ui/ImageShowWindow.h"
+#include "Widgets/CyMediaDisGrayStretch.h"
+#include "Widgets/CyMediaDisGrayTest.h"
+#include "Widgets/CyMediaRecTimeW.h"
 
-#include "View/Annotation/DrawItem.h"
-#include "View/Annotation/DrawItemTool.h"
+#include "Annotation/DrawItem.h"
+#include "Annotation/DrawItemTool.h"
 
 #include <QApplication>
 #include <QElapsedTimer>

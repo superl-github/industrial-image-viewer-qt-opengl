@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include "View/Display.h"
+#include "../Display.h"
 
 #include <QLabel>
 #include <QWidget>

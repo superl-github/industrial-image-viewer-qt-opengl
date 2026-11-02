@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include "ImageTypes.h"
+#include "./ImageTypes.h"
 
 namespace CyMedia {
     /// 图像文件后缀类型。
