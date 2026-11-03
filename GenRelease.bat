@@ -72,6 +72,11 @@ if exist "%srcRoot%\README.md" (
 ) else (
     if exist "%batDir%\README.md" call :CopyFile "%batDir%\README.md" "%genDir%\"
 )
+if exist "%srcRoot%\Uplog.md" (
+    call :CopyFile "%srcRoot%\Uplog.md" "%genDir%\"
+) else (
+    if exist "%batDir%\Uplog.md" call :CopyFile "%batDir%\Uplog.md" "%genDir%\"
+)
 if exist "%srcRoot%\src\View\README.md" (
     call :CopyFile "%srcRoot%\src\View\README.md" "%incDir%\View\"
 )
