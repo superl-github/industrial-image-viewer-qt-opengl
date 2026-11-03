@@ -758,7 +758,7 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
         //如果超限且是灰度图可按RGBA传输
         if (m_bIsOVerSize) {
             if (info.isMono()) {
-                if (newWidth / 2 > m_gl_max_texture_size || newHeight / 2 > m_gl_max_texture_size) {
+                if (newWidth / 2 <= m_gl_max_texture_size && newHeight / 2 <= m_gl_max_texture_size) {
                     m_bIsOVerSize = false;
                     pTex->showInfo.format = CyMedia::MONO_OVERSIZE;
                     pTex->glslNcolor = CyMedia::MONO_OVERSIZE;

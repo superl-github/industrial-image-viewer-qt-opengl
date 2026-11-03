@@ -88,7 +88,7 @@ namespace CyMedia {
                     info.width, info.height, int(info.bit), info.length);
                 return false;
             }
-            static const int32_t kMaxImageSize = 15000;
+            static const int32_t kMaxImageSize = 20000;
             if (info.width > kMaxImageSize || info.height > kMaxImageSize) {
                 CyMediaLog::instance().log_printf(LogLevel::WAR,
                     "[ImagePipeline] frame too large: (%d %d), max %d",
