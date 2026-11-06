@@ -203,11 +203,11 @@ private:
     //拉伸参数
     CyMedia::StretchType eStretchType = CyMedia::stretch_None;
     bool upStretchValue = false;
-    int32_t stretchpara_start;
-    int32_t stretchpara_end;
-    int32_t stretchpara_max;
-    float stretchpara_K;
-    float stretchpara_C;
+    int32_t stretchpara_start = 0;
+    int32_t stretchpara_end = 0;
+    int32_t stretchpara_max = 0;
+    float stretchpara_K = 1.0f;
+    float stretchpara_C = 0.0f;
 
     // 色彩映射
     QString m_ColorMapDirPath;

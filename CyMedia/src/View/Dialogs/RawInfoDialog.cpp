@@ -1,5 +1,6 @@
 #include "RawInfoDialog.h"
 
+#include "../../common/CyMediaLog.h"
 #include "View/Display.h" // CyMediaDis::pixelFormatStr
 
 #include <QComboBox>
@@ -238,10 +239,16 @@ namespace CyMedia {
     }
 
     void GetRawInfoDialog::onOkClicked() {
+        CyMediaLog::instance().log_printf_Info(
+            "[RawInfo] accepted: %ux%u bit=%u format=%d special=%d offset=%u fps=%.1f",
+            imageWidth(), imageHeight(), imagenBit(), int(imagePixelType()),
+            int(specialPixe()), imageOffset(), videoFps());
         this->accept();
     }
 
     void GetRawInfoDialog::onCanCelClicked() {
+        CyMediaLog::instance().log_printf_Debug(
+            "[RawInfo] cancelled");
         this->reject();
     }
 }

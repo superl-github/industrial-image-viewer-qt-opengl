@@ -26,5 +26,5 @@ namespace CyMedia {
      * @param message 日志文本。
      * @param user 注册回调时传入的用户指针。
      */
-    using LogCallback = std::function<void(LogLevel, const std::string&, void*)>;
+    using LogCallback = std::function<void(LogLevel, const std::string_view&, void*)>;
 }

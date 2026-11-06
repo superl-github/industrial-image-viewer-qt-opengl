@@ -210,10 +210,10 @@
     <ClCompile Include="src\View\Widgets\CyQCP.cpp">
       <Filter>src\View\Widgets</Filter>
     </ClCompile>
-    <ClCompile Include="src\View\Widgets\CyMediaDisGrayStretch.cpp">
+    <ClCompile Include="src\View\Widgets\GrayStretch.cpp">
       <Filter>src\View\Widgets</Filter>
     </ClCompile>
-    <ClCompile Include="src\View\Widgets\CyMediaDisGrayTest.cpp">
+    <ClCompile Include="src\View\Widgets\GrayMeasurement.cpp">
       <Filter>src\View\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="src\View\Widgets\CyMediaRecTimeW.cpp">
@@ -320,10 +320,10 @@
     <QtMoc Include="src\View\Widgets\CyQCP.h">
       <Filter>src\View\Widgets</Filter>
     </QtMoc>
-    <QtMoc Include="src\View\Widgets\CyMediaDisGrayStretch.h">
+    <QtMoc Include="src\View\Widgets\GrayStretch.h">
       <Filter>src\View\Widgets</Filter>
     </QtMoc>
-    <QtMoc Include="src\View\Widgets\CyMediaDisGrayTest.h">
+    <QtMoc Include="src\View\Widgets\GrayMeasurement.h">
       <Filter>src\View\Widgets</Filter>
     </QtMoc>
     <QtMoc Include="src\View\Widgets\CyMediaRecTimeW.h">

@@ -82,15 +82,16 @@ namespace CyMedia {
         ~Impl() { stop(); }
 
         bool submit(const ImageShowInfo& info, void* data, bool force) {
-            if (!data || info.width <= 0 || info.height <= 0 || info.bit <= 0 || info.length <= 0) {
-                CyMediaLog::instance().log_printf(LogLevel::ERR,
-                    "[ImagePipeline] invalid frame: w=%d h=%d bit=%d len=%u",
-                    info.width, info.height, int(info.bit), info.length);
+            if (!data || info.width <= 0 || info.height <= 0
+                || info.bit <= 0 || info.bit > 32 || info.length <= 0) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImagePipeline] invalid frame: w=%d h=%d bit=%d len=%u data=%p",
+                    info.width, info.height, int(info.bit), info.length, data);
                 return false;
             }
             static const int32_t kMaxImageSize = 20000;
             if (info.width > kMaxImageSize || info.height > kMaxImageSize) {
-                CyMediaLog::instance().log_printf(LogLevel::WAR,
+                CyMediaLog::instance().log_printf_Warning(
                     "[ImagePipeline] frame too large: (%d %d), max %d",
                     info.width, info.height, kMaxImageSize);
                 return false;
@@ -111,28 +112,47 @@ namespace CyMedia {
                 return true;
             }
 
+            uint64_t droppedSnapshot = 0;
+            uint32_t allocFailLen = 0;
             {
                 QMutexLocker lock(&mutex);
                 Slot* slot = acquireSlotLocked(force);
-                if (!slot) return false;
-
-                // 深拷贝入队，upImageData 返回后调用方即可复用 data。
-                slot->info = info;
-                slot->ensureCapacity(info.length);
-                if (!slot->data) {
-                    CyMediaLog::instance().log_printf(LogLevel::ERR,
-                        "[ImagePipeline] allocate %u bytes failed", info.length);
-                    slot->ready.store(false, std::memory_order_release);
-                    return false;
+                if (!slot) {
+                    droppedSnapshot = ++droppedFrames;
                 }
-                std::memcpy(slot->data, data, info.length);
-                slot->isSource = false;
-                slot->copySource = dataSlow.load(std::memory_order_relaxed) || (++copyCounter >= 10);
-                if (copyCounter >= 10) copyCounter = 0;
-                slot->updateDisplay = true;
-                slot->updateStretch = true;
-                slot->countFps = true;
-                slot->ready.store(true, std::memory_order_release);
+                else {
+                    // 深拷贝入队，upImageData 返回后调用方即可复用 data。
+                    slot->info = info;
+                    slot->ensureCapacity(info.length);
+                    if (!slot->data) {
+                        allocFailLen = info.length;
+                        slot->ready.store(false, std::memory_order_release);
+                    }
+                    else {
+                        std::memcpy(slot->data, data, info.length);
+                        slot->isSource = false;
+                        slot->copySource = dataSlow.load(std::memory_order_relaxed) || (++copyCounter >= 10);
+                        if (copyCounter >= 10) copyCounter = 0;
+                        slot->updateDisplay = true;
+                        slot->updateStretch = true;
+                        slot->countFps = true;
+                        slot->ready.store(true, std::memory_order_release);
+                    }
+                }
+            }
+            if (allocFailLen) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImagePipeline] allocate %u bytes failed", allocFailLen);
+                return false;
+            }
+            if (droppedSnapshot) {
+                // 丢帧属于正常背压，首次与每 100 帧记录一次，避免刷屏。
+                if (droppedSnapshot == 1 || (droppedSnapshot % 100) == 0) {
+                    CyMediaLog::instance().log_printf_Warning(
+                        "[ImagePipeline] frame queue full, dropped %llu frame(s) (stack=%u, force=0)",
+                        static_cast<unsigned long long>(droppedSnapshot), stackSize);
+                }
+                return false;
             }
 
             ensureThread();
@@ -143,12 +163,20 @@ namespace CyMedia {
         void requestReprocess(bool updateDisplay, bool updateStretch, bool force) {
             if (directMode.load(std::memory_order_acquire)) {
                 if (sink) sink->onNeedImage();
-                if (!haveImage.load(std::memory_order_acquire)) return;
+                if (!haveImage.load(std::memory_order_acquire)) {
+                    CyMediaLog::instance().log_printf_Debug(
+                        "[ImagePipeline] reprocess skipped: no image (direct mode)");
+                    return;
+                }
 
                 WorkItem item;
                 {
                     QMutexLocker lock(&mutex);
-                    if (!rawData || rawInfo.length == 0) return;
+                    if (!rawData || rawInfo.length == 0) {
+                        CyMediaLog::instance().log_printf_Warning(
+                            "[ImagePipeline] reprocess failed: raw frame missing (direct mode)");
+                        return;
+                    }
                     item.info = rawInfo;
                     item.data = rawData.get();
                 }
@@ -161,12 +189,20 @@ namespace CyMedia {
                 return;
             }
 
-            if (!haveImage.load(std::memory_order_acquire)) return;
+            if (!haveImage.load(std::memory_order_acquire)) {
+                CyMediaLog::instance().log_printf_Debug(
+                    "[ImagePipeline] reprocess skipped: no image");
+                return;
+            }
 
             {
                 QMutexLocker lock(&mutex);
                 Slot* slot = acquireSlotLocked(force);
-                if (!slot) return;
+                if (!slot) {
+                    CyMediaLog::instance().log_printf_Debug(
+                        "[ImagePipeline] reprocess dropped: frame queue full (stack=%u)", stackSize);
+                    return;
+                }
                 slot->isSource = true;
                 slot->copySource = false;
                 slot->updateDisplay = updateDisplay;
@@ -180,6 +216,9 @@ namespace CyMedia {
         }
 
         void clear() {
+            CyMediaLog::instance().log_printf_Info(
+                "[ImagePipeline] clear (stack=%u, haveImage=%d)",
+                stackSize, int(haveImage.load(std::memory_order_acquire)));
             stopThread();
             {
                 QMutexLocker lock(&mutex);
@@ -191,10 +230,12 @@ namespace CyMedia {
                 rawData.reset();
                 rawInfo = ImageShowInfo();
                 imageInfo = ImageShowInfo();
+                droppedFrames = 0;
             }
             haveImage.store(false, std::memory_order_release);
             fpsCount = 0;
             fpsTimer.restart();
+            fpsLogged = false;
             cond.wakeAll();
         }
 
@@ -206,7 +247,11 @@ namespace CyMedia {
             num = num < 1 ? 1 : (num > 10 ? 10 : num);
             if (num == stackSize) return;
 
+            const uint32_t old = stackSize;
             const bool wasRunning = thread && thread->isRunning();
+            CyMediaLog::instance().log_printf_Info(
+                "[ImagePipeline] stack size: %u -> %u (restart=%d)",
+                old, num, int(wasRunning));
             stopThread();
             {
                 QMutexLocker lock(&mutex);
@@ -220,6 +265,8 @@ namespace CyMedia {
         void setDirect(bool direct) {
             if (directMode.load(std::memory_order_acquire) == direct) return;
 
+            CyMediaLog::instance().log_printf_Info(
+                "[ImagePipeline] direct mode %s", direct ? "enabled" : "disabled");
             stopThread();
             directMode.store(direct, std::memory_order_release);
             {
@@ -284,15 +331,20 @@ namespace CyMedia {
                 thread = QThread::create([this]() { run(); });
                 running.store(true, std::memory_order_release);
                 thread->start();
+                CyMediaLog::instance().log_printf_Debug(
+                    "[ImagePipeline] worker thread started");
                 return;
             }
             if (!thread->isRunning()) {
                 running.store(true, std::memory_order_release);
                 thread->start();
+                CyMediaLog::instance().log_printf_Debug(
+                    "[ImagePipeline] worker thread restarted");
             }
         }
 
         void stopThread() {
+            const bool hadThread = (thread != nullptr);
             running.store(false, std::memory_order_release);
             cond.wakeAll();
             if (thread) {
@@ -301,12 +353,29 @@ namespace CyMedia {
                 delete thread;
                 thread = nullptr;
             }
+            if (hadThread) {
+                CyMediaLog::instance().log_printf_Debug(
+                    "[ImagePipeline] worker thread stopped");
+            }
         }
 
         void run() {
+            CyMediaLog::instance().log_printf_Debug(
+                "[ImagePipeline] worker thread running");
             while (running.load(std::memory_order_acquire)) {
-                // 等待渲染端（OpenGL）就绪。
+                // 等待渲染端（OpenGL）就绪。渲染端未初始化时帧会持续积压，
+                // 因此每 30s 记录一次等待状态，便于定位"只入队不上屏"的问题。
+                QElapsedTimer readyWait;
+                readyWait.start();
+                qint64 lastWarnMs = 0;
                 while (running.load(std::memory_order_acquire) && sink && !sink->isReady()) {
+                    const qint64 elapsed = readyWait.elapsed();
+                    if (elapsed - lastWarnMs >= 30000) {
+                        lastWarnMs = elapsed;
+                        CyMediaLog::instance().log_printf_Warning(
+                            "[ImagePipeline] renderer not ready, frames are queued (%lld ms)",
+                            elapsed);
+                    }
                     QThread::msleep(1);
                 }
                 if (!running.load(std::memory_order_acquire)) break;
@@ -341,6 +410,8 @@ namespace CyMedia {
                     opt = optionsValue;
                     if (item.isSource) {
                         if (!rawData || rawInfo.length == 0) {
+                            CyMediaLog::instance().log_printf_Warning(
+                                "[ImagePipeline] reprocess skipped: raw frame unavailable");
                             slot.ready.store(false, std::memory_order_release);
                             currentSlot.store(-1, std::memory_order_release);
                             continue;
@@ -358,11 +429,17 @@ namespace CyMedia {
                     currentSlot.store(-1, std::memory_order_release);
                 }
             }
+            CyMediaLog::instance().log_printf_Debug(
+                "[ImagePipeline] worker thread exited");
         }
 
         //==================== 处理 ====================
         void process(const WorkItem& item, ImageProcessor& processor, const Options& opt) {
-            if (!item.data) return;
+            if (!item.data) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImagePipeline] process skipped: null frame data");
+                return;
+            }
             updateFps(item.countFps);
 
             ImageShowInfo info = item.info;
@@ -383,9 +460,9 @@ namespace CyMedia {
             ctx.yuvToRgbOnCpu = opt.forceCpuYuv;
 
             if (!processor.process(info, data, ctx)) {
-                CyMediaLog::instance().log_printf(LogLevel::ERR,
-                    "[ImagePipeline] format conversion failed, format=%d bit=%d",
-                    int(info.format), int(info.bit));
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImagePipeline] format conversion failed: %dx%d bit=%d format=%d len=%u",
+                    info.width, info.height, int(info.bit), int(info.format), info.length);
                 return;
             }
 
@@ -444,7 +521,14 @@ namespace CyMedia {
 
             const double fps = 1000.0 * double(fpsCount) / double(elapsed);
             dataFps.store(fps, std::memory_order_release);
-            dataSlow.store(fps < LOW_SPEED_DATA_FPS, std::memory_order_release);
+            const bool slow = fps < LOW_SPEED_DATA_FPS;
+            const bool wasSlow = dataSlow.exchange(slow, std::memory_order_acq_rel);
+            if (!fpsLogged || wasSlow != slow) {
+                fpsLogged = true;
+                CyMediaLog::instance().log_printf_Info(
+                    "[ImagePipeline] data rate %s: %.2f fps (threshold %.1f)",
+                    slow ? "slow" : "normal", fps, LOW_SPEED_DATA_FPS);
+            }
             fpsCount = 0;
             fpsTimer.restart();
         }
@@ -508,7 +592,9 @@ namespace CyMedia {
 
         QElapsedTimer fpsTimer;
         int64_t fpsCount = 0;
+        bool fpsLogged = false;
         int copyCounter = 0;
+        uint64_t droppedFrames = 0;
     };
 
     ImagePipeline::ImagePipeline(Sink* sink)

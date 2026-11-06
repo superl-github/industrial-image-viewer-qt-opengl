@@ -32,8 +32,6 @@ signals:
     void upPlaySlider(int num, bool isFinish);
 
 public:
-    QString getAnalogImageTypeName(CyMediaTest::eAnalogImageType type);
-    void genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& img, int frameIdx);
     QString geyBayerMethodStr(CyMedia::DemosaicingMethod methord);
     QString geyYUVMethodStr(CyMedia::YUVTransMethod methord);
     QString genDrawItemTypeStr(CyDisDrawItem::ItemType type);
@@ -41,7 +39,7 @@ public:
     void openFile(QString filePath);
 
     static void rePlayImageCallBack(const CyMedia::ImageShowInfo& info, const uint8_t* data, int nCount, void* userData);
-    static void cyMediaLogCallBack(CyMedia::LogLevel level, const std::string& msg, void* puser);
+    static void cyMediaLogCallBack(CyMedia::LogLevel level, const std::string_view& msg, void* puser);
     static uint8_t calcValueFigures(quint32 value);
 
 private:
@@ -177,7 +175,7 @@ private:
     CyMedia::AboutQTDialog* m_AboutQtDialog = nullptr;
 
     //acquistion
-    CyMediaTest::eAnalogImageType m_analog_img_type = CyMediaTest::AnalogImage_RandomColor;
+    CyMediaTest::eAnalogImageType m_analog_img_type = CyMediaTest::AnalogImage_Tunnel;
     CyMedia::ImageShowInfo m_ImageInfo;
     int m_width_figure = 4;
     int m_height_figure = 4;

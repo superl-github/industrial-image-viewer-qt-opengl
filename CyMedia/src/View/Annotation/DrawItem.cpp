@@ -1,7 +1,5 @@
 #include "DrawItem.h"
 
-#include <QDebug>
-
 namespace CyDisDrawItem {
     //===== 工具函数 =====
     QImage pathToMask(const QPainterPath& scenePath, const QSize& imageSize) {

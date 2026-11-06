@@ -250,9 +250,22 @@ if (dlg.exec() == QDialog::Accepted) {
 display->setLogCallback([](CyMedia::LogLevel lv, const std::string& msg, void*) {
     // 自定义输出
 }, nullptr);
-display->setlogLevel(CyMedia::INFO);
+display->setLogLevel(CyMedia::INFO);
 display->setLanguage(CyMedia::CHINESE);
 ```
+
+日志统一走 `CyMediaLog` 单例（`common/Log.h` + `common/CyMediaLog.h`）：
+
+- 级别：`TRACE < DEBUG < INFO < WAR < ERR < CRITICAL < OFF`，低于当前阈值的消息直接丢弃。
+- 回调：`setLogCallback(cb, pUser)`；未注册回调时日志不会输出。
+- 输出：`log_printf(level, fmt, ...)`，或 `log_printf_Info(fmt, ...)` 等按级别封装的快捷函数。
+- 线程：`[ImagePipeline]` 等日志可能来自处理线程，回调内不要直接操作 UI。
+- 标签：`[Display]`、`[ImagePipeline]`、`[ImageProcessor]`、`[Render]`、`[Shader]`、`[ColorMap]`、
+  `[View]`、`[Thumbnail]`、`[Annotation]`、`[GrayStretch]`、`[GrayTest]`、`[License]`、
+  `[RawInfo]`、`[ImageShowWindow]`、`[Scene]`、`[QCP]`。
+
+`TRACE/DEBUG` 用于生命周期与逐帧诊断，`INFO` 记录模式/尺寸/速率等状态切换，
+`WAR` 用于可恢复异常（丢帧、超限回退、无效参数），`ERR` 用于操作失败。
 
 ---
 

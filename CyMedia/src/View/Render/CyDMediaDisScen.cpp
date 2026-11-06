@@ -1,4 +1,5 @@
 #include "CyDMediaDisScen.h"
+#include "../../common/CyMediaLog.h"
 
 #include <QGraphicsSceneMouseEvent>
 #include <QMimeData>
@@ -68,9 +69,19 @@ void CyDMediaDisScen::dragMoveEvent(QGraphicsSceneDragDropEvent* event) {
 
 void CyDMediaDisScen::dropEvent(QGraphicsSceneDragDropEvent* event) {
     if (d->acceptDrop) {
-        if (event->mimeData()->hasUrls()) {
+        if (event->mimeData() && event->mimeData()->hasUrls()) {
             QList<QUrl> urls = event->mimeData()->urls();
+            CyMediaLog::instance().log_printf_Debug(
+                "[Scene] drop accepted: %d url(s)", urls.size());
             emit urlsDrop(urls);
         }
+        else {
+            CyMediaLog::instance().log_printf_Warning(
+                "[Scene] drop ignored: mime data has no URLs");
+        }
+    }
+    else {
+        CyMediaLog::instance().log_printf_Debug(
+            "[Scene] drop ignored: acceptDrops is disabled");
     }
 }

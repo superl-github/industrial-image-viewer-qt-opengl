@@ -75,7 +75,7 @@ namespace CyMedia {
         // 跨线程操作会破坏 Qt 的事件循环假设。
         if (QCoreApplication::instance()
             && QThread::currentThread() != QCoreApplication::instance()->thread()) {
-            CyMediaLog::instance().log_printf(LogLevel::WAR,
+            CyMediaLog::instance().log_printf_Warning(
                 "[CyMediaI18n] setLanguage() must be called from the main thread");
             return false;
         }
@@ -87,7 +87,7 @@ namespace CyMedia {
 
         auto* app = QCoreApplication::instance();
         if (!app) {
-            CyMediaLog::instance().log_printf(LogLevel::ERR,
+            CyMediaLog::instance().log_printf_Error(
                 "[CyMediaI18n] QCoreApplication not created, cannot set language");
             return false;
         }
@@ -96,7 +96,7 @@ namespace CyMedia {
         auto* trans = new QTranslator(app);
         const QString qmPath = qmFilePathFor(lang);
         if (!trans->load(qmPath)) {
-            CyMediaLog::instance().log_printf(LogLevel::WAR,
+            CyMediaLog::instance().log_printf_Warning(
                 "[CyMediaI18n] load translation failed: %s", qPrintable(qmPath));
             delete trans;
             return false;
@@ -122,7 +122,7 @@ namespace CyMedia {
     bool CyMediaI18n::installTranslation(const QString& qmFilePath) {
         if (QCoreApplication::instance()
             && QThread::currentThread() != QCoreApplication::instance()->thread()) {
-            CyMediaLog::instance().log_printf(LogLevel::WAR,
+            CyMediaLog::instance().log_printf_Warning(
                 "[CyMediaI18n] installTranslation() must be called from the main thread");
             return false;
         }
@@ -132,7 +132,7 @@ namespace CyMedia {
 
         auto* trans = new QTranslator(app);
         if (!trans->load(qmFilePath)) {
-            CyMediaLog::instance().log_printf(LogLevel::WAR,
+            CyMediaLog::instance().log_printf_Warning(
                 "[CyMediaI18n] load translation failed: %s", qPrintable(qmFilePath));
             delete trans;
             return false;

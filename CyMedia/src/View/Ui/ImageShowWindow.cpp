@@ -1,4 +1,5 @@
 #include "ImageShowWindow.h"
+#include "../../common/CyMediaLog.h"
 
 #include <QVBoxLayout>
 
@@ -30,7 +31,11 @@ namespace CyMedia {
 
     void ImageShowWindow::upImageData(CyMedia::ImageShowInfo info, void* data) {
         // 创建时无法更新图像，窗口未显示上下文未创建
-        ui_disPlay->upImageData(info, data);
+        if (!ui_disPlay->upImageData(info, data)) {
+            CyMediaLog::instance().log_printf_Warning(
+                "[ImageShowWindow] initial frame rejected: %dx%d bit=%d format=%d",
+                info.width, info.height, int(info.bit), int(info.format));
+        }
     }
 
     void ImageShowWindow::onUpPosPix(qint32 x, qint32 y, double r, double g, double b, bool signlR) {

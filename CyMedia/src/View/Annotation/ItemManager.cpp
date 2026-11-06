@@ -1,7 +1,6 @@
 #include "ItemManager.h"
 #include "ItemFactory.h"
-
-#include <QDebug>
+#include "../../common/CyMediaLog.h"
 
 namespace CyDisDrawItem {
     //====== class CyDisDrawItem::ItemManager ======
@@ -9,7 +8,8 @@ namespace CyDisDrawItem {
         : QObject(parent)
         , m_scene(scene) {
         if (!m_scene) {
-            qWarning() << "DrawingManager: scene is null!";
+            CyMediaLog::instance().log_printf_Error(
+                "[Annotation] ItemManager created with null scene, item operations are disabled");
         }
     }
 
@@ -35,7 +35,13 @@ namespace CyDisDrawItem {
     }
 
     void ItemManager::addItem(BaseItem* item) {
-        if (!item || !m_scene) return;
+        if (!item) return;
+        if (!m_scene) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Annotation] addItem failed: scene is null");
+            delete item;
+            return;
+        }
         if (m_items.contains(item)) return;
 
         item->setTrackingGeometry(m_trackingGeometryChange);
@@ -62,10 +68,24 @@ namespace CyDisDrawItem {
 			Qt::UniqueConnection);
 
         emit itemAdded(item->id());
+        CyMediaLog::instance().log_printf_Debug(
+            "[Annotation] item added: id=%s type=%d count=%d",
+            item->id().toString().toUtf8().constData(), int(item->itemType()), m_items.size());
     }
 
     QUuid ItemManager::addItemByType(CyDisDrawItem::ItemType itemType) {
         auto tempItem = ItemFactory::createItem(itemType);
+        if (!tempItem) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Annotation] create item failed: unsupported type %d", int(itemType));
+            return QUuid();
+        }
+        if (!m_scene) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Annotation] addItem failed: scene is null");
+            delete tempItem;
+            return QUuid();
+        }
         addItem(tempItem);
         return tempItem->id();
 	}
@@ -75,20 +95,37 @@ namespace CyDisDrawItem {
         //查找是否有相同Item
         for (auto item : m_items) {
             if (item->itemType() == itemType && item->pathInScene() == path) {
+                CyMediaLog::instance().log_printf_Debug(
+                    "[Annotation] duplicate item reused: type=%d id=%s",
+                    int(itemType), item->id().toString().toUtf8().constData());
                 return item->id();
             }
         }
         tempItem = ItemFactory::createItem(itemType);
         if (tempItem) {
+            if (!m_scene) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[Annotation] addItem(path) failed: scene is null");
+                delete tempItem;
+                return QUuid();
+            }
             tempItem->setPainterPathInScene(path);
             addItem(tempItem);
             return tempItem->id();
         }
-        return nullptr;
+        CyMediaLog::instance().log_printf_Error(
+            "[Annotation] create item failed: unsupported type %d", int(itemType));
+        return QUuid();
 	}
 
 	void ItemManager::removeItem(BaseItem* item, bool needSignal/* = true*/) {
         if (!item || !m_items.contains(item)) return;
+        if (!m_scene) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Annotation] removeItem(%s) failed: scene is null",
+                item->id().toString().toUtf8().constData());
+            return;
+        }
 
         m_scene->removeItem(item);
         mIdAndItemMap.remove(item->id());
@@ -101,6 +138,9 @@ namespace CyDisDrawItem {
         if (needSignal) emit itemRemoved(item->id());
 
         emit itemSelectionChanged(item->id(), false);
+        CyMediaLog::instance().log_printf_Debug(
+            "[Annotation] item removed: id=%s count=%d",
+            item->id().toString().toUtf8().constData(), m_items.size());
         item->deleteLater();
     }
 
@@ -116,6 +156,10 @@ namespace CyDisDrawItem {
     }
 
     void ItemManager::clearAll() {
+        if (!m_items.isEmpty()) {
+            CyMediaLog::instance().log_printf_Debug(
+                "[Annotation] clear all items (%d)", m_items.size());
+        }
         mIdAndItemMap.clear();
 		for (auto* item : m_items) {
             disconnect(item, &BaseItem::selectedChanged, this, nullptr);
@@ -123,7 +167,7 @@ namespace CyDisDrawItem {
 		}
 
         for (auto* item : m_items) {
-            m_scene->removeItem(item);
+            if (m_scene) m_scene->removeItem(item);
         }
 
         for (auto* item : m_items) {

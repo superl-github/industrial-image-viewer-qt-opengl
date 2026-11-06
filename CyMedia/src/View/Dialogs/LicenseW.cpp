@@ -1,5 +1,7 @@
 #include "LicenseW.h"
 
+#include "../../common/CyMediaLog.h"
+
 #include <QGridLayout>
 #include <QDesktopServices>
 #include <QFile>
@@ -10,8 +12,12 @@ namespace {
 
     QString loadTemplate() {
         QFile f(QString::fromLatin1(kTemplatePath));
-        if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            CyMediaLog::instance().log_printf_Error(
+                "[License] cannot open about_qt template: %s (%s)",
+                kTemplatePath, f.errorString().toUtf8().constData());
             return {};
+        }
         return QString::fromUtf8(f.readAll());
     }
 
@@ -66,7 +72,15 @@ namespace CyMedia {
     }
 
     void AboutQTDialog::onAnchorClicked(const QUrl& url) {
-        QDesktopServices::openUrl(url);
+        const bool ok = QDesktopServices::openUrl(url);
+        if (ok) {
+            CyMediaLog::instance().log_printf_Debug(
+                "[License] open URL %s (ok)", url.toString().toUtf8().constData());
+        }
+        else {
+            CyMediaLog::instance().log_printf_Warning(
+                "[License] open URL %s failed", url.toString().toUtf8().constData());
+        }
     }
 
     void AboutQTDialog::adjustSizeToContent() {

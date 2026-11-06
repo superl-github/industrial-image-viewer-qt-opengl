@@ -295,8 +295,7 @@ bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data, st
             auto& localHist = localHistComb.local();
             for (int x = 0; x < w; ++x) {
                 uint8_t Y, U, V;
-                if (!getYUV(info, data, x, y, Y, U, V))
-                    continue;
+                if (!getYUV(info, data, x, y, Y, U, V)) continue;
                 RgbPixel rgb;
                 if (func == YUVTRANS_Y) {
                     rgb.r = rgb.g = rgb.b = Y;
@@ -366,9 +365,7 @@ bool computeHistogram_Stretch(const ImageShowInfo& info, const uint8_t* data, st
                     continue;
                 RgbPixel rgb;
                 if (func == YUVTRANS_Y) {
-                    rgb.r = Y;
-                    rgb.g = 0;
-                    rgb.b = 0;
+                    rgb.r = rgb.g = rgb.b = Y;
                 }
                 else {
                     uint8_t R8, G8, B8;

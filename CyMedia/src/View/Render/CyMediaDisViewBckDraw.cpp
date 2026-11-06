@@ -59,19 +59,22 @@ CyMediaDisViewBckDraw::CyMediaDisViewBckDraw(QGraphicsView* view)
             TextureFps = (texrureFpsCount * 1000.0) / DisFpsETimer.elapsed();
             texrureFpsCount = showFpsCount = 0;
             DisFpsETimer.restart();
-            //printf("textureFps:%.2f showFps:%.2f\n\n", TextureFps, DisFps);
         }
         else {
             DisFpsETimer.start();
         }
         });
     DisFpsTimer->start(1000);
+    CyMediaLog::instance().log_printf_Debug(
+        "[Render] backend created (view=%p)", (void*)view);
 }
 
 CyMediaDisViewBckDraw::~CyMediaDisViewBckDraw() {
     clearGL();
     delete[] m_ColorMapData;
     m_ColorMapData = nullptr;
+    CyMediaLog::instance().log_printf_Debug(
+        "[Render] backend destroyed");
 }
 
 void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVertexArrayObject* VAO, const QRectF& targetRect, int viewWidth, int viewHeight, const QTransform& transform /*= QTransform()*/) {
@@ -93,8 +96,11 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
     }
     // 绑定主纹理（主纹理、U/V、ColorMap）
     f->glActiveTexture(GL_TEXTURE0); f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
-    err = f->glGetError(); 
-    if (err) qWarning() << "Bind Main texture, err=" << err;
+    err = f->glGetError();
+    if (err) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] bind main texture failed, glErr=0x%04X", unsigned(err));
+    }
     //U 纹理
     if (pTex->useUTex) {
         f->glActiveTexture(GL_TEXTURE1);
@@ -143,9 +149,17 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
 
     //绘制
     QOpenGLVertexArrayObject::Binder vaobinder(VAO);
-    err = f->glGetError(); if (err != GL_NO_ERROR) qWarning() << "GL error Bind VAO:" << err;
+    err = f->glGetError();
+    if (err != GL_NO_ERROR) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] stale GL error before draw, glErr=0x%04X", unsigned(err));
+    }
     f->glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, 0);
-    err = f->glGetError(); if (err != GL_NO_ERROR) qWarning() << "GL error after draw:" << err;
+    err = f->glGetError();
+    if (err != GL_NO_ERROR) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] draw failed, glErr=0x%04X", unsigned(err));
+    }
 
     // 解绑
     f->glBindTexture(GL_TEXTURE_2D, 0);
@@ -156,11 +170,30 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
 void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
     QMutexLocker locker(&m_glMutex);
     if (m_gl_init) return;
-    if (!ctx) return;
-    QOpenGLExtraFunctions* f = ctx->extraFunctions(); if (!f) return;
+    if (!ctx) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] initgl failed: null OpenGL context");
+        return;
+    }
+    QOpenGLExtraFunctions* f = ctx->extraFunctions();
+    if (!f) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] initgl failed: extraFunctions() is null");
+        return;
+    }
     f->initializeOpenGLFunctions();
-    if (false == initglsl(f)) return;
+    if (false == initglsl(f)) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] initgl failed: shader initialization failed");
+        return;
+    }
     initVertex(f, m_textureInfo[0].showInfo);
+    if (!pVAO || !pVBO || !pEBO
+        || !pVAO->isCreated() || !pVBO->isCreated() || !pEBO->isCreated()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] initgl failed: vertex buffers are not ready");
+        return;
+    }
     f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);//使用原因参考CyMediaDisViewBckDraw::upBackGround内“upTexture”处
     initTexture(f);
     f->glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -169,7 +202,8 @@ void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
     m_offscreenSurface->setFormat(ctx->format());
     m_offscreenSurface->create();
     if (!m_offscreenSurface->isValid()) {
-        qWarning() << "Offscreen surface invalid after creation!";
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] offscreen surface is invalid after creation");
         m_gl_init = false;
         delete m_offscreenSurface;
         m_offscreenSurface = nullptr;
@@ -185,6 +219,12 @@ void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
 
     m_ctx_main = ctx;
     m_gl_init = true;
+    const QSurfaceFormat fmt = ctx->format();
+    CyMediaLog::instance().log_printf_Info(
+        "[Render] OpenGL initialized: %d.%d %s, max texture %d",
+        fmt.majorVersion(), fmt.minorVersion(),
+        fmt.profile() == QSurfaceFormat::CoreProfile ? "core" : "compatibility",
+        m_gl_max_texture_size);
 }
 
 bool CyMediaDisViewBckDraw::glIsInit() {
@@ -226,9 +266,19 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
     //开始渲染
     painter->beginNativePainting();
     QOpenGLContext* ctx = QOpenGLContext::currentContext();
-    if (!ctx) { painter->endNativePainting(); return; }
+    if (!ctx) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[Render] draw skipped: no current OpenGL context");
+        painter->endNativePainting();
+        return;
+    }
     QOpenGLExtraFunctions* f = ctx->extraFunctions();
-    if (!f) { painter->endNativePainting(); return; }
+    if (!f) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[Render] draw skipped: extraFunctions() is null");
+        painter->endNativePainting();
+        return;
+    }
 
     //检查是否需要重新编译
     pTex->isReBiuld = false;
@@ -263,7 +313,9 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
             GL_RED, GL_UNSIGNED_BYTE, m_ColorMapData);
         GLenum glerr = f->glGetError();
         if (glerr != GL_NO_ERROR) {
-            qWarning() << "glTexSubImage2D(Colormap) failed:" << glerr;
+            CyMediaLog::instance().log_printf_Warning(
+                "[Render] glTexSubImage2D(colormap) failed: glErr=0x%04X, %dx%d",
+                unsigned(glerr), m_ColorMapData_Width, m_ColorMapData_Height);
         }
         f->glFinish();
         bColorMapChange = false;
@@ -313,25 +365,42 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
 
 QOpenGLContext* CyMediaDisViewBckDraw::createSharedContext() {
     QMutexLocker locker(&m_glMutex);
-    if (!m_gl_init) return nullptr;
+    if (!m_gl_init) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] create shared context skipped: renderer is not initialized");
+        return nullptr;
+    }
 
     QOpenGLContext* ctx = new QOpenGLContext;
     ctx->setFormat(m_ctx_main->format());   // 沿用主上下文的格式，确保兼容
     ctx->setShareContext(QOpenGLContext::globalShareContext());
     if (!ctx->create()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] shared context creation failed");
         delete ctx;
         return nullptr;
     }
     // 初始化离屏表面（但无需 makeCurrent 即可使用，为了安全仍做一次）
     if (!ctx->makeCurrent(m_offscreenSurface)) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] shared context makeCurrent failed");
         delete ctx;
         return nullptr;
     }
     ctx->doneCurrent();  // 释放，供外部线程使用
+    CyMediaLog::instance().log_printf_Debug(
+        "[Render] shared context created: %p (thread=%p)",
+        (void*)ctx, (void*)QThread::currentThreadId());
     return ctx;
 }
 
 QOpenGLVertexArrayObject* CyMediaDisViewBckDraw::createVAO() {
+    if (!pVBO || !pEBO || !m_shader_program) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] createVAO failed: VBO=%p EBO=%p program=%p",
+            (void*)pVBO, (void*)pEBO, (void*)m_shader_program);
+        return nullptr;
+    }
     QOpenGLVertexArrayObject* tVAO = new QOpenGLVertexArrayObject();
     QOpenGLVertexArrayObject::Binder vaobinder(tVAO);
     pVBO->bind();
@@ -364,6 +433,10 @@ void CyMediaDisViewBckDraw::initColorMap(QString path) {
             }
         }
     }
+    else {
+        CyMediaLog::instance().log_printf_Warning(
+            "[ColorMap] directory not found: %s", path.toUtf8().constData());
+    }
     //读取文件数据
     if (CMfullPathList.size()) {
         QFile oneCMFile;
@@ -373,11 +446,19 @@ void CyMediaDisViewBckDraw::initColorMap(QString path) {
                 m_ColorMapList.push_back(QFileInfo(oneCMPath).baseName());
                 oneCMFile.close();
             }
+            else {
+                CyMediaLog::instance().log_printf_Warning(
+                    "[ColorMap] cannot open colormap file: %s",
+                    oneCMPath.toUtf8().constData());
+            }
         }
         m_ColorMapData_Width = m_ColorMapFileSize / 3;
         m_ColorMapData_Height = 3;
     }
     m_ColorMapIndex = 0;
+    CyMediaLog::instance().log_printf_Info(
+        "[ColorMap] loaded %d map(s) from %s",
+        m_ColorMapList.size() - 1, path.toUtf8().constData());
 }
 
 CyMediaDisViewBckDraw::ShaderVariant CyMediaDisViewBckDraw::determineShaderVariant(const CyMedia::ImageShowInfo& info) {
@@ -419,6 +500,14 @@ void CyMediaDisViewBckDraw::loadCommonShader() {
         QTextStream stream(&file);
         m_commonFragmentSource = stream.readAll();
         file.close();
+        CyMediaLog::instance().log_printf_Debug(
+            "[Shader] common fragment loaded: %lld bytes",
+            static_cast<long long>(m_commonFragmentSource.size()));
+    }
+    else {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] cannot open common fragment: %s",
+            (m_glslPathPrefixStr + "Fragment_Common.c").toUtf8().constData());
     }
 }
 
@@ -435,11 +524,18 @@ QString CyMediaDisViewBckDraw::loadFragmentShaderSource(ShaderVariant variant) {
     case CyMediaDisViewBckDraw::YUV_PACKED:fileName = "Fragment_YUV_Packed.c"; break;
     case CyMediaDisViewBckDraw::YUV_PLANAR:fileName = "Fragment_YUV_Planar.c"; break;
     case CyMediaDisViewBckDraw::YUV_SEMIPLANAR:fileName = "Fragment_YUV_SemiPlanar.c"; break;
+    default:
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] unsupported shader variant: %d", int(variant));
+        return QString();
     }
 
-    QFile file(m_glslPathPrefixStr + fileName);
+    const QString fullPath = m_glslPathPrefixStr + fileName;
+    QFile file(fullPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "Failed to load shader:" << fileName;
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] cannot open fragment shader: %s (%s)",
+            fullPath.toUtf8().constData(), file.errorString().toUtf8().constData());
         return QString();
     }
     QTextStream stream(&file);
@@ -447,7 +543,11 @@ QString CyMediaDisViewBckDraw::loadFragmentShaderSource(ShaderVariant variant) {
 }
 
 bool CyMediaDisViewBckDraw::recompileShader(QOpenGLExtraFunctions* f, CyMediaDisViewBckDraw::oneTexturePara* para) {
-    if (!para) return false;
+    if (!para) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] recompile skipped: null texture parameter");
+        return false;
+    }
     const CyMedia::ImageShowInfo& info = para->showInfo;
     ShaderVariant newVariant = determineShaderVariant(info);
     if (newVariant == m_currentShaderType) {
@@ -460,21 +560,31 @@ bool CyMediaDisViewBckDraw::recompileShader(QOpenGLExtraFunctions* f, CyMediaDis
     QOpenGLShaderProgram* newProgram = new QOpenGLShaderProgram;
     newProgram->create();
     if (!newProgram->addShaderFromSourceCode(QOpenGLShader::Vertex, vertexShaderSource)) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] vertex compile failed: %s", newProgram->log().toUtf8().constData());
         showGlslError(tr("vertex shader"), newProgram->log());
         delete newProgram;
         return false;
     }
     if (!newProgram->addShaderFromSourceCode(QOpenGLShader::Fragment, m_commonFragmentSource + src)) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] fragment compile failed (variant=%d): %s",
+            int(newVariant), newProgram->log().toUtf8().constData());
         showGlslError(tr("Fragment shader"), newProgram->log());
         delete newProgram;
         return false;
     }
     if (!newProgram->link()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] program link failed (variant=%d): %s",
+            int(newVariant), newProgram->log().toUtf8().constData());
         showGlslError(tr("GL Program link"), newProgram->log());
         delete newProgram;
         return false;
     }
-    CyMediaLog::instance().log_printf(CyMedia::LogLevel::DEBUG, "GL Program Compilation time %lld ms\n", timer.elapsed());
+    CyMediaLog::instance().log_printf_Debug(
+        "[Shader] program variant=%d compiled in %lld ms",
+        int(newVariant), timer.elapsed());
     // 替换当前程序
     f->glUseProgram(0);
     if (m_shader_program) delete m_shader_program;
@@ -517,11 +627,14 @@ void CyMediaDisViewBckDraw::upUniforLocation(QOpenGLShaderProgram* program) {
 
 bool CyMediaDisViewBckDraw::makeOffSurface(QOpenGLContext* ctx) {
     if (!ctx || !ctx->isValid()) {
-        qWarning() << "CyMediaDisViewBckDraw::makeOffSurface:Invalid context";
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] makeOffSurface failed: invalid context");
         return false;
     }
     // 确保表面有效，若无效则重建
     if (!m_offscreenSurface || !m_offscreenSurface->isValid()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] offscreen surface invalid, recreating");
         recreateOffscreenSurface(ctx->format());
     }
     // 如果当前上下文已是目标上下文，则无需切换
@@ -534,8 +647,14 @@ bool CyMediaDisViewBckDraw::makeOffSurface(QOpenGLContext* ctx) {
     }
     // 尝试绑定
     if (!ctx->makeCurrent(m_offscreenSurface)) {
-        qWarning() << "makeCurrent failed, recreating surface...";
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] makeCurrent failed, recreating surface");
         recreateOffscreenSurface(ctx->format());
+        if (!ctx->makeCurrent(m_offscreenSurface)) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Render] makeCurrent still failed after recreating surface");
+            return false;
+        }
     }
     return true;
 }
@@ -551,24 +670,46 @@ void CyMediaDisViewBckDraw::recreateOffscreenSurface(const QSurfaceFormat& forma
     m_offscreenSurface = new QOffscreenSurface();
     m_offscreenSurface->setFormat(format);
     m_offscreenSurface->create();
+    if (!m_offscreenSurface->isValid()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] recreated offscreen surface is still invalid");
+    }
 }
 
 bool CyMediaDisViewBckDraw::initglsl(QOpenGLExtraFunctions* f) {
-    QElapsedTimer timer;
     // 加载顶点着色器
     if (vertexShaderSource.isEmpty()) {
-        QFile vertexFile(m_glslPathPrefixStr + "Vertex.c");
+        const QString vertexPath = m_glslPathPrefixStr + "Vertex.c";
+        QFile vertexFile(vertexPath);
         if (vertexFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream stream(&vertexFile);
             stream.setCodec("UTF-8");
             vertexShaderSource = stream.readAll();
             vertexFile.close();
         }
+        else {
+            CyMediaLog::instance().log_printf_Error(
+                "[Shader] cannot open vertex shader: %s",
+                vertexPath.toUtf8().constData());
+            return false;
+        }
+    }
+    if (vertexShaderSource.isEmpty()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] vertex shader source is empty");
+        return false;
     }
     //加载公共片元着色器
     loadCommonShader();
+    if (m_commonFragmentSource.isEmpty()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] common fragment source is empty");
+        return false;
+    }
     //编译
     if (false == recompileShader(f, &m_textureInfo[0])) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Shader] initial program compilation failed");
         return false;
     }
     upShaderUniformSampler(f);
@@ -595,9 +736,12 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
     pVBO = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
     pVBO->setUsagePattern(QOpenGLBuffer::DynamicDraw);
     pEBO = new QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
-    pVAO->create();
-    pVBO->create();
-    pEBO->create();
+    if (!pVAO->create() || !pVBO->create() || !pEBO->create()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] create VAO/VBO/EBO failed (VAO=%d VBO=%d EBO=%d)",
+            int(pVAO->isCreated()), int(pVBO->isCreated()), int(pEBO->isCreated()));
+        return;
+    }
 
     QOpenGLVertexArrayObject::Binder vaobinder(pVAO);
     // Binding VBO
@@ -616,7 +760,8 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
 
 void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height, float mulW, float mulH) {
     if (!pVBO) return;
-    CyMediaLog::instance().log_printf(CyMedia::LogLevel::DEBUG, "%s: width:%d height:%d\n", __FUNCTION__, width, height);
+    CyMediaLog::instance().log_printf_Debug(
+        "[Render] upVertex: width=%d height=%d", width, height);
     float usetWmul = 1.0 / mulW;
     float usetHmul = 1.0 / mulH;
     m_verticesArray[0] = { QVector3D(0, 0, 0.0f),  QVector2D(0.0f, 0.0f) };  // v0
@@ -643,7 +788,10 @@ void CyMediaDisViewBckDraw::initTexture(QOpenGLExtraFunctions* f) {
     }
     //ColorMap
     pTexture_ColorMap = new QOpenGLTexture(QOpenGLTexture::Target2D);
-    pTexture_ColorMap->create();
+    if (!pTexture_ColorMap->create()) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] colormap texture creation failed");
+    }
     f->glActiveTexture(GL_TEXTURE3);
     f->glBindTexture(GL_TEXTURE_2D, pTexture_ColorMap->textureId());
     // Texture filtering method
@@ -656,8 +804,14 @@ void CyMediaDisViewBckDraw::initTexture(QOpenGLExtraFunctions* f) {
             0, GL_RED, GL_UNSIGNED_BYTE, m_ColorMapData);
         GLenum glerr = f->glGetError();
         if (glerr != GL_NO_ERROR) {
-            qWarning() << "glTexImage2D(Colormap) failed:" << glerr;
+            CyMediaLog::instance().log_printf_Warning(
+                "[Render] glTexImage2D(colormap) failed: glErr=0x%04X, %dx%d",
+                unsigned(glerr), m_ColorMapData_Width, m_ColorMapData_Height);
         }
+    }
+    else {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] no colormap data, colormap disabled");
     }
 }
 
@@ -665,7 +819,11 @@ void CyMediaDisViewBckDraw::initTextureOne(QOpenGLExtraFunctions* f, oneTextureP
     //主纹理
     if (!pTex->glTexture) {
         pTex->glTexture = new QOpenGLTexture(QOpenGLTexture::Target2D);
-        pTex->glTexture->create();
+        if (!pTex->glTexture->create()) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Render] main texture creation failed (w=%d h=%d)",
+                pTex->showInfo.width, pTex->showInfo.height);
+        }
         f->glActiveTexture(GL_TEXTURE0);
         f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
         // 设置过滤/包裹
@@ -680,12 +838,23 @@ void CyMediaDisViewBckDraw::initTextureOne(QOpenGLExtraFunctions* f, oneTextureP
         f->glTexImage2D(GL_TEXTURE_2D, 0, pTex->textureInternalFormat,
             pTex->showInfo.width * pTex->textureWidthMultiplier, pTex->showInfo.height * pTex->textureHeightMultiplier,
             0, pTex->textureFormat, pTex->textureType, nullptr);
+        GLenum glerr = f->glGetError();
+        if (glerr != GL_NO_ERROR) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Render] allocate main texture failed: glErr=0x%04X, %dx%d",
+                unsigned(glerr), int(pTex->showInfo.width * pTex->textureWidthMultiplier),
+                int(pTex->showInfo.height * pTex->textureHeightMultiplier));
+        }
     }
     //U 纹理
     if (pTex->useUTex) {
         if (!pTex->glTextureU) {
             pTex->glTextureU = new QOpenGLTexture(QOpenGLTexture::Target2D);
-            pTex->glTextureU->create();
+            if (!pTex->glTextureU->create()) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[Render] U texture creation failed (w=%d h=%d)",
+                    pTex->uTex_width, pTex->uTex_height);
+            }
             f->glActiveTexture(GL_TEXTURE1);
             f->glBindTexture(GL_TEXTURE_2D, pTex->glTextureU->textureId());
             // 设置过滤/包裹
@@ -699,6 +868,12 @@ void CyMediaDisViewBckDraw::initTextureOne(QOpenGLExtraFunctions* f, oneTextureP
             f->glBindTexture(GL_TEXTURE_2D, pTex->glTextureU->textureId());
             f->glTexImage2D(GL_TEXTURE_2D, 0, pTex->uvInternalFormat,
                 pTex->uTex_width, pTex->uTex_height, 0, pTex->uvFormat, pTex->uvType, nullptr);
+            GLenum glerr = f->glGetError();
+            if (glerr != GL_NO_ERROR) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[Render] allocate U texture failed: glErr=0x%04X, %dx%d",
+                    unsigned(glerr), pTex->uTex_width, pTex->uTex_height);
+            }
         }
     }
     //不使用则删除？
@@ -714,7 +889,11 @@ void CyMediaDisViewBckDraw::initTextureOne(QOpenGLExtraFunctions* f, oneTextureP
     if (pTex->useVTex) {
         if (!pTex->glTextureV) {
             pTex->glTextureV = new QOpenGLTexture(QOpenGLTexture::Target2D);
-            pTex->glTextureV->create();
+            if (!pTex->glTextureV->create()) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[Render] V texture creation failed (w=%d h=%d)",
+                    pTex->vTex_width, pTex->vTex_height);
+            }
             f->glActiveTexture(GL_TEXTURE2);
             f->glBindTexture(GL_TEXTURE_2D, pTex->glTextureV->textureId());
             // 设置过滤/包裹
@@ -728,6 +907,12 @@ void CyMediaDisViewBckDraw::initTextureOne(QOpenGLExtraFunctions* f, oneTextureP
             f->glBindTexture(GL_TEXTURE_2D, pTex->glTextureV->textureId());
             f->glTexImage2D(GL_TEXTURE_2D, 0, pTex->uvInternalFormat,
                 pTex->vTex_width, pTex->vTex_height, 0, pTex->uvFormat, pTex->uvType, nullptr);
+            GLenum glerr = f->glGetError();
+            if (glerr != GL_NO_ERROR) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[Render] allocate V texture failed: glErr=0x%04X, %dx%d",
+                    unsigned(glerr), pTex->vTex_width, pTex->vTex_height);
+            }
         }
     }
     //不使用则删除？
@@ -762,6 +947,9 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
                     m_bIsOVerSize = false;
                     pTex->showInfo.format = CyMedia::MONO_OVERSIZE;
                     pTex->glslNcolor = CyMedia::MONO_OVERSIZE;
+                    CyMediaLog::instance().log_printf_Info(
+                        "[Render] texture oversized, fallback to RGBA packing: %dx%d",
+                        newWidth, newHeight);
                 }
             }
         }
@@ -769,6 +957,8 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
         if (m_bIsOVerSize) {
             QString errTxt = QString("currentSize(%1*%2) maxSize(%3*%4)").arg(newWidth).arg(newHeight).arg(m_gl_max_texture_size).arg(m_gl_max_texture_size);
             if (false == m_message_overSize->isVisible() || errTxt != m_message_overSize->text()) {
+                CyMediaLog::instance().log_printf_Warning(
+                    "[Render] texture size over limit: %s", errTxt.toUtf8().constData());
                 emit textureSizeOver(true, errTxt);
             }
             return false;
@@ -786,6 +976,9 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
 
         //重新初始化纹理
         initTextureOne(f, pTex, true);
+        CyMediaLog::instance().log_printf_Debug(
+            "[Render] texture reallocated: %dx%d bit=%d format=%d",
+            newWidth, newHeight, int(pTex->showInfo.bit), int(pTex->showInfo.format));
         m_forceInfoUpdate = true;
     }
     //和上一帧前台纹理信息不同也需要更新
@@ -801,7 +994,9 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
         pTex->textureFormat, pTex->textureType, data);
     glerr = f->glGetError();
     if (glerr != GL_NO_ERROR) {
-        qWarning() << "glTexSubImage2D(main) failed:" << glerr;
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] glTexSubImage2D(main) failed: glErr=0x%04X, %dx%d",
+            unsigned(glerr), info.width, info.height);
         return false;
     }
     //U 纹理 (U/UV)
@@ -813,7 +1008,9 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
             pTex->uvFormat, pTex->uvType, data + pTex->uTexDataOffset);
         glerr = f->glGetError();
         if (glerr != GL_NO_ERROR) {
-            qWarning() << "glTexSubImage2D(U) failed:" << glerr;
+            CyMediaLog::instance().log_printf_Warning(
+                "[Render] glTexSubImage2D(U) failed: glErr=0x%04X, %dx%d",
+                unsigned(glerr), pTex->uTex_width, pTex->uTex_height);
             return false;
         }
     }
@@ -826,7 +1023,9 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
             pTex->uvFormat, pTex->uvType, data + pTex->vTexDataOffset);
         glerr = f->glGetError();
         if (glerr != GL_NO_ERROR) {
-            qWarning() << "glTexSubImage2D(v) failed:" << glerr;
+            CyMediaLog::instance().log_printf_Warning(
+                "[Render] glTexSubImage2D(V) failed: glErr=0x%04X, %dx%d",
+                unsigned(glerr), pTex->vTex_width, pTex->vTex_height);
             return false;
         }
     }
@@ -836,6 +1035,11 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
 void CyMediaDisViewBckDraw::clearGL() {
     if (m_gl_init) {
         m_gl_init = false;
+        if (!m_ctx_main) {
+            CyMediaLog::instance().log_printf_Warning(
+                "[Render] clearGL skipped: main context is already null");
+            return;
+        }
         m_ctx_main->makeCurrent(m_offscreenSurface);
         QOpenGLExtraFunctions* f = m_ctx_main->extraFunctions(); f->initializeOpenGLFunctions();
         delete m_shader_program; m_shader_program = nullptr;
@@ -853,6 +1057,8 @@ void CyMediaDisViewBckDraw::clearGL() {
 
         delete m_offscreenSurface;m_offscreenSurface = nullptr;
         m_ctx_main = nullptr;
+        CyMediaLog::instance().log_printf_Debug(
+            "[Render] GL resources released");
     }
 }
 
@@ -866,6 +1072,12 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
     }
     else if (info.bit > 16 && info.bit <= 31) {
         pTex->bitMul = INT_MAX * 1.0f / (1 << info.bit);
+    }
+    else if (info.bit > 31) {
+        // 着色器位深缩放按 31 位设计，超过 31 位时保持 1.0，避免未定义移位。
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] bit depth %d exceeds 31, bitMul fallback to 1.0", int(info.bit));
+        pTex->bitMul = 1.0f;
     }
     pTex->textureWidthMultiplier = 1.0;
     pTex->textureHeightMultiplier = 1.0;
@@ -977,6 +1189,11 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
             return;
         }
     }
+    else {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] unsupported pixel format for texture: format=%d bit=%d",
+            int(info.format), int(info.bit));
+    }
 }
 
 void CyMediaDisViewBckDraw::upShaderUniformSampler(QOpenGLExtraFunctions* f) {
@@ -1034,9 +1251,33 @@ void CyMediaDisViewBckDraw::hideOverSizeError() {
 
 bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* data, QOpenGLContext* ctx) {
     Q_ASSERT_X(ctx != nullptr, "upBackGround", "Context must not be null!");
-    if (!data || !m_gl_init) return false;
-    if (false == makeOffSurface(ctx)) return false;
-    QOpenGLExtraFunctions* f = ctx->extraFunctions(); if (!f) return false;
+    if (!ctx) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] upBackGround failed: null context");
+        return false;
+    }
+    if (!data) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] upBackGround failed: null image data (%dx%d)",
+            info.width, info.height);
+        return false;
+    }
+    if (!m_gl_init) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] upBackGround skipped: renderer is not initialized");
+        return false;
+    }
+    if (false == makeOffSurface(ctx)) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] upBackGround failed: cannot make offscreen context current");
+        return false;
+    }
+    QOpenGLExtraFunctions* f = ctx->extraFunctions();
+    if (!f) {
+        CyMediaLog::instance().log_printf_Error(
+            "[Render] upBackGround failed: extraFunctions() is null");
+        return false;
+    }
     f->initializeOpenGLFunctions();
 
     //当前后台(空闲)纹理
@@ -1067,7 +1308,9 @@ bool CyMediaDisViewBckDraw::upBackGround(CyMedia::ImageShowInfo info, uint8_t* d
     }
 
     if (result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED) {
-        CyMediaLog::instance().log_printf(CyMedia::LogLevel::WAR, "glClientWaitSync timeout after %lld ns, fallback to glFinish()", elapsed);
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] glClientWaitSync timeout after %llu ns, fallback to glFinish()",
+            static_cast<unsigned long long>(elapsed));
         // 回退：强制完成所有命令，确保纹理上传完毕
         f->glFinish();
     }
@@ -1122,20 +1365,29 @@ void CyMediaDisViewBckDraw::setStretchType(CyMedia::StretchType type) {
 }
 
 void CyMediaDisViewBckDraw::setStreaChPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/, uint32_t max /*= 0*/) {
-    if (stretchpara_start == start &&
-        stretchpara_end == end &&
-        stretchpara_max == max)
+    if (max == 0 || end <= start) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Render] invalid stretch range ignored: start=%u end=%u max=%u",
+            start, end, max);
+        return;
+    }
+    if (stretchpara_start == static_cast<int32_t>(start) &&
+        stretchpara_end == static_cast<int32_t>(end) &&
+        stretchpara_max == static_cast<int32_t>(max))
         return;
 
-    stretchpara_start = start;
-    stretchpara_end = end;
-    stretchpara_max = max;
+    stretchpara_start = static_cast<int32_t>(start);
+    stretchpara_end = static_cast<int32_t>(end);
+    stretchpara_max = static_cast<int32_t>(max);
 
     double ds = static_cast<double>(start) / stretchpara_max;
     double de = static_cast<double>(end) / stretchpara_max;
     stretchpara_K = 1.0 / (de - ds);
     stretchpara_C = -(stretchpara_K)*ds;
 
+    CyMediaLog::instance().log_printf_Debug(
+        "[Render] stretch range: %u..%u (max=%u, K=%.5f C=%.5f)",
+        start, end, max, stretchpara_K, stretchpara_C);
     upStretchValue = true;
 }
 
@@ -1183,26 +1435,50 @@ QString CyMediaDisViewBckDraw::colorMapName() const {
 bool CyMediaDisViewBckDraw::setColorMap(qint32 index) {
     if (index == m_ColorMapIndex)
         return true;
-    if (index >= m_ColorMapList.size())
+    if (index < 0 || index >= m_ColorMapList.size()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[ColorMap] invalid index %d (available=%d)", index, m_ColorMapList.size());
         return false;
+    }
     //除默认None外读取CM文件
     if (index > 0) {
+        if (!m_ColorMapData) {
+            CyMediaLog::instance().log_printf_Error(
+                "[ColorMap] buffer is not allocated");
+            return false;
+        }
         QString transCMFileName = QString("%1/%2.cm").arg(m_ColorMapDirPath).arg(m_ColorMapList[index]);
         QFile cmFile(transCMFileName);
-        if (false == cmFile.open(QIODevice::ReadOnly))
+        if (false == cmFile.open(QIODevice::ReadOnly)) {
+            CyMediaLog::instance().log_printf_Error(
+                "[ColorMap] cannot open file: %s", transCMFileName.toUtf8().constData());
             return false;
+        }
         auto readCode = cmFile.readAll();
         cmFile.close();
+        if (readCode.size() != m_ColorMapFileSize) {
+            CyMediaLog::instance().log_printf_Error(
+                "[ColorMap] invalid file size: %s (%lld bytes, expected %d)",
+                transCMFileName.toUtf8().constData(),
+                static_cast<long long>(readCode.size()), m_ColorMapFileSize);
+            return false;
+        }
         memcpy(m_ColorMapData, readCode.data(), m_ColorMapFileSize);
     }
     m_ColorMapIndex = index;
     m_ColorMapName = m_ColorMapList[index];
     bColorMapChange = true;
+    CyMediaLog::instance().log_printf_Debug(
+        "[ColorMap] selected index=%d name=%s", index, m_ColorMapName.toUtf8().constData());
     return true;
 }
 
 bool CyMediaDisViewBckDraw::setColorMap(const QString& mapName) {
     auto index = m_ColorMapList.indexOf(mapName);
-    if (index == -1) return false;
+    if (index == -1) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[ColorMap] name not found: %s", mapName.toUtf8().constData());
+        return false;
+    }
     return setColorMap(index);
 }

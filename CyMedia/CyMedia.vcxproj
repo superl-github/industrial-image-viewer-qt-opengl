@@ -20,8 +20,8 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="src\View\Widgets\CyMediaRecTimeW.h" />
-    <QtMoc Include="src\View\Widgets\CyMediaDisGrayTest.h" />
-    <QtMoc Include="src\View\Widgets\CyMediaDisGrayStretch.h" />
+    <QtMoc Include="src\View\Widgets\GrayMeasurement.h" />
+    <QtMoc Include="src\View\Widgets\GrayStretch.h" />
     <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image_write.h" />
@@ -104,8 +104,8 @@
     <ClCompile Include="src\View\Annotation\DrawItemTool.cpp" />
     <ClCompile Include="src\View\Annotation\ItemFactory.cpp" />
     <ClCompile Include="src\View\Annotation\ItemManager.cpp" />
-    <ClCompile Include="src\View\Widgets\CyMediaDisGrayStretch.cpp" />
-    <ClCompile Include="src\View\Widgets\CyMediaDisGrayTest.cpp" />
+    <ClCompile Include="src\View\Widgets\GrayStretch.cpp" />
+    <ClCompile Include="src\View\Widgets\GrayMeasurement.cpp" />
     <ClCompile Include="src\View\Widgets\CyMediaRecTimeW.cpp" />
     <ClCompile Include="src\View\Widgets\CyQCP.cpp" />
     <QtMoc Include="src\View\Widgets\cycustomwidget.cpp">

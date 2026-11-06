@@ -2,6 +2,7 @@
 #include "CyMediaDisView.h"
 #include "CyMediaDisViewBckDraw.h"
 #include "../../Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
 
 CyMediaDisViewThumbnail::CyMediaDisViewThumbnail(CyMediaDisView* parentView, QWidget* parent /*= nullptr*/)
 : QOpenGLWidget(parent)
@@ -45,6 +46,8 @@ CyMediaDisViewThumbnail::~CyMediaDisViewThumbnail() {
         }
         else {
             // 上下文已失效，无法安全释放 GL 资源，避免野指针
+            CyMediaLog::instance().log_printf_Warning(
+                "[Thumbnail] GL context invalid, VAO is released without makeCurrent");
             delete m_vao;   // QOpenGLVertexArrayObject 内部会判断
         }
         m_vao = nullptr;
@@ -94,8 +97,17 @@ void CyMediaDisViewThumbnail::setBorderPen(QPen pen) {
 
 void CyMediaDisViewThumbnail::paintGL() {
     if (!m_parentView) return;
+    if (!context()) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[Thumbnail] paint skipped: no OpenGL context");
+        return;
+    }
     auto f = context()->extraFunctions();
-    if (!f) return;
+    if (!f) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[Thumbnail] paint skipped: extraFunctions() is null");
+        return;
+    }
     QPainter painter(this);
 
     //绘图
@@ -106,8 +118,20 @@ void CyMediaDisViewThumbnail::paintGL() {
     f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     CyMediaDisViewBckDraw* drawer = m_parentView->imageDraw();
     if (drawer && drawer->glIsInit() && drawer->haveImage() && m_draw_image) {
+        if (!m_parentView->scene()) {
+            painter.endNativePainting();
+            CyMediaLog::instance().log_printf_Debug(
+                "[Thumbnail] paint skipped: main view has no scene");
+            return;
+        }
         QSizeF imgSize = m_parentView->scene()->sceneRect().size();
-        if (imgSize.isEmpty() || imgSize.width() <= 0 || imgSize.height() <= 0) return;
+        if (imgSize.isEmpty() || imgSize.width() <= 0 || imgSize.height() <= 0) {
+            painter.endNativePainting();
+            CyMediaLog::instance().log_printf_Debug(
+                "[Thumbnail] paint skipped: invalid scene size %.0fx%.0f",
+                imgSize.width(), imgSize.height());
+            return;
+        }
         QTransform transform;
         double scale = qMin(width() / imgSize.width(), height() / imgSize.height());
         double dx = (width() - imgSize.width() * scale) / 2.0;
@@ -143,16 +167,16 @@ void CyMediaDisViewThumbnail::resizeGL(int w, int h) {
 }
 
 void CyMediaDisViewThumbnail::initializeGL() {
-    // ===== 诊断代码 =====
     QOpenGLContext* currentCtx = QOpenGLContext::currentContext();
     if (currentCtx) {
-        qDebug() << "[Thumbnail] Current context:" << (void*)currentCtx;
-        qDebug() << "[Thumbnail] Share context:" << (void*)currentCtx->shareContext();
-        qDebug() << "[Thumbnail] Format:" << currentCtx->format();
-
-        // 检查是否和主窗口共享
-        // 你可以在主窗口的 initializeGL 里也打印 context 指针
-        // 如果 shareContext() 返回非 null，说明在同一 share group
+        CyMediaLog::instance().log_printf_Debug(
+            "[Thumbnail] GL initialized: context=%p share=%p %d.%d",
+            (void*)currentCtx, (void*)currentCtx->shareContext(),
+            currentCtx->format().majorVersion(), currentCtx->format().minorVersion());
+    }
+    else {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Thumbnail] initializeGL without current context");
     }
     if (m_parentView && m_parentView->imageDraw()) {
         if (m_vao) {
@@ -160,9 +184,14 @@ void CyMediaDisViewThumbnail::initializeGL() {
             m_vao = nullptr;
         }
         m_vao = m_parentView->imageDraw()->createVAO();
+        if (!m_vao) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Thumbnail] VAO creation failed, thumbnail rendering disabled");
+        }
     }
     else {
-        ;//记录日志
+        CyMediaLog::instance().log_printf_Error(
+            "[Thumbnail] parent view or renderer is null, thumbnail rendering disabled");
     }
 }
 

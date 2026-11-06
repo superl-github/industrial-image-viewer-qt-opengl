@@ -4,22 +4,6 @@
 <context>
     <name>CyMediaDisTest</name>
     <message>
-        <source>Random Color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Checker Board</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Moving Stripes</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Plasma</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Source</source>
         <translation type="unfinished"></translation>
     </message>
@@ -224,6 +208,61 @@
     <name>CyMediaDisTestClass</name>
     <message>
         <source>CyMediaDisTest</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CyMediaTest</name>
+    <message>
+        <source>Random Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Checker Board</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Moving Stripes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Plasma</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Julia Set</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fractal Noise (fBm)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kaleidoscope</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Twirl</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tunnel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cellular (Worley)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Radial Ripple</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Spiral</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Moire</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

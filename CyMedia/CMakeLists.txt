@@ -43,7 +43,7 @@ set(CYMEDIA_SOURCES
     src/Parse/VideoParseFfmpeg.cpp
     src/Parse/VideoParseRaw.cpp
 
-    src/common/DisLog.cpp
+    src/common/CyMediaLog.cpp
 
     src/View/Display.cpp
     src/View/Annotation/BaseItem.cpp
@@ -102,7 +102,7 @@ set(CYMEDIA_HEADERS
     src/common/Log.h
     src/common/ImageTypes.h
     src/common/ParseTypes.h
-    src/common/DisLog.h
+    src/common/CyMediaLog.h
 
     src/I18n/CyMedia_en_US.ts
     src/I18n/CyMedia_zh_CN.ts

@@ -8,8 +8,8 @@
 #include "Render/CyMediaDisViewBckDraw.h"
 #include "Ui/DisplayToolBar.h"
 #include "Ui/ImageShowWindow.h"
-#include "Widgets/CyMediaDisGrayStretch.h"
-#include "Widgets/CyMediaDisGrayTest.h"
+#include "Widgets/GrayStretch.h"
+#include "Widgets/GrayMeasurement.h"
 #include "Widgets/CyMediaRecTimeW.h"
 
 #include "Annotation/DrawItem.h"
@@ -107,9 +107,14 @@ public:
     DisplayToolBar* toolWidget = nullptr;
     bool bZoomScrollBarIsShow = false;
 
+    const int m_upToolsTimeMs = 100;
     QElapsedTimer m_ToolWUpTimer;
     bool m_AutoThumbnail = false;
     QSize m_AutoThumbnailSize = QSize(500, 500);
+
+    // 上传/上下文失败只在状态切换时记录，避免逐帧刷屏。
+    std::atomic<bool> m_uploadFailed{ false };
+    std::atomic<bool> m_frameCtxErrorLogged{ false };
 
     CyMediaRecTimeW* m_RetimeItem = nullptr;
     CyMediaDisGrayStretch* m_StretchWidget = nullptr;
@@ -144,6 +149,9 @@ CyMediaDis::~CyMediaDis() {
 }
 
 bool CyMediaDis::supportsOpenGL(int& mainV, int& subV) {
+    mainV = 0;
+    subV = 0;
+
     QOpenGLContext ctx;
     QSurfaceFormat fmt;
     fmt.setRenderableType(QSurfaceFormat::OpenGL);
@@ -151,24 +159,40 @@ bool CyMediaDis::supportsOpenGL(int& mainV, int& subV) {
 
     QOffscreenSurface surface;
     surface.create();
+    if (!surface.isValid()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] OpenGL probe failed: offscreen surface creation failed");
+        return false;
+    }
     if (!ctx.create()) {
-        mainV = 0;
-        subV = 0;
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] OpenGL probe failed: context creation failed");
+        return false;
+    }
+    if (!ctx.makeCurrent(&surface)) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] OpenGL probe failed: makeCurrent failed");
         return false;
     }
 
-    ctx.makeCurrent(&surface);
     auto ver = ctx.format();
     mainV = ver.majorVersion();
     subV = ver.minorVersion();
     ctx.doneCurrent();
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] OpenGL %d.%d detected", mainV, subV);
     return true;
 }
 
 bool CyMediaDis::supportsOpenGLForCyMedia() {
-    int mainV, subV;
+    int mainV = 0, subV = 0;
     if (!supportsOpenGL(mainV, subV)) return false;
-    return (mainV > 3) || (mainV == 3 && subV >= 3);
+    const bool ok = (mainV > 3) || (mainV == 3 && subV >= 3);
+    if (!ok) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] OpenGL %d.%d is below the required 3.3", mainV, subV);
+    }
+    return ok;
 }
 
 QString CyMediaDis::pixelFormatStr(CyMedia::ePixType format) {
@@ -203,28 +227,47 @@ CyMedia::eLanguage CyMediaDis::currentLanguage() const {
 }
 
 bool CyMediaDis::setLanguage(CyMedia::eLanguage lang) {
-    return CyMediaI18n::instance()->setLanguage(lang);
+    const bool ok = CyMediaI18n::instance()->setLanguage(lang);
+    if (ok) {
+        CyMediaLog::instance().log_printf_Info(
+            "[Display] language set to %d", int(lang));
+    }
+    return ok;
 }
 
 void CyMediaDis::setLogLevel(CyMedia::LogLevel level) {
-    return CyMediaLog::instance().setLevel(level);
+    CyMediaLog::instance().setLevel(level);
+    CyMediaLog::instance().log_printf_Info(
+        "[Display] log level set to %d", int(level));
 }
 
 void CyMediaDis::setLogCallback(CyMedia::LogCallback cb, void* pUser /*= nullptr*/) {
     CyMediaLog::instance().setLogCallback(cb, pUser);
+    CyMediaLog::instance().log_printf_Info(
+        "[Display] log callback registered (user=%p)", pUser);
 }
 
 void CyMediaDis::setSceneAcceptDrop(bool accept) {
     d->scene->setAcceptDrops(accept);
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] scene drop %s", accept ? "enabled" : "disabled");
 }
 
 void CyMediaDis::setImageStackNum(uint32_t num) {
+    const uint32_t old = d->pipeline->stackSize();
     d->pipeline->setStackSize(num);
+    if (old != d->pipeline->stackSize()) {
+        CyMediaLog::instance().log_printf_Info(
+            "[Display] image stack size changed: %u -> %u", old, d->pipeline->stackSize());
+    }
 }
 
 bool CyMediaDis::upImageData(const CyMedia::ImageShowInfo& info, void* data, bool force /*= false*/) {
     // 清空后的短暂窗口内拒绝新帧，避免"空图"状态被立刻覆盖。
     if (d->clearImageTime.isValid() && d->clearImageTime.elapsed() < 300) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[Display] frame rejected during clear cooldown (%lld/300 ms)",
+            d->clearImageTime.elapsed());
         return false;
     }
     return d->pipeline->submit(info, data, force);
@@ -249,6 +292,10 @@ bool CyMediaDis::hasImage(void) const {
 void CyMediaDis::clearImage(void) {
     if (!d->pipeline->hasImage()) return;
 
+    const ImageShowInfo last = d->pipeline->imageInfo();
+    CyMediaLog::instance().log_printf_Info(
+        "[Display] clear image (last=%dx%d bit=%d format=%d)",
+        last.width, last.height, int(last.bit), int(last.format));
     d->pipeline->clear();
     d->view->clearBackGround();
     d->m_bFirstUpImage = true;
@@ -295,6 +342,13 @@ void CyMediaDis::setStretchPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/) {
     const int bit = d->pipeline->imageInfo().bit;
     const uint32_t max = (bit <= 0) ? 0u
         : (bit >= 31 ? 0x7FFFFFFFu : ((1u << bit) - 1u));
+    if (max == 0) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] setStretchPara ignored: no valid image bit depth (bit=%d)", bit);
+        return;
+    }
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] stretch range: start=%u end=%u max=%u", start, end, max);
     d->view->imageDraw()->setStreaChPara(start, end, max);
     d->syncOptions();
 }
@@ -305,6 +359,9 @@ CyMedia::DemosaicingMethod CyMediaDis::Demosaic() {
 
 void CyMediaDis::setDemosaic(CyMedia::DemosaicingMethod method) {
     if (d->view->imageDraw()->Demosaic() == method) return;
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] demosaic method: %d -> %d",
+        int(d->view->imageDraw()->Demosaic()), int(method));
     d->view->imageDraw()->setDemosaic(method);
     d->syncOptions();
     if (d->pipeline->isDataSlow() && hasImage()) {
@@ -320,6 +377,9 @@ CyMedia::YUVTransMethod CyMediaDis::YUVMethod() {
 
 void CyMediaDis::setYUVMethod(CyMedia::YUVTransMethod method) {
     if (d->view->imageDraw()->yuvMethod() == method) return;
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] YUV method: %d -> %d",
+        int(d->view->imageDraw()->yuvMethod()), int(method));
     d->view->imageDraw()->setYUVTMethod(method);
     d->syncOptions();
     if (d->pipeline->isDataSlow() && hasImage()) {
@@ -340,21 +400,33 @@ quint32 CyMediaDis::colorMapIndex() const {
 bool CyMediaDis::setColorMap(quint32 index) {
     if (d->view->imageDraw()->colorMapIndex() == index) return true;
     bool ok = d->view->imageDraw()->setColorMap(index);
-    if (ok && d->pipeline->isDataSlow()) {
+    if (!ok) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] setColorMap(index=%u) failed (%d map(s) available)",
+            index, d->view->imageDraw()->ColorMapList().size());
+        return false;
+    }
+    if (d->pipeline->isDataSlow()) {
         QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
         QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
     }
-    return ok;
+    return true;
 }
 
 bool CyMediaDis::setColorMap(const QString& mapName) {
     if (d->view->imageDraw()->colorMapName() == mapName) return true;
     bool ok = d->view->imageDraw()->setColorMap(mapName);
-    if (ok && d->pipeline->isDataSlow()) {
+    if (!ok) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] setColorMap(name=\"%s\") failed",
+            mapName.toUtf8().constData());
+        return false;
+    }
+    if (d->pipeline->isDataSlow()) {
         QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
         QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
     }
-    return ok;
+    return true;
 }
 
 void CyMediaDis::zoomIn() {
@@ -394,11 +466,21 @@ void CyMediaDis::setThemeColor(const QColor color) {
 }
 
 QUuid CyMediaDis::addItem(CyDisDrawItem::ItemType itemType) {
-    return d->drawmanager->addItemByType(itemType);
+    const QUuid id = d->drawmanager->addItemByType(itemType);
+    if (id.isNull()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] addItem failed: unsupported type %d", int(itemType));
+    }
+    return id;
 }
 
 QUuid CyMediaDis::addItem(CyDisDrawItem::ItemType itemType, const QPainterPath& path) {
-    return d->drawmanager->addItemByTypeWidthPath(itemType, path);
+    const QUuid id = d->drawmanager->addItemByTypeWidthPath(itemType, path);
+    if (id.isNull()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] addItem(path) failed: unsupported type %d or empty path", int(itemType));
+    }
+    return id;
 }
 
 void CyMediaDis::removeItem(QUuid id) {
@@ -419,7 +501,14 @@ CyDisDrawItem::BaseItem* CyMediaDis::getItem(const QUuid& id) {
 
 void CyMediaDis::setItemSelected(QUuid id) {
     auto* item = getItem(id);
-    if (item) item->setSelected(true);
+    if (item) {
+        item->setSelected(true);
+    }
+    else {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] select item failed: item %s not found",
+            id.toString().toUtf8().constData());
+    }
 }
 
 void CyMediaDis::clearItem() {
@@ -431,6 +520,8 @@ bool CyMediaDis::isSingleItemMode() {
 }
 
 void CyMediaDis::setSingleItemMode(bool flag) {
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] single item mode %s", flag ? "enabled" : "disabled");
     d->drawingTool->setReplaceMode(flag);
 }
 
@@ -470,7 +561,13 @@ bool CyMediaDis::thumbnailEnable() {
 }
 
 void CyMediaDis::setThumbnailEnable(bool enable) {
-    if (d->m_AutoThumbnail) return;
+    if (d->m_AutoThumbnail) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] setThumbnailEnable ignored: auto-thumbnail mode is enabled");
+        return;
+    }
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] thumbnail %s", enable ? "enabled" : "disabled");
     d->view->setThumbnailEnable(enable);
     d->syncOptions();
 }
@@ -481,6 +578,10 @@ bool CyMediaDis::thumbnailAutoEnable() {
 
 void CyMediaDis::setThumbnailAutoEnable(bool enable) {
     d->m_AutoThumbnail = enable;
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] auto-thumbnail %s (threshold=%dx%d)",
+        enable ? "enabled" : "disabled",
+        d->m_AutoThumbnailSize.width(), d->m_AutoThumbnailSize.height());
     d->syncOptions();
     if (d->pipeline->isDataSlow()) {
         d->pipeline->requestReprocess(true, false);
@@ -492,6 +593,10 @@ QSize CyMediaDis::thumbnailAutoEnableSize() {
 }
 
 void CyMediaDis::setThumbnailAutoEnableSize(const QSize size) {
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] auto-thumbnail threshold: %dx%d -> %dx%d",
+        d->m_AutoThumbnailSize.width(), d->m_AutoThumbnailSize.height(),
+        size.width(), size.height());
     d->m_AutoThumbnailSize = size;
     d->syncOptions();
     if (d->pipeline->isDataSlow()) {
@@ -560,9 +665,14 @@ CyMediaDis::privateData::privateData(CyMediaDis* parent /*= nullptr*/)
     // 订阅应用级语言变更
     connect(CyMediaI18n::instance(), &CyMediaI18n::languageChanged,
         this, &privateData::onLanguageChanged);
+
+    CyMediaLog::instance().log_printf_Info(
+        "[Display] pipeline created (stack=%u)", pipeline->stackSize());
 }
 
 CyMediaDis::privateData::~privateData() {
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] destroying private data");
     if (pipeline) {
         pipeline->stop();
         delete pipeline;
@@ -587,6 +697,8 @@ CyMediaDis::privateData::~privateData() {
 void CyMediaDis::privateData::initGUI() {
     if (guiIsInit) return;
     guiIsInit = true;
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] initializing GUI");
 
     initScene();
     initToolBar();
@@ -757,6 +869,19 @@ void CyMediaDis::privateData::ensureFrameContext() {
     }
     m_frameCtx = view->imageDraw()->createSharedContext();
     m_frameCtxThread = cur;
+    if (!m_frameCtx) {
+        // 逐帧重试，但只在首次失败时记录，避免刷屏。
+        if (!m_frameCtxErrorLogged.exchange(true)) {
+            CyMediaLog::instance().log_printf_Error(
+                "[Display] create shared OpenGL context failed (thread=%p), texture upload disabled",
+                (void*)QThread::currentThreadId());
+        }
+        return;
+    }
+    m_frameCtxErrorLogged.store(false);
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] frame upload context created (thread=%p)",
+        (void*)QThread::currentThreadId());
 }
 
 bool CyMediaDis::privateData::shouldUpdateTools() {
@@ -765,7 +890,7 @@ bool CyMediaDis::privateData::shouldUpdateTools() {
         m_ToolWUpTimer.start();
         return true;
     }
-    if (m_ToolWUpTimer.elapsed() > 500) {
+    if (m_ToolWUpTimer.elapsed() > m_upToolsTimeMs) {
         m_ToolWUpTimer.restart();
         return true;
     }
@@ -797,6 +922,10 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
     if (infoChanged) {
         m_lastInfo = frame.info;
         m_bFirstUpImage = true;
+        CyMediaLog::instance().log_printf_Info(
+            "[Display] image info changed: %dx%d bit=%d format=%d len=%u",
+            frame.info.width, frame.info.height,
+            int(frame.info.bit), int(frame.info.format), frame.info.length);
         emit ImageInfoChange(frame.info);
     }
 
@@ -815,7 +944,7 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
         calcolorTimer.start();
     }
 
-    // 3) 辅助面板（帧率低时每帧，高帧率时节流到 2Hz）。
+    // 3) 辅助面板（帧率低时每帧，高帧率时节流到 (1000/m_upToolsTimeMs) Hz）。
     if (shouldUpdateTools()) {
         updateTools(frame);
     }
@@ -834,7 +963,20 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
             view->imageDraw()->setStretchType(CyMedia::stretch_None);
         }
 
-        view->imageDraw()->upBackGround(frame.info, frame.data, m_frameCtx);
+        const bool uploaded = view->imageDraw()->upBackGround(frame.info, frame.data, m_frameCtx);
+        if (uploaded) {
+            if (m_uploadFailed.exchange(false)) {
+                CyMediaLog::instance().log_printf_Info(
+                    "[Display] texture upload recovered");
+            }
+        }
+        else if (!m_uploadFailed.exchange(true)) {
+            CyMediaLog::instance().log_printf_Warning(
+                "[Display] texture upload failed: %dx%d bit=%d format=%d "
+                "(further failures suppressed until recovery)",
+                frame.info.width, frame.info.height,
+                int(frame.info.bit), int(frame.info.format));
+        }
         emit ImageDataDone(frame.info);
     }
 }
@@ -866,6 +1008,8 @@ void CyMediaDis::privateData::ImageDataDoneReceive(CyMedia::ImageShowInfo info) 
 }
 
 void CyMediaDis::privateData::onLanguageChanged(CyMedia::eLanguage lang) {
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] language changed to %d, refreshing panels", int(lang));
     if (m_StretchWidget) m_StretchWidget->flushTrans();
     if (mGrayTestWidget) mGrayTestWidget->flushTrans();
     if (drawmanager)     drawmanager->flushTrans();
@@ -879,13 +1023,23 @@ void CyMediaDis::privateData::onGrayToolNeedImage() {
         upImage = (m_StretchWidget->stretchtype() != lastUpStretchType)
             || m_StretchWidget->isAutoStretch();
     }
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] gray tool requests reprocess (updateImage=%d)", int(upImage));
     syncOptions();
     pipeline->requestReprocess(upImage, true, true);
 }
 
 void CyMediaDis::privateData::onAddItem(QUuid id) {
     auto* item = drawmanager->getItem(id);
-    if (!item) return;
+    if (!item) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[Display] itemAdded(%s) but lookup failed",
+            id.toString().toUtf8().constData());
+        return;
+    }
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] item added: id=%s type=%d",
+        id.toString().toUtf8().constData(), int(item->itemType()));
     if (mGrayTestWidget->isVisible()) {
         mGrayTestWidget->Itemdraw(item);
     }
@@ -903,6 +1057,8 @@ void CyMediaDis::privateData::setDrawMode(CyDisDrawItem::ItemType mode) {
 }
 
 void CyMediaDis::privateData::onRemoveItem(QUuid id) {
+    CyMediaLog::instance().log_printf_Debug(
+        "[Display] item removed: id=%s", id.toString().toUtf8().constData());
     if (mGrayTestWidget->isVisible()) {
         mGrayTestWidget->ItemRemoved(id);
     }

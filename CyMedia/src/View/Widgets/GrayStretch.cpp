@@ -1,13 +1,12 @@
-#include "CyMediaDisGrayStretch.h"
+#include "GrayStretch.h"
 
 #include "../../Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
 #include "../Widgets/CyQCP.h"
 #include "../Widgets/cycustomwidget.h"
 
 #include <QToolTip>
 #include <QBoxLayout>
-
-#define debug_msg(fmt, ...) printf("[CyMediaDisGrayStretch(%d)  " fmt, __LINE__, ##__VA_ARGS__)
 
 enum grayHistogrameIndex {
     hisI_Gray = 0,
@@ -44,6 +43,7 @@ public:
     //histogram
     std::vector<double> mHisData;
     int32_t mImageBit = 8;
+    int mLastUnsupportedBit = -1;
     int32_t mXrangeMin = 0;
     int32_t mXRange = 255;
     int32_t mYRange = 1000;
@@ -99,6 +99,21 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
             return false;
         }
     }
+    if (!data) {
+        CyMediaLog::instance().log_printf_Error(
+            "[GrayStretch] null image data: %dx%d bit=%d format=%d",
+            info.width, info.height, int(info.bit), int(info.format));
+        return false;
+    }
+    if (info.bit < 1 || info.bit > 31) {
+        if (d->mLastUnsupportedBit != info.bit) {
+            d->mLastUnsupportedBit = info.bit;
+            CyMediaLog::instance().log_printf_Warning(
+                "[GrayStretch] unsupported bit depth %d, histogram update skipped", int(info.bit));
+        }
+        return false;
+    }
+    d->mLastUnsupportedBit = -1;
     
     QElapsedTimer eTimer;
     eTimer.restart();
@@ -117,13 +132,12 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
             currentCtrIndex = 1;
         }
     }
-    //debug_msg("切换界面 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     d->mImageBit = info.bit;
-    //计算直方图
-    int32_t maxBitValue = 1 << info.bit;
-    int stretchMax = maxBitValue - 1;
+    //计算直方图（31 位时 1<<31 不适合用 int 表示）
+    const double maxBitValue = (info.bit >= 31) ? 2147483648.0 : double(1u << info.bit);
+    int stretchMax = int(maxBitValue - 1);
     double calcHisMinX = -(maxBitValue * 0.05);
     double calcHisMaxX = maxBitValue * 1.05;
     if (d->mStretchType == CyMedia::stretch_Lab) {
@@ -131,7 +145,6 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
         calcHisMaxX = 120;
         stretchMax = 100;
     }
-    //debug_msg("计算直方图 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //更新拉伸边界范围
@@ -139,7 +152,6 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
         d->mSelect_max = stretchMax;
         emit upEditRange(true);
     }
-    //debug_msg("更新拉伸边界范围 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //更新直方图
@@ -180,13 +192,11 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
 
         d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
-    //debug_msg("更新直方图 耗时：%lldms\n", eTimer.elapsed());
 
     eTimer.restart();
     //计算Y轴显示范围
     calcHisMaxY = CyMediaCalc::determineYAxisMax(d->mHisData, d->mHisData.size() * 0.02);
     emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(calcHisMaxY));
-    //debug_msg("更新显示范围 耗时：%lldms\n", eTimer.elapsed());
 
     return true;
 }
@@ -411,6 +421,9 @@ void CyMediaDisGrayStretch::plotMouseMove(QPoint mousePos) {
 }
 
 bool CyMediaDisGrayStretch::plotToolTips(double xValue, double yValue) {
+    if (!d->mHistogram || d->mHistogram->data()->isEmpty()) {
+        return false;
+    }
     double calcXvalue = 0;
     double calcYvalue = 0.0;
     //X像素比

@@ -1,7 +1,7 @@
 #include "DrawItemTool.h"
+#include "../../common/CyMediaLog.h"
 #include <QMouseEvent>
 #include <QLineF>
-#include <QDebug>
 #include <QTimer>
 #include <cmath>
 namespace CyDisDrawItem {
@@ -11,14 +11,18 @@ namespace CyDisDrawItem {
         , m_view(view) {
         qRegisterMetaType<CyDisDrawItem::BaseItem*>("CyDisDrawItem::BaseItem*");
         if (!m_manager || !m_view) {
-            qWarning() << "DrawingTool: manager is null!";
+            CyMediaLog::instance().log_printf_Error(
+                "[Annotation] DrawItemTool disabled: manager=%p view=%p",
+                (void*)m_manager, (void*)m_view);
         }
         else {
             m_view->viewport()->installEventFilter(this);
+            CyMediaLog::instance().log_printf_Debug(
+                "[Annotation] DrawItemTool installed on viewport");
         }
     }
     DrawItemTool::~DrawItemTool() {
-        if (m_view) {
+        if (m_view && m_view->viewport()) {
             m_view->viewport()->removeEventFilter(this);
         }
     }
@@ -27,9 +31,13 @@ namespace CyDisDrawItem {
     }
     void DrawItemTool::setDrawMode(ItemType mode) {
         if (m_mode == mode) return;
+        CyMediaLog::instance().log_printf_Debug(
+            "[Annotation] draw mode: %d -> %d", int(m_mode), int(mode));
         // 清理预览
         if (m_previewItem && false == m_previewItem->isDrawFinished()) {
-            m_manager->removeItem(m_previewItem);
+            if (m_manager) {
+                m_manager->removeItem(m_previewItem);
+            }
             m_previewItem = nullptr;
         }
         // 重置拖拽状态
@@ -47,6 +55,9 @@ namespace CyDisDrawItem {
     }
     bool DrawItemTool::eventFilter(QObject* obj, QEvent* event) {
         if (!obj || !event) return QObject::eventFilter(obj, event);
+        if (!m_manager || !m_view) {
+            return QObject::eventFilter(obj, event);
+        }
         if (obj != m_view->viewport() || m_mode == ItemType::Invalid) {
             return QObject::eventFilter(obj, event);
         }
@@ -67,6 +78,8 @@ namespace CyDisDrawItem {
                 // 右键点击取消当前绘制
                 if (event->type() == QEvent::MouseButtonPress && mouseEvent->button() == Qt::RightButton) {
                     if (m_previewItem) {
+                        CyMediaLog::instance().log_printf_Debug(
+                            "[Annotation] drawing cancelled by right click");
                         m_manager->removeItem(m_previewItem);
                         m_previewItem = nullptr;
                     }
@@ -122,6 +135,10 @@ namespace CyDisDrawItem {
                             // 转发初始点击事件给Item
                             m_previewItem->onDrawMouseEvent(event->type(), scenePos);
                         }
+                        else {
+                            CyMediaLog::instance().log_printf_Error(
+                                "[Annotation] create preview item failed: mode=%d", int(m_mode));
+                        }
                     }
                     else {
                         // 需要阈值，记录起点，等待拖拽
@@ -160,6 +177,10 @@ namespace CyDisDrawItem {
                             // 再转发当前移动事件
                             m_previewItem->onDrawMouseEvent(QEvent::MouseMove, scenePos);
                         }
+                        else {
+                            CyMediaLog::instance().log_printf_Error(
+                                "[Annotation] create preview item failed: mode=%d", int(m_mode));
+                        }
                         // 结束拖拽等待状态
                         m_isDragging = false;
                     }
@@ -194,6 +215,8 @@ namespace CyDisDrawItem {
     void DrawItemTool::finishDrawing() {
         m_bIsDrawing = false;
         if (!m_previewItem) return;
+        CyMediaLog::instance().log_printf_Debug(
+            "[Annotation] drawing finished: mode=%d", int(m_mode));
         m_previewItem->setPreviewMode(false);
         m_previewItem->setSelected(true);
         m_lastItem = m_previewItem;

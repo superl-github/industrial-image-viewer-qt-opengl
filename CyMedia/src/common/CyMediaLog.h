@@ -1,7 +1,9 @@
 #pragma once
 #include "./Log.h"
 
+#include <cstdarg>
 #include <string>
+#include <atomic>
 
 class CyMediaLog{
 public:
@@ -29,9 +31,11 @@ public:
 
 private:
     CyMediaLog();
+    /// 实际格式化并投递；所有 log_printf_* 都汇聚到这里。
+    void log_vprintf(CyMedia::LogLevel level, const char* fmt, va_list ap);
 
 private:
     CyMedia::LogCallback m_logCallback = nullptr;
     void* m_logCallback_user = nullptr;
-    CyMedia::LogLevel m_level = CyMedia::LogLevel::INFO;
+    std::atomic<CyMedia::LogLevel> m_level { CyMedia::LogLevel::INFO };
 };

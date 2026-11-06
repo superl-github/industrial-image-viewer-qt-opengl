@@ -1,17 +1,12 @@
 #include "CyMediaDisTest.h"
 #include "View/Widgets/CyMediaRecTimeW.h"
-#include "View/Widgets/CyMediaDisGrayStretch.h"
-#include "View/Widgets/CyMediaDisGrayTest.h"
 #include "Calculate/CalcYUV.h"
-
-#include <random>
-#include <chrono>
-#include <ppl.h>
 
 #include <QFile>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTimer>
+#include <QLayout>
 #include <qDebug>
 
 CyMediaDisTest::CyMediaDisTest(QWidget* parent)
@@ -47,96 +42,6 @@ CyMediaDisTest::~CyMediaDisTest() {
         m_bIsAcuistion = false;
         m_AnalogAcquisitionThread->wait();
         m_AnalogAcquisitionThread->terminate();
-    }
-}
-
-QString CyMediaDisTest::getAnalogImageTypeName(CyMediaTest::eAnalogImageType type) {
-    switch (type) {
-    case CyMediaTest::AnalogImage_RandomColor: return tr("Random Color");
-    case CyMediaTest::AnalogImage_CheckerBoard: return tr("Checker Board");
-    case CyMediaTest::AnalogImage_MovingStripes: return tr("Moving Stripes");
-    case CyMediaTest::AnalogImage_Plasma: return tr("Plasma");
-    }
-    return QString("");
-}
-
-void CyMediaDisTest::genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& img, int frameIdx) {
-    uint8_t* pData = img.bits();
-    int width = img.width();
-    int height = img.height();
-
-    switch (type) {
-
-    // ---------- 随机彩色 ----------
-    case CyMediaTest::AnalogImage_RandomColor: {
-        static std::random_device rd;
-        static std::default_random_engine eng(rd());
-        std::uniform_int_distribution<int> distr(0, 255);
-        for (int h = 0; h < height; ++h) {
-            for (int w = 0; w < width; ++w) {
-                int idx = (h * width + w) * 3;
-                pData[idx + 0] = distr(eng); // R
-                pData[idx + 1] = distr(eng); // G
-                pData[idx + 2] = distr(eng); // B
-            }
-        }
-    }break;
-
-    // ---------- 移动棋盘格 ----------
-    case CyMediaTest::AnalogImage_CheckerBoard: {
-        int tileSize = 40;
-        // 让棋盘随帧索引移动
-        int offsetX = (frameIdx % (tileSize * 2)) - tileSize;
-        int offsetY = (frameIdx / 2) % (tileSize * 2); // 竖直移动稍慢
-        for (int h = 0; h < height; ++h) {
-            for (int w = 0; w < width; ++w) {
-                bool white = (((w + offsetX) / tileSize) + ((h + offsetY) / tileSize)) % 2 == 0;
-                uint8_t val = white ? 255 : 0;
-                int idx = (h * width + w) * 3;
-                pData[idx + 0] = val;
-                pData[idx + 1] = val;
-                pData[idx + 2] = val;
-            }
-        }
-    }break;
-
-    // ---------- 动态正弦条纹（灰度） ----------
-    case CyMediaTest::AnalogImage_MovingStripes: {
-        double freq = 0.02;
-        double phase = frameIdx * 0.1;
-        for (int h = 0; h < height; ++h) {
-            for (int w = 0; w < width; ++w) {
-                double val = sin((w + h) * freq + phase) * 0.5 + 0.5; // [0,1]
-                uint8_t gray = static_cast<uint8_t>(val * 255);
-                int idx = (h * width + w) * 3;
-                pData[idx + 0] = gray;
-                pData[idx + 1] = gray;
-                pData[idx + 2] = gray;
-            }
-        }
-    } break;
-
-    // ---------- 等离子分形效果 ----------
-    case CyMediaTest::AnalogImage_Plasma: {
-        double t = frameIdx * 0.05;
-        for (int h = 0; h < height; ++h) {
-            for (int w = 0; w < width; ++w) {
-                double u = (double)w / width;
-                double v = (double)h / height;
-                double val = sin(u * 10.0 + t) +
-                    sin(v * 8.0 + t * 1.3) +
-                    sin((u + v) * 6.0 + t * 0.7) +
-                    sin(sqrt((u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5)) * 15.0 + t);
-                val = (val + 4.0) / 8.0;
-                uint8_t c = static_cast<uint8_t>(std::min(255.0, val * 255.0));
-                int idx = (h * width + w) * 3;
-                pData[idx + 0] = static_cast<uint8_t>(std::min(255.0, (sin(val * 3.14) + 1) * 127));
-                pData[idx + 1] = static_cast<uint8_t>(std::min(255.0, (cos(val * 3.14) + 1) * 127));
-                pData[idx + 2] = c;
-            }
-        }
-    }break;
-
     }
 }
 
@@ -184,8 +89,8 @@ void CyMediaDisTest::rePlayImageCallBack(const CyMedia::ImageShowInfo& info, con
     }
 }
 
-void CyMediaDisTest::cyMediaLogCallBack(CyMedia::LogLevel level, const std::string& msg, void* puser) {
-    printf("[CyMediaDis] %s\n", msg.c_str());
+void CyMediaDisTest::cyMediaLogCallBack(CyMedia::LogLevel level, const std::string_view& msg, void* puser) {
+    printf("[CyMedia]%s\n", msg.data());
 }
 
 uint8_t CyMediaDisTest::calcValueFigures(quint32 value) {
@@ -1349,8 +1254,8 @@ void CyMediaDisTest::thread_acquisition() {
     uint64_t t_CapFpsCount = 0;
 
     CyMedia::ImageShowInfo info;
-    info.width = 1282;
-    info.height = 1024;
+    info.width = 640;
+    info.height = 640;
     info.bit = 8;
     info.format = CyMedia::RGB;
     info.upLenth();

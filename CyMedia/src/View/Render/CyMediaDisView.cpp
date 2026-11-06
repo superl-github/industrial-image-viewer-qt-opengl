@@ -1,6 +1,7 @@
 
 #include "CyMediaDisView.h"
 #include "../../Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
 #include "CyMediaDisViewBckDraw.h"
 #include "CyMediaDisViewThumbnail.h"
 
@@ -61,6 +62,8 @@ void CyMediaDisView::MyViewPrivateData::zoom(double zoomValue) {
     QTransform transform(pView->transform());
     transform.scale(zoomValue / xZoomValue, zoomValue / xZoomValue);
     pView->setTransform(transform);
+    CyMediaLog::instance().log_printf_Trace(
+        "[View] zoom: %.3f -> %.3f", xZoomValue, zoomValue);
     xZoomValue = zoomValue;
     yZoomValue = zoomValue;
     pView->emit zoomValueChange(xZoomValue);
@@ -182,6 +185,8 @@ CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
     :QGraphicsView() {
     d = new MyViewPrivateData;
     d->pView = this;
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] created (parent=%p)", parent);
 
     //setAttribute(Qt::WA_TranslucentBackground);
     setFrameShape(QFrame::NoFrame);
@@ -213,6 +218,8 @@ CyMediaDisView::CyMediaDisView(QWidget* parent /*= nullptr*/)
 }
 
 CyMediaDisView::~CyMediaDisView() {
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] destroying");
     if (m_Thumbnail) {
         m_Thumbnail->setParent(nullptr);
         delete m_Thumbnail;
@@ -229,11 +236,23 @@ CyMediaDisView::~CyMediaDisView() {
 }
 
 void CyMediaDisView::setCyScene(QGraphicsScene* scene) {
+    if (!scene) {
+        CyMediaLog::instance().log_printf_Error(
+            "[View] setCyScene called with null scene");
+        return;
+    }
     this->setScene(scene);
     scene->setBackgroundBrush(QBrush(Qt::black, Qt::SolidPattern));
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] scene attached: %p", scene);
 }
 
 void CyMediaDisView::sceneRectUp(const QRectF& rect) {
+    if (rect.isEmpty() || rect.width() <= 0 || rect.height() <= 0) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[View] invalid scene rect ignored: %fx%f", rect.width(), rect.height());
+        return;
+    }
     setSceneRect(rect);
     d->upThumbanilSize();
     d->updateThumbnail();
@@ -253,8 +272,11 @@ float CyMediaDisView::zoomValue(void) {
 }
 
 void CyMediaDisView::zoomIn(void) {
-    if (!this->scene() || !m_backDraw->haveImage())
+    if (!this->scene() || !m_backDraw->haveImage()) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[View] zoomIn ignored: no scene/image");
         return;
+    }
 
     float value = d->xZoomValue * d->scaleFactor;
     value = (value > d->maxZoomValue) ? d->maxZoomValue : value;
@@ -262,12 +284,17 @@ void CyMediaDisView::zoomIn(void) {
 }
 
 void CyMediaDisView::zoomOut(void) {
-    if (!this->scene() || !m_backDraw->haveImage())
+    if (!this->scene() || !m_backDraw->haveImage()) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[View] zoomOut ignored: no scene/image");
         return;
+    }
 
     float value = d->xZoomValue / d->scaleFactor;
     if ((value * this->scene()->width()) <= 200 ||
         (value * this->scene()->height()) <= 100) {
+        CyMediaLog::instance().log_printf_Debug(
+            "[View] zoomOut stopped at minimum: %.3f", d->xZoomValue);
         return;
     }
     d->zoom(value);
@@ -278,6 +305,12 @@ void CyMediaDisView::zoomAuto(void) {
 
     QSize fRect = viewport()->size();
     QSizeF sceneRect = this->scene()->sceneRect().size();
+    if (fRect.isEmpty() || sceneRect.isEmpty()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[View] zoomAuto skipped: viewport=%dx%d scene=%.0fx%.0f",
+            fRect.width(), fRect.height(), sceneRect.width(), sceneRect.height());
+        return;
+    }
     qreal s = qMin(
         fRect.width() * 0.999 / sceneRect.width(),
         fRect.height() * 0.999 / sceneRect.height());
@@ -318,8 +351,10 @@ void CyMediaDisView::horiMirror(void) {
     QTransform transform(this->transform());
     transform.scale(-1, 1);
     setTransform(transform);
-    
+
     d->hIsMirror = !d->hIsMirror;
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] horizontal mirror: %s", d->hIsMirror ? "on" : "off");
 }
 
 void CyMediaDisView::verMirror(void) {
@@ -331,6 +366,8 @@ void CyMediaDisView::verMirror(void) {
     setTransform(transform);
 
     d->vIsMirror = !d->vIsMirror;
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] vertical mirror: %s", d->vIsMirror ? "on" : "off");
 }
 
 double CyMediaDisView::rotateValue(void) {
@@ -348,6 +385,8 @@ void CyMediaDisView::rotateView(double angle) {
     }
     transform.rotate(d->rotateAngle);
     setTransform(transform);
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] rotate: %.1f -> %.1f", angle, d->rotateAngle);
 }
 
 bool CyMediaDisView::glIsInit() {
@@ -365,6 +404,8 @@ void CyMediaDisView::clearBackGround() {
             m_Thumbnail->hide();
         }
     }
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] background cleared");
 }
 
 void CyMediaDisView::setViewTopLeft(const QPointF& topLeft) {
@@ -444,8 +485,19 @@ void CyMediaDisView::showEvent(QShowEvent* e) {
     QOpenGLWidget* glWidget = qobject_cast<QOpenGLWidget*>(viewport());
     if (glWidget && false == m_backDraw->glIsInit()) {
         glWidget->makeCurrent();
-        m_backDraw->initgl(glWidget->context());
+        QOpenGLContext* ctx = glWidget->context();
+        if (!ctx || QOpenGLContext::currentContext() != ctx) {
+            CyMediaLog::instance().log_printf_Error(
+                "[View] OpenGL makeCurrent failed during show");
+        }
+        else {
+            m_backDraw->initgl(ctx);
+        }
         glWidget->doneCurrent();
+    }
+    else if (!glWidget) {
+        CyMediaLog::instance().log_printf_Error(
+            "[View] viewport is not a QOpenGLWidget, GL rendering disabled");
     }
     // 创建缩略图（如果尚未创建）
     if (!m_Thumbnail) {
@@ -456,7 +508,18 @@ void CyMediaDisView::showEvent(QShowEvent* e) {
         m_Thumbnail->hide(); // 初始隐藏
     }
     d->updateThumbnail();
-    d->m_GLIsInit = true;
+    // 只有渲染后端真正初始化成功才算就绪，否则管线会一直等待。
+    d->m_GLIsInit = m_backDraw->glIsInit();
+    if (d->m_GLIsInit) {
+        CyMediaLog::instance().log_printf_Info(
+            "[View] OpenGL renderer ready (scene %.0fx%.0f)",
+            scene() ? scene()->sceneRect().width() : 0.0,
+            scene() ? scene()->sceneRect().height() : 0.0);
+    }
+    else {
+        CyMediaLog::instance().log_printf_Error(
+            "[View] OpenGL renderer initialization failed");
+    }
 }
 
 void CyMediaDisView::closeEvent(QCloseEvent* e) {

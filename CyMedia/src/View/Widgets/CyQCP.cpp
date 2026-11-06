@@ -1,4 +1,5 @@
 #include "CyQCP.h"
+#include "../../common/CyMediaLog.h"
 
 #include <cmath>
 #include <algorithm>
@@ -222,8 +223,7 @@ CyLineChart::CyLineChart(QCPAxis* keyAxis, QCPAxis* valueAxis)
 }
 
 void CyLineChart::setGraphData(QVector<QCPGraphData> data, bool alreadySorted /*= false*/) {
-    if (true == m_dataChanged.load())
-        return;
+    if (true == m_dataChanged.load()) return;
     QMutexLocker lock(&m_Mute);
     mDataContainer->clear();
     mDataContainer->add(data, alreadySorted);
@@ -237,7 +237,15 @@ double CyLineChart::selectTest(const QPointF& pos, bool onlySelectable, QVariant
 
 void CyLineChart::draw(QCPPainter* painter)
 {
-    if (!mKeyAxis || !mValueAxis) { qDebug() << Q_FUNC_INFO << "invalid key or value axis"; return; }
+    if (!mKeyAxis || !mValueAxis) {
+        static bool axisErrorLogged = false;
+        if (!axisErrorLogged) {
+            axisErrorLogged = true;
+            CyMediaLog::instance().log_printf_Error(
+                "[QCP] line chart has invalid key/value axis, drawing skipped");
+        }
+        return;
+    }
     if (mKeyAxis.data()->range().size() <= 0 || mDataContainer->isEmpty()) return;
     if (mLineStyle == lsNone && mScatterStyle.isNone()) return;
 

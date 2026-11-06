@@ -156,6 +156,7 @@ namespace CyMedia {
         /// 设置日志等级（TRACE~OFF）。
         void setLogLevel(CyMedia::LogLevel level);
         /// 注册日志回调；pUser 会在回调时原样传回。
+        /// @note 日志可能来自图像处理线程（如 `[ImagePipeline]`），回调内不要直接操作 UI。
         void setLogCallback(CyMedia::LogCallback cb, void* pUser = nullptr);
 
         //==================== 基础属性 ====================

@@ -87,7 +87,7 @@ bool computeHistogram(const ImageShowInfo& info, const uint8_t* data, std::vecto
     if (false == info.isBayer()) return false;
     if (!data) return false;if (info.bit >= 32) return false;
         
-    int32_t bitMax = (1U << info.bit) - 1;
+    int32_t bitMax = 1U << info.bit;
     int32_t pixelCount = info.width * info.height;
     int32_t validCount = 0;
 

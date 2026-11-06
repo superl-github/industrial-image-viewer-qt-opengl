@@ -4,22 +4,6 @@
 <context>
     <name>CyMediaDisTest</name>
     <message>
-        <source>Random Color</source>
-        <translation>随机色彩</translation>
-    </message>
-    <message>
-        <source>Checker Board</source>
-        <translation>棋盘格</translation>
-    </message>
-    <message>
-        <source>Moving Stripes</source>
-        <translation>移动条纹</translation>
-    </message>
-    <message>
-        <source>Plasma</source>
-        <translation>等离子体</translation>
-    </message>
-    <message>
         <source>Source</source>
         <translation>源数据</translation>
     </message>
@@ -225,6 +209,61 @@
     <message>
         <source>CyMediaDisTest</source>
         <translation></translation>
+    </message>
+</context>
+<context>
+    <name>CyMediaTest</name>
+    <message>
+        <source>Random Color</source>
+        <translation>随机色彩</translation>
+    </message>
+    <message>
+        <source>Checker Board</source>
+        <translation>棋盘格</translation>
+    </message>
+    <message>
+        <source>Moving Stripes</source>
+        <translation>移动条纹</translation>
+    </message>
+    <message>
+        <source>Plasma</source>
+        <translation>等离子体</translation>
+    </message>
+    <message>
+        <source>Julia Set</source>
+        <translation>Juli集合</translation>
+    </message>
+    <message>
+        <source>Fractal Noise (fBm)</source>
+        <translation>分形噪声 (fBm)</translation>
+    </message>
+    <message>
+        <source>Kaleidoscope</source>
+        <translation>万花筒</translation>
+    </message>
+    <message>
+        <source>Twirl</source>
+        <translation>漩涡扭曲棋盘格</translation>
+    </message>
+    <message>
+        <source>Tunnel</source>
+        <translation>隧道</translation>
+    </message>
+    <message>
+        <source>Cellular (Worley)</source>
+        <translation>Worley 细胞噪声</translation>
+    </message>
+    <message>
+        <source>Radial Ripple</source>
+        <translation>多中心动态涟漪</translation>
+    </message>
+    <message>
+        <source>Spiral</source>
+        <translation>螺旋漩涡</translation>
+    </message>
+    <message>
+        <source>Moire</source>
+        <translation>莫尔干涉条纹</translation>
     </message>
 </context>
 </TS>

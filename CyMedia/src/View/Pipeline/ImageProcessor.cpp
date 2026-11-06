@@ -1,12 +1,17 @@
 #include "ImageProcessor.h"
 
 #include "Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
 
 #include <cstring>
 
 namespace CyMedia {
     bool ImageProcessor::ensureScratch(uint32_t needLen) {
-        if (needLen == 0) return false;
+        if (needLen == 0) {
+            CyMediaLog::instance().log_printf_Error(
+                "[ImageProcessor] invalid scratch size: 0");
+            return false;
+        }
         // 只在容量不足时增长，避免每帧清零整个缓冲区。
         if (m_scratch.size() < needLen) {
             m_scratch.resize(needLen);
@@ -15,7 +20,12 @@ namespace CyMedia {
     }
 
     bool ImageProcessor::process(ImageShowInfo& info, void*& data, const Context& ctx) {
-        if (!data) return false;
+        if (!data) {
+            CyMediaLog::instance().log_printf_Error(
+                "[ImageProcessor] null frame data, format=%d bit=%d",
+                int(info.format), int(info.bit));
+            return false;
+        }
 
         // Bayer 关闭去马赛克：直接按单色显示原始 Bayer 数据。
         if (info.isBayer() && ctx.colorOpe.bayerFunc == DEMOSAIC_NONE) {
@@ -31,6 +41,10 @@ namespace CyMedia {
             if (!ensureScratch(rgbLen)) return false;
             if (!CyMediaCalc::bayer2RGB(info, static_cast<uint8_t*>(data),
                 m_scratch.data(), ctx.colorOpe.bayerFunc)) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImageProcessor] bayer2RGB failed: %dx%d bit=%d pattern=%d method=%d",
+                    info.width, info.height, int(info.bit), int(info.format),
+                    int(ctx.colorOpe.bayerFunc));
                 return false;
             }
             info.length = rgbLen;
@@ -47,6 +61,9 @@ namespace CyMedia {
             if (!ensureScratch(rgbLen)) return false;
             if (!CyMediaCalc::YUV2RGB(info, static_cast<uint8_t*>(data),
                 m_scratch.data(), ctx.colorOpe.YUVFunc)) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImageProcessor] YUV2RGB failed: %dx%d format=%d method=%d",
+                    info.width, info.height, int(info.format), int(ctx.colorOpe.YUVFunc));
                 return false;
             }
             if (ctx.colorOpe.YUVFunc == YUVTRANS_Y) {
@@ -66,6 +83,9 @@ namespace CyMedia {
             if (!ensureScratch(rgbLen)) return false;
             bool isGray = false;
             if (!CyMediaCalc::JPG2RGB(info, data, m_scratch.data(), isGray)) {
+                CyMediaLog::instance().log_printf_Error(
+                    "[ImageProcessor] JPG2RGB failed: %dx%d bit=%d len=%u",
+                    info.width, info.height, int(info.bit), info.length);
                 return false;
             }
             if (isGray) {
@@ -92,6 +112,9 @@ namespace CyMedia {
                 tempInfo.upLenth();
                 if (!ensureScratch(tempInfo.length)) return false;
                 if (!CyMediaCalc::monoUnPack(info, static_cast<uint8_t*>(data), m_scratch.data())) {
+                    CyMediaLog::instance().log_printf_Error(
+                        "[ImageProcessor] monoUnPack failed: %dx%d format=%d len=%u",
+                        info.width, info.height, int(info.format), info.length);
                     return false;
                 }
                 info = tempInfo;

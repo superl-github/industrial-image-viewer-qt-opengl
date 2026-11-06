@@ -1,6 +1,7 @@
-#include "CyMediaDisGrayTest.h"
+#include "GrayMeasurement.h"
 
 #include "../../Calculate/Calculate.h"
+#include "../../common/CyMediaLog.h"
 #include "../Widgets/cycustomwidget.h"
 #include "../Widgets/CyQCP.h"
 
@@ -12,6 +13,17 @@
 #include <QPushButton>
 #include <QToolTip>
 #include <QActionGroup>
+
+namespace {
+    // 1<<31 用 int 表示是未定义行为；这里统一用 double 计算位深范围。
+    inline double bitRangeValue(int bit) {
+        return (bit >= 31) ? 2147483648.0 : double(1u << bit);
+    }
+
+    inline double bitMaxValue(int bit) {
+        return bitRangeValue(bit) - 1.0;
+    }
+}
 
 struct CyMediaDisGrayTest::PrivateData {
 public:
@@ -68,6 +80,7 @@ public:
     oneChannelTestInfo mHisTestData;
     threeChannelTestInfo mRGBTestData;
     bool currentIsPosCalc = false;
+    int mLastUnsupportedBit = -1;
 };
 
 CyMediaDisGrayTest::CyMediaDisGrayTest(QWidget* parent /*= nullptr*/)
@@ -101,6 +114,11 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
         d->mDrawType == CyDisDrawItem::ItemType::Invalid) {
         return;
     }
+    if (!item) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[GrayTest] Itemdraw called with null item");
+        return;
+    }
     d->mCurrentItemID = item->id();
     if (d->mDrawType != item->itemType()) {
         d->upYrange = true;
@@ -113,9 +131,8 @@ void CyMediaDisGrayTest::Itemdraw(CyDisDrawItem::BaseItem* item) {
 }
 
 void CyMediaDisGrayTest::ItemRemoved(QUuid id) {
-    if (id != d->mCurrentItemID)
-        return;
-    if (QThread::currentThread() != this->thread()) {
+    if (id != d->mCurrentItemID) return;
+    if (QThread::currentThread() == this->thread()) {
         d->mDrawAct[CyDisDrawItem::Invalid]->setChecked(true);
     }
     else {
@@ -130,6 +147,11 @@ CyDisDrawItem::BaseItem* CyMediaDisGrayTest::getCurrentItem() {
     if (d->mCurrentItemID.isNull()) {
         return nullptr;
     }
+    if (!d->m_parentDis) {
+        CyMediaLog::instance().log_printf_Error(
+            "[GrayTest] parent CyMediaDis is null, cannot resolve current item");
+        return nullptr;
+    }
     return d->m_parentDis->getItem(d->mCurrentItemID);
 }
 
@@ -139,6 +161,27 @@ QPainterPath CyMediaDisGrayTest::oldItemPpath() {
 
 bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
     if (false == this->isVisible()) return false;
+
+    if (!d->m_parentDis) {
+        CyMediaLog::instance().log_printf_Error(
+            "[GrayTest] parent CyMediaDis is null, histogram update skipped");
+        return false;
+    }
+    if (!data) {
+        CyMediaLog::instance().log_printf_Error(
+            "[GrayTest] null image data: %dx%d bit=%d format=%d",
+            info.width, info.height, int(info.bit), int(info.format));
+        return false;
+    }
+    if (info.bit < 1 || info.bit > 31) {
+        if (d->mLastUnsupportedBit != info.bit) {
+            d->mLastUnsupportedBit = info.bit;
+            CyMediaLog::instance().log_printf_Warning(
+                "[GrayTest] unsupported bit depth %d, histogram update skipped", int(info.bit));
+        }
+        return false;
+    }
+    d->mLastUnsupportedBit = -1;
 
     if (false == d->m_parentDis->isSingleItemMode()) return false;
     if (d->m_parentDis->isDrawing() && !getCurrentItem()) return false;
@@ -209,7 +252,7 @@ bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, Cy
         cancHisFlag = upImage_YUV(info, data, formatOpe);
     }
     if (cancHisFlag.calcXRangePara <= 1.0) {
-        cancHisFlag.calcXRangePara = 1 << info.bit;
+        cancHisFlag.calcXRangePara = bitRangeValue(info.bit);
     }
     calcHisMinX = -(cancHisFlag.calcXRangePara * 0.05);
     calcHisMaxX = cancHisFlag.calcXRangePara * 1.05;
@@ -323,14 +366,14 @@ bool CyMediaDisGrayTest::plotToolTips(double xValue, double yValue) {
     double dRatioX = d->mCustomPlot->xAxis->axisRect()->width() / (d->mCustomPlot->xAxis->range().upper - d->mCustomPlot->xAxis->range().lower);
     CyHistogram* mainBar = nullptr;
     CyLineChart* mainLinChart = nullptr;
-    for (int i = hisI_Gray; i < hisI_B; i++) {
+    for (int i = hisI_Gray; i <= hisI_B; i++) {
         if (d->mHistogram[i]->visible()) {
             mainBar = d->mHistogram[i];
             break;
         }
     }
     if (!mainBar) {
-        for (int i = hisI_Gray; i < hisI_B; i++) {
+        for (int i = hisI_Gray; i <= hisI_B; i++) {
             if (d->mLineChart[i]->visible()) {
                 mainLinChart = d->mLineChart[i];
                 break;
@@ -620,7 +663,6 @@ void CyMediaDisGrayTest::onGrayCheckClicked(bool flag) {
     Q_UNUSED(flag);
     d->mChannelCtlLab[hisI_Gray]->setChecked(true);
     return;
-    onUphisVisible();
 }
 
 void CyMediaDisGrayTest::onRedCheckClicked(bool flag) {
@@ -703,7 +745,7 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Mono(CyMedia::I
     }
     //计算参数
     int maxXrange = 0;
-    CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, (1 << info.bit) - 1,
+    CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, bitMaxValue(info.bit),
         &d->mHisTestData.std, &d->mHisTestData.Uniformity, &maxXrange);
     calcRe.calcXRangePara = maxXrange;
     //计算Y轴显示范围
@@ -775,14 +817,14 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_RGB(CyMedia::Im
         //更新数据
         for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
             d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
-            calcRe.calcXRangePara = 1 << info.bit;
+            calcRe.calcXRangePara = bitRangeValue(info.bit);
         }
         if (false == d->mMaskIsfullzero) {
             //计算参数
             std::vector<int> maxXrange(3);
             CyMediaCalc::computerThreeUniformity(
                 d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-                d->mRGBTestData.ave, (1 << info.bit) - 1,
+                d->mRGBTestData.ave, bitMaxValue(info.bit),
                 d->mRGBTestData.std, d->mRGBTestData.Uniformity, maxXrange);
             //计算Y轴显示范围
             if (d->upYrange) {
@@ -867,7 +909,7 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Bayer(CyMedia::
         std::vector<int> maxXrange(3);
         CyMediaCalc::computerThreeUniformity(
             d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-            d->mRGBTestData.ave, (1 << info.bit) - 1,
+            d->mRGBTestData.ave, bitMaxValue(info.bit),
             d->mRGBTestData.std, d->mRGBTestData.Uniformity, maxXrange);
         calcRe.calcXRangePara = (maxXrange[0] > maxXrange[1]) ? maxXrange[0] : qMax(maxXrange[1], maxXrange[2]);
         //计算Y轴显示范围
@@ -940,7 +982,7 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_YUV(CyMedia::Im
         std::vector<int> maxXrange(3);
         CyMediaCalc::computerThreeUniformity(
             d->mHistogramData[hisI_R], d->mHistogramData[hisI_G], d->mHistogramData[hisI_B],
-            d->mRGBTestData.ave, (1 << info.bit) - 1,
+            d->mRGBTestData.ave, bitMaxValue(info.bit),
             d->mRGBTestData.std, d->mRGBTestData.Uniformity, maxXrange);
         calcRe.calcXRangePara = (maxXrange[0] > maxXrange[1]) ? maxXrange[0] : qMax(maxXrange[1], maxXrange[2]);
         //计算Y轴显示范围
