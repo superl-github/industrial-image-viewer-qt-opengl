@@ -429,6 +429,8 @@ FodyWeavers.xsd
 *.msp
 
 # my ignore
+!CyMedia/3rdparty/ffmpeg/Bin/
+!CyMedia/3rdparty/ffmpeg/Bin/**
 /CyMedia/CyMediaDis/colorMap_ALL
 /.vs/CyMedia
 /OutFile
