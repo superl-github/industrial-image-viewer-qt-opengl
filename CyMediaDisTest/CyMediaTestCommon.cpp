@@ -3,16 +3,14 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QCoreApplication>
+#include <QRunnable>
+#include <QThreadPool>
 
 #include <cmath>
 #include <algorithm>
+#include <functional>
 #include <random>
-#if defined _MSC_VER
-#include <ppl.h>
 #include <thread>
-#elif defined _OPENMP
-#   include <omp.h>
-#endif
 
 namespace {
     inline QString tr(const char* s) {
@@ -21,6 +19,95 @@ namespace {
 
     static const double kPi = 3.14159265358979323846;
     static const double kTau = 6.28318530718;
+
+    // ====================== 并行方案（参考 Calculate） ======================
+    //
+    // Calculate 里的做法是：线程数取 std::thread::hardware_concurrency()，
+    // 每块至少 1K 像素（chunkSize = max(total / (threads * 4), 1024)），
+    // 再把分块交给 parallel_for —— 而不是对每一行都单独投递一个并行任务。
+    //
+    // 原来这里直接 `parallel_for(0, height, ...)`：任务粒度是"一行"，
+    // 调度开销远大于计算，而且每帧都会把全部逻辑核拉满。这里改成同样的
+    // 分块策略，并额外把生成器的线程数限制为逻辑核数的一半（最多 4 个），
+    // 给渲染/采集/解码留出余量，避免测试程序把 CPU 占满。
+
+    /// 生成器线程数：CPU 逻辑核数的一半，至少 1，最多 4。
+    inline int generatorThreads() {
+        static const int n = []() {
+            unsigned int hw = std::thread::hardware_concurrency();
+            if (hw == 0) hw = 2;
+            const int half = int(std::max(1u, hw / 2u));
+            return std::min(half, 4);
+        }();
+        return n;
+    }
+
+    /// 生成器专用线程池（懒创建；线程数固定，避免逐帧创建/销毁线程）。
+    /// @note 故意使用进程级生命周期（不释放），避免静态析构顺序与 Qt 退出竞争。
+    inline QThreadPool* generatorPool() {
+        static QThreadPool* pool = []() {
+            QThreadPool* p = new QThreadPool();
+            p->setMaxThreadCount(std::max(1, generatorThreads()));
+            p->setExpiryTimeout(30000);
+            return p;
+        }();
+        return pool;
+    }
+
+    /// 一行块任务：按值捕获行区间，图像缓冲由调用方保证在其返回前有效。
+    class RowChunkTask : public QRunnable {
+    public:
+        explicit RowChunkTask(std::function<void()> fn) : m_fn(std::move(fn)) {
+            setAutoDelete(true);
+        }
+        void run() override {
+            if (m_fn) m_fn();
+        }
+
+    private:
+        std::function<void()> m_fn;
+    };
+
+    /**
+     * @brief 按 CPU 线程数分块并行处理每一行。
+     * @param width    图像宽度（用于把"每块至少 1K 像素"换算成行数）
+     * @param height   图像高度
+     * @param rowBody  处理单行的回调：rowBody(h)（0 <= h < height）
+     * @note 不同块的行区间互不重叠，回调只需保证同一行内的写入是本地的。
+     */
+    template <typename RowBody>
+    void parallelRows(int width, int height, RowBody&& rowBody) {
+        constexpr size_t kMinPixelsPerChunk = 1024;  // 与 Calculate 一致：每块至少 1K 像素
+        constexpr size_t kSerialPixels = size_t(1) << 16; // 低于该像素数直接串行
+
+        if (height <= 0) return;
+
+        const size_t total = size_t(std::max(1, width)) * size_t(height);
+        const int threads = generatorThreads();
+        if (threads <= 1 || total < kSerialPixels) {
+            for (int h = 0; h < height; ++h) rowBody(h);
+            return;
+        }
+
+        const int minRows = std::max(1, int(kMinPixelsPerChunk / size_t(std::max(1, width))));
+        const int chunkRows = std::max(minRows, height / (threads * 4));
+        const int chunkCount = (height + chunkRows - 1) / chunkRows;
+        if (chunkCount <= 1) {
+            for (int h = 0; h < height; ++h) rowBody(h);
+            return;
+        }
+
+        QThreadPool* pool = generatorPool();
+        for (int c = 0; c < chunkCount; ++c) {
+            const int begin = c * chunkRows;
+            const int end = std::min(begin + chunkRows, height);
+            pool->start(new RowChunkTask([&rowBody, begin, end]() {
+                for (int h = begin; h < end; ++h) rowBody(h);
+                }));
+        }
+        // 调用线程等待本帧的所有分块完成（线程池是生成器专用的，不会牵连其它任务）
+        pool->waitForDone();
+    }
 
     // Inigo Quilez 余弦调色板：色相连续，非常适合分形平滑着色
     inline void iqPalette(float t, uint8_t& r, uint8_t& g, uint8_t& b) {
@@ -479,7 +566,7 @@ namespace CyMediaTest {
 
             const double t = frameIdx * 0.018;
 
-            concurrency::parallel_for(0, height, [&](int h) {
+            parallelRows(width, height, [&](int h) {
                 uint8_t* row = pData + (size_t)h * width * 3;
                 const double v = (double)h / height;
                 for (int w = 0; w < width; ++w) {
@@ -526,7 +613,7 @@ namespace CyMediaTest {
             const uint8_t outsideG = uint8_t(bgG * 255.0);
             const uint8_t outsideB = uint8_t(bgB * 255.0);
 
-            concurrency::parallel_for(0, height, [&](int h) {
+            parallelRows(width, height, [&](int h) {
                 uint8_t* row = pData + (size_t)h * width * 3;
                 const double y0 = (h / (double)height - 0.5) * scale / aspect;
                 for (int w = 0; w < width; ++w) {
@@ -572,7 +659,7 @@ namespace CyMediaTest {
             double bgR, bgG, bgB;
             CyMediaTest::hsl2rgb(baseBg, bgR, bgG, bgB);          // 底色也固定
 
-            concurrency::parallel_for(0, height, [&](int h) {
+            parallelRows(width, height, [&](int h) {
                 uint8_t* row = pData + (size_t)h * width * 3;
                 const double yy = (h / (double)height - 0.5) * aspect;
                 for (int w = 0; w < width; ++w) {
@@ -693,7 +780,7 @@ namespace CyMediaTest {
             const double seamSplit = 0.65;
             const double seamSplit2 = 0.40;
 
-            concurrency::parallel_for(0, height, [&](int h) {
+            parallelRows(width, height, [&](int h) {
                 uint8_t* row = pData + (size_t)h * width * 3;
                 const double yy = (h / (double)height - 0.5) * aspect;
                 for (int w = 0; w < width; ++w) {
