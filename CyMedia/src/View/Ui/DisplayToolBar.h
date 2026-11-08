@@ -43,6 +43,9 @@ namespace CyMedia {
         /// 请求垂直翻转。
         void flipVerticalRequested();
 
+    public:
+        void flushTrans();
+
     private:
         class PrivateData;
         PrivateData* d = nullptr;

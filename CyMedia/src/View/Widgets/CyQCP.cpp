@@ -246,7 +246,12 @@ void CyLineChart::draw(QCPPainter* painter)
         }
         return;
     }
-    if (mKeyAxis.data()->range().size() <= 0 || mDataContainer->isEmpty()) return;
+    if (mKeyAxis.data()->range().size() <= 0 || mDataContainer->isEmpty()) {
+        // 即使本次跳过绘制，也要解除"数据待绘制"标记：
+        // 否则 setGraphData 会一直被挡住，曲线再也不会更新（表现为没有数据）。
+        m_dataChanged.store(false);
+        return;
+    }
     if (mLineStyle == lsNone && mScatterStyle.isNone()) return;
 
     QVector<QPointF> lines, scatters; // line and (if necessary) scatter pixel coordinates will be stored here while iterating over segments

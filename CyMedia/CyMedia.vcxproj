@@ -184,7 +184,12 @@
   </ItemGroup>
   <ItemGroup>
     <QtTranslation Include="src\I18n\CyMedia_en_US.ts" />
-    <QtTranslation Include="src\I18n\CyMedia_zh_CN.ts" />
+    <QtTranslation Include="src\I18n\CyMedia_zh_CN.ts">
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
+      <QmOutputDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)resources\translate\</QmOutputDir>
+    </QtTranslation>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

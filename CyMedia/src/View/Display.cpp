@@ -231,6 +231,7 @@ bool CyMediaDis::setLanguage(CyMedia::eLanguage lang) {
     if (ok) {
         CyMediaLog::instance().log_printf_Info(
             "[Display] language set to %d", int(lang));
+        d->toolWidget->flushTrans();
     }
     return ok;
 }

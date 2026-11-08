@@ -6,5 +6,5 @@
 #pragma once
 
 namespace CyMedia {
-    inline constexpr char VERSION[] = "V 1.3.1_T";
+    inline constexpr char VERSION[] = "V 1.3.1";
 }

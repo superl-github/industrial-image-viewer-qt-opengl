@@ -16,14 +16,14 @@
         <file>resources/ICONS/FlipH-hover.png</file>
         <file>resources/ICONS/FlipV.png</file>
         <file>resources/ICONS/FlipV-hover.png</file>
-        <file>resources/ICONS/ZommIn.png</file>
         <file>resources/ICONS/ZoomIn-hover.png</file>
         <file>resources/ICONS/ZoomOut.png</file>
         <file>resources/ICONS/ZoomOut-hover.png</file>
-        <file>resources/ICONS/zoonFit.png</file>
-        <file>resources/ICONS/zoonFit-hover.png</file>
-        <file>resources/ICONS/zoonRaw.png</file>
-        <file>resources/ICONS/zoonRaw-hover.png</file>
+        <file>resources/ICONS/zoomFit.png</file>
+        <file>resources/ICONS/zoomFit-hover.png</file>
+        <file>resources/ICONS/ZoomIn.png</file>
+        <file>resources/ICONS/zoomRaw.png</file>
+        <file>resources/ICONS/zoomRaw-hover.png</file>
         <file>resources/translate/CyMedia_en_US.qm</file>
         <file>resources/translate/CyMedia_zh_CN.qm</file>
     </qresource>

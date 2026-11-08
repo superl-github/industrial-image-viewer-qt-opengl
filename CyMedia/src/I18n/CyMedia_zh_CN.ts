@@ -214,66 +214,66 @@ Qt 相关库遵循 GNU 宽通用公共许可证 2.1 版 (LGPLv2.1)。</translati
     <name>CyMedia::DisplayToolBar</name>
     <message>
         <source>Zoom In</source>
-        <translation type="unfinished"></translation>
+        <translation>放大</translation>
     </message>
     <message>
         <source>Zoom Out</source>
-        <translation type="unfinished"></translation>
+        <translation>缩小</translation>
     </message>
     <message>
         <source>Actual Size</source>
-        <translation type="unfinished"></translation>
+        <translation>实际尺寸</translation>
     </message>
     <message>
         <source>Fit to window</source>
-        <translation type="unfinished"></translation>
+        <translation>适应窗口</translation>
     </message>
     <message>
         <source>Flip Horizontal</source>
-        <translation type="unfinished"></translation>
+        <translation>水平翻转</translation>
     </message>
     <message>
         <source>Flip Vertical</source>
-        <translation type="unfinished"></translation>
+        <translation>垂直翻转</translation>
     </message>
 </context>
 <context>
     <name>CyMedia::GetRawInfoDialog</name>
     <message>
         <source>Image width(number of columns)</source>
-        <translation type="unfinished">图像宽度（列数）</translation>
+        <translation>图像宽度（列数）</translation>
     </message>
     <message>
         <source>Image height(number of line)</source>
-        <translation type="unfinished">图像高度（行数）</translation>
+        <translation>图像高度（行数）</translation>
     </message>
     <message>
         <source>Bit width</source>
-        <translation type="unfinished">位宽</translation>
+        <translation>位宽</translation>
     </message>
     <message>
         <source>Pixel data format</source>
-        <translation type="unfinished">像素数据格式</translation>
+        <translation>像素数据格式</translation>
     </message>
     <message>
         <source>Pixel format</source>
-        <translation type="unfinished">像素格式</translation>
+        <translation>像素格式</translation>
     </message>
     <message>
         <source>Data head offset</source>
-        <translation type="unfinished">数据头偏移量</translation>
+        <translation>数据头偏移量</translation>
     </message>
     <message>
         <source>Fps</source>
-        <translation type="unfinished">帧率(如果视频)</translation>
+        <translation>帧率(如果视频)</translation>
     </message>
     <message>
         <source>confirm</source>
-        <translation type="unfinished">确认</translation>
+        <translation>确认</translation>
     </message>
     <message>
         <source>cancle</source>
-        <translation type="unfinished">取消</translation>
+        <translation>取消</translation>
     </message>
 </context>
 <context>
@@ -379,7 +379,7 @@ Qt 相关库遵循 GNU 宽通用公共许可证 2.1 版 (LGPLv2.1)。</translati
     </message>
     <message>
         <source>Horizontal axis</source>
-        <translation>水平线</translation>
+        <translation>水平轴</translation>
     </message>
     <message>
         <source>Grayscale</source>

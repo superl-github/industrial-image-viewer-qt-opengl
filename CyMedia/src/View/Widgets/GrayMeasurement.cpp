@@ -14,6 +14,8 @@
 #include <QToolTip>
 #include <QActionGroup>
 
+#include <cmath>
+
 namespace {
     // 1<<31 用 int 表示是未定义行为；这里统一用 double 计算位深范围。
     inline double bitRangeValue(int bit) {
@@ -22,6 +24,53 @@ namespace {
 
     inline double bitMaxValue(int bit) {
         return bitRangeValue(bit) - 1.0;
+    }
+
+    // 点模式：把采样序列转成折线数据点（key = 采样序号）。
+    // 只输出有效样本，不能在尾部补 0，否则图上会多出一段"跌到 0"的假数据。
+    inline void updatePosLineData(const std::vector<double>& samples, QVector<QCPGraphData>& graphData) {
+        graphData.resize(static_cast<int>(samples.size()));
+        for (int i = 0; i < graphData.size(); ++i) {
+            graphData[i].key = static_cast<double>(i);
+            graphData[i].value = samples[i];
+        }
+    }
+
+    // 点模式的统计量：对已采样的历史序列求值。
+    struct PosStatistics {
+        double ave = 0.0;
+        double max = 0.0;
+        double min = 0.0;
+        double std = 0.0;
+        double uniformity = 0.0;
+    };
+
+    inline PosStatistics calcPosStatistics(const std::vector<double>& samples, double bitMax) {
+        PosStatistics st;
+        if (samples.empty()) return st;
+
+        const double count = static_cast<double>(samples.size());
+        st.max = samples.front();
+        st.min = samples.front();
+
+        double sum = 0.0;
+        for (double v : samples) {
+            sum += v;
+            if (v > st.max) st.max = v;
+            if (v < st.min) st.min = v;
+        }
+        st.ave = sum / count;
+
+        double variance = 0.0;
+        for (double v : samples) {
+            variance += (v - st.ave) * (v - st.ave);
+        }
+        st.std = std::sqrt(variance / count);
+        // 与 CyMediaCalc::computerUniformity 保持同一公式，避免两种模式口径不一致
+        st.uniformity = (st.std > 0.0 && bitMax > 0.0)
+            ? 20.0 * std::log10(bitMax / st.std)
+            : 0.0;
+        return st;
     }
 }
 
@@ -197,27 +246,13 @@ bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, Cy
         emit uphisVisible();
     }
 
-    //清空点统计
+    //清空点统计（点模式的曲线按有效样本重建，这里只需要清空历史序列）
     if (d->mIsPos != d->currentIsPosCalc) {
         d->mPosHisMaxY = 0.0;
         d->currentIsPosCalc = true;
-        d->mPosHisData[hisI_Gray].init();
-        d->mPosHisData[hisI_R].init();
-        d->mPosHisData[hisI_G].init();
-        d->mPosHisData[hisI_B].init();
-        int initHisIndex = 0;
         for (int i = hisI_Gray; i <= hisI_B; i++) {
-            if (d->mPosHistogramData[i].size() != mPosHisMax) {
-                d->mPosHistogramData[i].resize(mPosHisMax);
-                initHisIndex++;
-            }
-        }
-        if (initHisIndex) {
-            for (int posI = 0; posI < mPosHisMax; posI++) {
-                for (int hisI = hisI_Gray; hisI <= hisI_B; hisI++) {
-                    d->mPosHistogramData[hisI][posI].key = posI;
-                }
-            }
+            d->mPosHisData[i].init();
+            d->mPosHistogramData[i].clear();
         }
     }
     if (false == d->mIsPos) {
@@ -225,8 +260,15 @@ bool CyMediaDisGrayTest::upImage(CyMedia::ImageShowInfo& info, uint8_t* data, Cy
     }
 
     //更新计算掩码
-    if (d->mDrawType == CyDisDrawItem::ItemType::Invalid) {
+    //点模式不需要掩码：点只采样自身坐标处的像素，不能套用区域掩码的"未绘制"判断，
+    //否则 upMask 会因为 Point 类型把 mMaskHaveData 置 false，直接 return，点模式就永远没有数据。
+    if (d->mIsPos) {
         d->mMaskHaveData = false;
+        d->mMaskIsfullzero = false;
+    }
+    else if (d->mDrawType == CyDisDrawItem::ItemType::Invalid) {
+        d->mMaskHaveData = false;
+        d->mMaskIsfullzero = false;
     }
     else {
         upMask({ info.width, info.height });
@@ -696,25 +738,35 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Mono(CyMedia::I
     calcImageHisFlag calcRe;
     
     if (d->mIsPos) {
+        auto item = getCurrentItem();
+        if (!item) {
+            return calcRe;
+        }
         //计算像素点
-        double temR, tempG, tempB;
-        auto pos = getCurrentItem()->pos();
-        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+        double temR = 0.0, tempG = 0.0, tempB = 0.0;
+        auto pos = item->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, static_cast<int>(pos.x()), static_cast<int>(pos.y()),
             &temR, &tempG, &tempB, formatOpe);
         //入队
         d->mPosHisData[hisI_Gray].addData(temR);
         d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
-        if (d->mPosHisMaxY <= temR) {
+        if (d->mPosHisMaxY < temR) {
             d->mPosHisMaxY = temR;
         }
-        d->mHisTestData.currentGray = temR;
-        calcRe.calcHisMaxY = d->mPosHisMaxY;
-        calcRe.calcXRangePara = mPosHisMax;
-        //更新数据
-        for (int i = 0; i < d->mHistogramData[hisI_Gray].size(); i++) {
-            d->mPosHistogramData[hisI_Gray][i].value = d->mHistogramData[hisI_Gray][i];
-        }
+        d->mHisTestData.currentGray = static_cast<int32_t>(std::lround(temR));
+        //点模式统计：对采样序列求值，否则界面上的统计值会一直停在 0
+        const PosStatistics st = calcPosStatistics(d->mHistogramData[hisI_Gray], bitMaxValue(info.bit));
+        d->mHisTestData.ave = st.ave;
+        d->mHisTestData.max = st.max;
+        d->mHisTestData.min = st.min;
+        d->mHisTestData.std = st.std;
+        d->mHisTestData.Uniformity = st.uniformity;
+        //更新折线
+        updatePosLineData(d->mHistogramData[hisI_Gray], d->mPosHistogramData[hisI_Gray]);
         d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
+        //Y 轴范围不能为 0，否则 QCPGraph 会跳过绘制
+        calcRe.calcHisMaxY = std::max(1.0, d->mPosHisMaxY);
+        calcRe.calcXRangePara = mPosHisMax;
     }
     else {
         if (d->mMaskIsfullzero) {
@@ -743,11 +795,13 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Mono(CyMedia::I
         //更新数据
         d->mHistogram[hisI_Gray]->updateHistogramFromThread(d->mHistogramData[hisI_Gray].data(), d->mHistogramData[hisI_Gray].size());
     }
-    //计算参数
-    int maxXrange = 0;
-    CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, bitMaxValue(info.bit),
-        &d->mHisTestData.std, &d->mHisTestData.Uniformity, &maxXrange);
-    calcRe.calcXRangePara = maxXrange;
+    //计算参数（点模式的统计量在采样时已经算好，这里只处理直方图模式）
+    if (false == d->mIsPos) {
+        int maxXrange = 0;
+        CyMediaCalc::computerUniformity(d->mHistogramData[hisI_Gray], d->mHisTestData.ave, bitMaxValue(info.bit),
+            &d->mHisTestData.std, &d->mHisTestData.Uniformity, &maxXrange);
+        calcRe.calcXRangePara = maxXrange;
+    }
     //计算Y轴显示范围
     if (false == d->mMaskIsfullzero && false == d->mIsPos) {
         calcRe.calcHisMaxY = CyMediaCalc::determineYAxisMax(d->mHistogramData[hisI_Gray]);
@@ -759,42 +813,41 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Mono(CyMedia::I
 CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_RGB(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe) {
     calcImageHisFlag calcRe;
     if (d->mIsPos) {
+        auto item = getCurrentItem();
+        if (!item) {
+            return calcRe;
+        }
         //计算像素点
-        double tempRGB[4];
-        auto pos = getCurrentItem()->pos();
-        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+        double tempRGB[4] = { 0.0, 0.0, 0.0, 0.0 };
+        auto pos = item->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, static_cast<int>(pos.x()), static_cast<int>(pos.y()),
             &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
+        if (d->mRGBTestData.currentGray.size() != 3) {
+            d->mRGBTestData.currentGray.resize(3);
+        }
         //入队
         for (int i = hisI_R; i <= hisI_B; i++) {
             d->mPosHisData[i].addData(tempRGB[i]);
             d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
-        }
-        //更新数据
-        for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
+            if (d->mPosHisMaxY < tempRGB[i]) {
+                d->mPosHisMaxY = tempRGB[i];
             }
+            //点模式统计：对采样序列求值，否则界面上的统计值会一直停在 0
+            const PosStatistics st = calcPosStatistics(d->mHistogramData[i], bitMaxValue(info.bit));
+            d->mRGBTestData.ave[i - 1] = st.ave;
+            d->mRGBTestData.max[i - 1] = st.max;
+            d->mRGBTestData.min[i - 1] = st.min;
+            d->mRGBTestData.std[i - 1] = st.std;
+            d->mRGBTestData.Uniformity[i - 1] = st.uniformity;
+            //更新折线
+            updatePosLineData(d->mHistogramData[i], d->mPosHistogramData[i]);
+            d->mLineChart[i]->setGraphData(d->mPosHistogramData[i]);
         }
-        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-            d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
-        }
-
-        if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
-            d->mPosHisMaxY = tempRGB[hisI_R];
-        }
-        if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
-            d->mPosHisMaxY = tempRGB[hisI_G];
-        }
-        if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
-            d->mPosHisMaxY = tempRGB[hisI_B];
-        }
-        if (d->mRGBTestData.currentGray.size() != 3) {
-            d->mRGBTestData.currentGray.resize(3);
-        }
-        d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
-        d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
-        d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
-        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        d->mRGBTestData.currentGray[0] = static_cast<int32_t>(std::lround(tempRGB[hisI_R]));
+        d->mRGBTestData.currentGray[1] = static_cast<int32_t>(std::lround(tempRGB[hisI_G]));
+        d->mRGBTestData.currentGray[2] = static_cast<int32_t>(std::lround(tempRGB[hisI_B]));
+        //Y 轴范围不能为 0，否则 QCPGraph 会跳过绘制
+        calcRe.calcHisMaxY = std::max(1.0, d->mPosHisMaxY);
         calcRe.calcXRangePara = mPosHisMax;
     }
     else {
@@ -845,41 +898,40 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Bayer(CyMedia::
     calcImageHisFlag calcRe;
     
     if (d->mIsPos) {
-        double tempRGB[4];
-        auto pos = getCurrentItem()->pos();
-        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+        auto item = getCurrentItem();
+        if (!item) {
+            return calcRe;
+        }
+        double tempRGB[4] = { 0.0, 0.0, 0.0, 0.0 };
+        auto pos = item->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, static_cast<int>(pos.x()), static_cast<int>(pos.y()),
             &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
+        if (d->mRGBTestData.currentGray.size() != 3) {
+            d->mRGBTestData.currentGray.resize(3);
+        }
         //入队
         for (int i = hisI_R; i <= hisI_B; i++) {
             d->mPosHisData[i].addData(tempRGB[i]);
             d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
-        }
-        //更新数据
-        for (int posI = 0; posI < d->mHistogramData[hisI_R].size(); posI++) {
-            for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-                d->mPosHistogramData[hisI][posI].value = d->mHistogramData[hisI][posI];
+            if (d->mPosHisMaxY < tempRGB[i]) {
+                d->mPosHisMaxY = tempRGB[i];
             }
+            //点模式统计：对采样序列求值，否则界面上的统计值会一直停在 0
+            const PosStatistics st = calcPosStatistics(d->mHistogramData[i], bitMaxValue(info.bit));
+            d->mRGBTestData.ave[i - 1] = st.ave;
+            d->mRGBTestData.max[i - 1] = st.max;
+            d->mRGBTestData.min[i - 1] = st.min;
+            d->mRGBTestData.std[i - 1] = st.std;
+            d->mRGBTestData.Uniformity[i - 1] = st.uniformity;
+            //更新折线
+            updatePosLineData(d->mHistogramData[i], d->mPosHistogramData[i]);
+            d->mLineChart[i]->setGraphData(d->mPosHistogramData[i]);
         }
-        for (int hisI = hisI_R; hisI <= hisI_B; hisI++) {
-            d->mLineChart[hisI]->setGraphData(d->mPosHistogramData[hisI]);
-        }
-
-        if (d->mPosHisMaxY <= tempRGB[hisI_R]) {
-            d->mPosHisMaxY = tempRGB[hisI_R];
-        }
-        if (d->mPosHisMaxY <= tempRGB[hisI_G]) {
-            d->mPosHisMaxY = tempRGB[hisI_G];
-        }
-        if (d->mPosHisMaxY <= tempRGB[hisI_B]) {
-            d->mPosHisMaxY = tempRGB[hisI_B];
-        }
-        if (d->mRGBTestData.currentGray.size() != 3) {
-            d->mRGBTestData.currentGray.resize(3);
-        }
-        d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
-        d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
-        d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
-        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        d->mRGBTestData.currentGray[0] = static_cast<int32_t>(std::lround(tempRGB[hisI_R]));
+        d->mRGBTestData.currentGray[1] = static_cast<int32_t>(std::lround(tempRGB[hisI_G]));
+        d->mRGBTestData.currentGray[2] = static_cast<int32_t>(std::lround(tempRGB[hisI_B]));
+        //Y 轴范围不能为 0，否则 QCPGraph 会跳过绘制
+        calcRe.calcHisMaxY = std::max(1.0, d->mPosHisMaxY);
         calcRe.calcXRangePara = mPosHisMax;
     }
     else {
@@ -904,7 +956,7 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_Bayer(CyMedia::
             d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
         }
     }
-    if (false == d->mMaskIsfullzero) {
+    if (false == d->mIsPos && false == d->mMaskIsfullzero) {
         //计算参数
         std::vector<int> maxXrange(3);
         CyMediaCalc::computerThreeUniformity(
@@ -929,30 +981,62 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_YUV(CyMedia::Im
     calcImageHisFlag calcRe;
 
     if (d->mIsPos) {
+        auto item = getCurrentItem();
+        if (!item) {
+            return calcRe;
+        }
         //计算像素点
-        double tempRGB[4];
-        auto pos = getCurrentItem()->pos();
-        CyMediaCalc::calcCoordinateColor(info, data, pos.x(), pos.y(),
+        double tempRGB[4] = { 0.0, 0.0, 0.0, 0.0 };
+        auto pos = item->pos();
+        CyMediaCalc::calcCoordinateColor(info, data, static_cast<int>(pos.x()), static_cast<int>(pos.y()),
             &tempRGB[hisI_R], &tempRGB[hisI_G], &tempRGB[hisI_B], formatOpe);
-        //入队
-        d->mPosHisData[hisI_Gray].addData(tempRGB[hisI_Gray]);
-        d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
-        //更新数据
-        for (int posI = 0; posI < d->mHistogramData[hisI_Gray].size(); posI++) {
-            d->mPosHistogramData[hisI_Gray][posI].value = d->mHistogramData[hisI_Gray][posI];
-        }
-        d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
-
-        if (d->mPosHisMaxY <= tempRGB[hisI_Gray]) {
-            d->mPosHisMaxY = tempRGB[hisI_Gray];
-        }
         if (d->mRGBTestData.currentGray.size() != 3) {
             d->mRGBTestData.currentGray.resize(3);
         }
-        d->mRGBTestData.currentGray[0] = tempRGB[hisI_R];
-        d->mRGBTestData.currentGray[1] = tempRGB[hisI_G];
-        d->mRGBTestData.currentGray[2] = tempRGB[hisI_B];
-        calcRe.calcHisMaxY = d->mPosHisMaxY;
+        d->mRGBTestData.currentGray[0] = static_cast<int32_t>(std::lround(tempRGB[hisI_R]));
+        d->mRGBTestData.currentGray[1] = static_cast<int32_t>(std::lround(tempRGB[hisI_G]));
+        d->mRGBTestData.currentGray[2] = static_cast<int32_t>(std::lround(tempRGB[hisI_B]));
+
+        //只取 Y 分量时等同灰度（正常流程会走 upImage_Mono，这里兜底），否则按 RGB 三通道显示
+        if (formatOpe.YUVFunc == YUVTRANS_Y) {
+            const double gray = tempRGB[hisI_Gray];
+            d->mPosHisData[hisI_Gray].addData(gray);
+            d->mPosHisData[hisI_Gray].getLinearData(d->mHistogramData[hisI_Gray]);
+            if (d->mPosHisMaxY < gray) {
+                d->mPosHisMaxY = gray;
+            }
+            d->mHisTestData.currentGray = static_cast<int32_t>(std::lround(gray));
+            //点模式统计：对采样序列求值，否则界面上的统计值会一直停在 0
+            const PosStatistics st = calcPosStatistics(d->mHistogramData[hisI_Gray], bitMaxValue(info.bit));
+            d->mHisTestData.ave = st.ave;
+            d->mHisTestData.max = st.max;
+            d->mHisTestData.min = st.min;
+            d->mHisTestData.std = st.std;
+            d->mHisTestData.Uniformity = st.uniformity;
+            //更新折线
+            updatePosLineData(d->mHistogramData[hisI_Gray], d->mPosHistogramData[hisI_Gray]);
+            d->mLineChart[hisI_Gray]->setGraphData(d->mPosHistogramData[hisI_Gray]);
+        }
+        else {
+            for (int i = hisI_R; i <= hisI_B; i++) {
+                d->mPosHisData[i].addData(tempRGB[i]);
+                d->mPosHisData[i].getLinearData(d->mHistogramData[i]);
+                if (d->mPosHisMaxY < tempRGB[i]) {
+                    d->mPosHisMaxY = tempRGB[i];
+                }
+                const PosStatistics st = calcPosStatistics(d->mHistogramData[i], bitMaxValue(info.bit));
+                d->mRGBTestData.ave[i - 1] = st.ave;
+                d->mRGBTestData.max[i - 1] = st.max;
+                d->mRGBTestData.min[i - 1] = st.min;
+                d->mRGBTestData.std[i - 1] = st.std;
+                d->mRGBTestData.Uniformity[i - 1] = st.uniformity;
+                //更新折线
+                updatePosLineData(d->mHistogramData[i], d->mPosHistogramData[i]);
+                d->mLineChart[i]->setGraphData(d->mPosHistogramData[i]);
+            }
+        }
+        //Y 轴范围不能为 0，否则 QCPGraph 会跳过绘制
+        calcRe.calcHisMaxY = std::max(1.0, d->mPosHisMaxY);
         calcRe.calcXRangePara = mPosHisMax;
     }
     else {
@@ -977,7 +1061,7 @@ CyMediaDisGrayTest::calcImageHisFlag CyMediaDisGrayTest::upImage_YUV(CyMedia::Im
             d->mHistogram[hisI]->updateHistogramFromThread(d->mHistogramData[hisI].data(), d->mHistogramData[hisI].size());
         }
     }
-    if (false == d->mMaskIsfullzero) {
+    if (false == d->mIsPos && false == d->mMaskIsfullzero) {
         //计算参数
         std::vector<int> maxXrange(3);
         CyMediaCalc::computerThreeUniformity(
@@ -1124,10 +1208,13 @@ void CyMediaDisGrayTest::onUpHisRange(int minX, int maxX, int maxY) {
         d->mCustomPlot->xAxis->setRange(d->m_XRangeMin, d->m_XRangeMax);
     }
 
-    float change = abs(d->m_YRangeMax - maxY) * 1.0 / d->m_YRangeMax;
+    //Y 轴范围不能退化为 0：QCPGraph::draw 遇到 0 长度的坐标轴会直接跳过绘制，
+    //而 CyLineChart 的 m_dataChanged 又是在 draw 里复位的，一旦跳过就再也不刷新，看起来就是"没有数据"。
+    const int yRangeMax = qMax(1, maxY);
+    float change = abs(d->m_YRangeMax - yRangeMax) * 1.0 / qMax(1, d->m_YRangeMax);
     if (change > 0.20 && d->upYrange) {
         d->upYrange = false;
-        d->m_YRangeMax = maxY;
+        d->m_YRangeMax = yRangeMax;
         d->mCustomPlot->yAxis->setRange(0, d->m_YRangeMax);
     }
 }

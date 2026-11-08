@@ -55,10 +55,10 @@ namespace CyMedia {
         pal.setColor(QPalette::Window, Qt::black);
         setPalette(pal);
 
-        d->zoomIn = makeToolButton(this, iconPrefix, "ZommIn.png", "ZoomIn-hover.png", tr("Zoom In"));
+        d->zoomIn = makeToolButton(this, iconPrefix, "ZoomIn.png", "ZoomIn-hover.png", tr("Zoom In"));
         d->zoomOut = makeToolButton(this, iconPrefix, "ZoomOut.png", "ZoomOut-hover.png", tr("Zoom Out"));
-        d->zoomRaw = makeToolButton(this, iconPrefix, "zoonRaw.png", "zoonRaw-hover.png", tr("Actual Size"));
-        d->zoomFit = makeToolButton(this, iconPrefix, "zoonFit.png", "zoonFit-hover.png", tr("Fit to window"));
+        d->zoomRaw = makeToolButton(this, iconPrefix, "zoomRaw.png", "zoomRaw-hover.png", tr("Actual Size"));
+        d->zoomFit = makeToolButton(this, iconPrefix, "zoomFit.png", "zoomFit-hover.png", tr("Fit to window"));
         d->flipH = makeToolButton(this, iconPrefix, "FlipH.png", "FlipH-hover.png", tr("Flip Horizontal"));
         d->flipV = makeToolButton(this, iconPrefix, "FlipV.png", "FlipV-hover.png", tr("Flip Vertical"));
 
@@ -80,4 +80,14 @@ namespace CyMedia {
     }
 
     DisplayToolBar::~DisplayToolBar() = default;
+
+    void DisplayToolBar::flushTrans() {
+        d->zoomIn->setToolTip(tr("Zoom In"));
+        d->zoomOut->setToolTip(tr("Zoom Out"));
+        d->zoomRaw->setToolTip(tr("Actual Size"));
+        d->zoomFit->setToolTip(tr("Fit to window"));
+        d->flipH->setToolTip(tr("Flip Horizontal"));
+        d->flipV->setToolTip(tr("Flip Vertical"));
+    }
+
 }
