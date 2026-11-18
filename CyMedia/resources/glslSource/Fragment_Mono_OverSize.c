@@ -17,28 +17,23 @@
 // //======out======
 // out vec4 fragColor;
 
-//超过最大尺寸的图像以RGBA，宽高各除以2的形式传入文理，这里解析回原来的图像
+// 超过最大纹理尺寸的灰度图：
+//   原始数据被当成一维字节流，每 4 个像素打包进 1 个 RGBA texel
+//   任意宽高均可（不要求 2/4 的倍数），容量上限 4 * maxTexSize^2 像素
 vec4 calcRGBA(sampler2D texture, ivec2 texSize, ivec2 intTexCoord){
-    // 1. 根据 UV 和 纹理尺寸 计算浮点像素坐标
-    vec2 floatCoord = TexCoord * vec2(texSize); 
-    
-    // 2. 显式转换为整型坐标
-    ivec2 coord = ivec2(floatCoord); 
-    
-    // 3. 将坐标限制在原始图像的实际范围内 (nWidth x nHeight)
+    // 由归一化 UV 恢复源图像素坐标（TexCoord 已在顶点端缩放到 [0,1]）
     ivec2 origSize = ivec2(nWidth, nHeight);
-    coord = clamp(coord, ivec2(0), origSize - 1);
+    ivec2 srcCoord = ivec2(TexCoord * vec2(origSize));
+    srcCoord = clamp(srcCoord, ivec2(0), origSize - 1);
 
-    // 4. 计算实际的打包坐标
-    int x = coord.x;
-    int y = coord.y;
-    
-    int monoIndex = y * nWidth + x; 
-    int RGBA_X = (x / 4) + ((y % 2) * (nWidth / 4));
-    int RGBA_Y = y / 2;
-    int RGBA_C = monoIndex % 4;
+    // 线性像素索引 -> texel 索引 + channel
+    int idx      = srcCoord.y * nWidth + srcCoord.x;
+    int texelIdx = idx >> 2;   // / 4
+    int channel  = idx & 3;    // % 4
 
-    // 5. 采样并还原
-    float gray = texelFetch(texture, ivec2(RGBA_X, RGBA_Y), 0)[RGBA_C] * bitMul;
+    ivec2 tSize  = textureSize(texture, 0);
+    ivec2 tcoord = ivec2(texelIdx % tSize.x, texelIdx / tSize.x);
+
+    float gray = texelFetch(texture, tcoord, 0)[channel] * bitMul;
     return vec4(gray, gray, gray, 1.0);
 }

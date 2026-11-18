@@ -2,11 +2,15 @@
 
 #include "../../Calculate/Calculate.h"
 #include "../../common/CyMediaLog.h"
-#include "../Widgets/CyQCP.h"
+#include "../Widgets/CyCellStepper.h"
+#include "../Widgets/CyHistogramView.h"
 #include "../Widgets/cycustomwidget.h"
 
-#include <QToolTip>
 #include <QBoxLayout>
+#include <QLabel>
+#include <QSignalBlocker>
+
+#include <cmath>
 
 enum grayHistogrameIndex {
     hisI_Gray = 0,
@@ -15,19 +19,27 @@ enum grayHistogrameIndex {
     hisI_B
 };
 
+namespace {
+    /// 直方图桶数上限：超过后 Calculate 会分配巨量内存，这里直接拒绝并提示。
+    const int kMaxHistogramBits = 20;
+}
+
 struct CyMediaDisGrayStretch::PrivateData {
 public:
     //UI
     QColor mThemeColor = QColor(0x2a, 0xa3, 0xc6);
     bool mIsInit = false;
-    QCustomPlot* mCustomPlot = nullptr;
-    CyHistogram* mHistogram = nullptr;
-    QCPItemRect* mSelectionRect = nullptr;
+
+    CyHistogramView* mHisView = nullptr;
+
+    CyCellStepper* mYCellStep = nullptr;
+    QCheckBox* mAutoYBox = nullptr;
+    QCheckBox* mRawBayerBox = nullptr;
 
     QSpinBox* mStartNumberBox = nullptr;
     QSpinBox* mEndNumberBox = nullptr;
 
-    QTabWidget* mControlTab;
+    QStackedWidget* mControlTab = nullptr;
 
     QLabel* mAutoStretchLab = nullptr;
     CyCustomWidget::CyCheckButton* mAutoStretchBtn = nullptr;
@@ -35,32 +47,21 @@ public:
     QLabel* mRGBStretchTypeLab = nullptr;
     QComboBox* mRGBStretchTypeBox = nullptr;
 
-    //TooTip··················································
-    bool mShowPlotTips = false;
-    QPoint mLastPlotTipPos;
-    int mLastPlotTopX = -1;
-
     //histogram
     std::vector<double> mHisData;
     int32_t mImageBit = 8;
     int mLastUnsupportedBit = -1;
-    int32_t mXrangeMin = 0;
-    int32_t mXRange = 255;
-    int32_t mYRange = 1000;
-    bool mZoomable = false;
+    int32_t mXLevels = 256;
+    int32_t mYHint = 1000;
+    bool mMonoTab = true;
 
     // stretch
-    StretchValue mStretchValue;
+    StretchValue mStretchValue{ 0, 255, 255 };
     CyMedia::StretchType mStretchType = CyMedia::stretch_HSV;
     bool mAutostretch = false;
-    bool mIsDragging = false;
-    bool mIsResizingLeft = false;
-    bool mIsResizingRight = false;
-    QPointF mLastMousePos;
-    double mSelect_min = 0;
+    bool mRawBayer = false;
     double mSelect_max = 255;
     double mSelect_min_width = 10.0;
-    const int mRESIZE_THRESHOLD = 5;
 };
 
 CyMediaDisGrayStretch::CyMediaDisGrayStretch(QWidget* parent /*= nullptr*/)
@@ -70,7 +71,7 @@ CyMediaDisGrayStretch::CyMediaDisGrayStretch(QWidget* parent /*= nullptr*/)
 }
 
 CyMediaDisGrayStretch::~CyMediaDisGrayStretch() {
-    
+
 }
 
 void CyMediaDisGrayStretch::flushTrans() {
@@ -81,16 +82,31 @@ void CyMediaDisGrayStretch::flushTrans() {
     d->mRGBStretchTypeBox->setItemText(idx++, tr("Gray"));
     d->mRGBStretchTypeBox->setItemText(idx++, tr("HSV"));
     d->mRGBStretchTypeBox->setItemText(idx++, tr("Lab"));
+
+    d->mYCellStep->setCaption(tr("Y/cell"));
+    d->mAutoYBox->setText(tr("Auto Y"));
+    d->mRawBayerBox->setText(tr("Bayer raw data"));
+
+    d->mHisView->setChannelName(CyHistogramView::Ch_Gray, tr("Quantity"));
+    updateAxisTitle();
 }
 
 void CyMediaDisGrayStretch::setThemeColor(QColor color) {
-    color.setAlpha(0x50);
-    d->mSelectionRect->setBrush(color);
-    color.setAlpha(d->mSelectionRect->pen().color().alpha());
-    d->mSelectionRect->setPen(QPen(color, 2));
+    d->mHisView->setThemeColor(color);
+    d->mHisView->setSeriesColor(CyHistogramView::Ch_Gray, color);
+    d->mYCellStep->setThemeColor(color);
 
     color.setAlpha(0xFF);
     d->mAutoStretchBtn->setEnableCheckColor(color);
+}
+
+void CyMediaDisGrayStretch::updateAxisTitle() {
+    if (d->mStretchType == CyMedia::stretch_Gray || d->mStretchType == CyMedia::stretch_None) {
+        d->mHisView->setAxisTitles(tr("Grayscale"), tr("Quantity"));
+    }
+    else {
+        d->mHisView->setAxisTitles(tr("Brightness"), tr("Quantity"));
+    }
 }
 
 bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe colorOpe) {
@@ -105,134 +121,98 @@ bool CyMediaDisGrayStretch::upImageData(CyMedia::ImageShowInfo& info, uint8_t* d
             info.width, info.height, int(info.bit), int(info.format));
         return false;
     }
-    if (info.bit < 1 || info.bit > 31) {
+    if (info.bit < 1 || info.bit > kMaxHistogramBits) {
         if (d->mLastUnsupportedBit != info.bit) {
             d->mLastUnsupportedBit = info.bit;
             CyMediaLog::instance().log_printf_Warning(
-                "[GrayStretch] unsupported bit depth %d, histogram update skipped", int(info.bit));
+                "[GrayStretch] unsupported bit depth %d (supported 1..%d), histogram update skipped",
+                int(info.bit), int(kMaxHistogramBits));
         }
         return false;
     }
     d->mLastUnsupportedBit = -1;
-    
-    QElapsedTimer eTimer;
-    eTimer.restart();
-    
-    int currentCtrIndex = d->mControlTab->currentIndex();
-    //切换
-    if (info.isMono(colorOpe)) {
-        if (d->mControlTab->currentIndex() != 0) {
-            emit transImageType(0);
-            currentCtrIndex = 0;
-        }
-    }
-    else {
-        if (d->mControlTab->currentIndex() != 1) {
-            emit transImageType(1);
-            currentCtrIndex = 1;
-        }
+
+    //切换单色/彩色页签（工作线程只改镜像状态，界面通过排队信号更新）
+    const bool tMono = info.isMono(colorOpe);
+    if (tMono != d->mMonoTab) {
+        d->mMonoTab = tMono;
+        emit transImageType(tMono ? 0 : 1);
     }
 
-    eTimer.restart();
     d->mImageBit = info.bit;
     //计算直方图（31 位时 1<<31 不适合用 int 表示）
     const double maxBitValue = (info.bit >= 31) ? 2147483648.0 : double(1u << info.bit);
     int stretchMax = int(maxBitValue - 1);
-    double calcHisMinX = -(maxBitValue * 0.05);
-    double calcHisMaxX = maxBitValue * 1.05;
     if (d->mStretchType == CyMedia::stretch_Lab) {
-        calcHisMinX = -10;
-        calcHisMaxX = 120;
         stretchMax = 100;
     }
 
-    eTimer.restart();
     //更新拉伸边界范围
     if (stretchMax != d->mSelect_max) {
         d->mSelect_max = stretchMax;
         emit upEditRange(true);
     }
 
-    eTimer.restart();
     //更新直方图
-    double calcHisMaxY = 0;
     if (info.isMono()) {
         double maxV, minV, aveV;
         CyMediaCalc::computeGrayHistogram(data, info, 0, false,
             d->mHisData,
             &maxV, &minV, &aveV);
-        d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
-        //自动拉伸
-        if (d->mAutostretch) {
-            int32_t start, end;
-            CyMediaCalc::computeGrayStretchPara(d->mHisData, start, end);
-            emit upStretchRange(start, end);
-        }
-    } 
+    }
     else if (info.isBayer()) {
+        //按原始数据统计：跳过去马赛克，直接统计 CFA 像素，耗时大幅下降
+        const CyMedia::DemosaicingMethod func = d->mRawBayer
+            ? CyMedia::DEMOSAIC_NONE : colorOpe.bayerFunc;
+        const CyMedia::StretchType type = d->mRawBayer
+            ? CyMedia::stretch_Gray : d->mStretchType;
         CyMediaCalc::computeBayerHistogram(data, info,
             d->mHisData,
-            d->mStretchType,
-            colorOpe.bayerFunc);
-
-        d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
+            type,
+            func);
     }
     else if (info.isYUV()) {
-        CyMediaCalc::computerYUVHistogram(data, info, 
-            d->mHisData, 
-            colorOpe.stretchType, 
+        CyMediaCalc::computerYUVHistogram(data, info,
+            d->mHisData,
+            colorOpe.stretchType,
             colorOpe.YUVFunc);
-
-        d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
     else {
         CyMediaCalc::computeRGBHistogram(data, info,
             d->mHisData,
             d->mStretchType);
-
-        d->mHistogram->updateHistogramFromThread(d->mHisData.data(), d->mHisData.size());
     }
 
-    eTimer.restart();
-    //计算Y轴显示范围
-    calcHisMaxY = CyMediaCalc::determineYAxisMax(d->mHisData, d->mHisData.size() * 0.02);
-    emit upHisRange(static_cast<int>(calcHisMinX), static_cast<int>(calcHisMaxX), static_cast<int>(calcHisMaxY));
+    if (d->mHisData.empty()) {
+        //未支持的格式或不支持的类型：清空曲线，避免显示上一帧
+        d->mHisView->setSeriesData(CyHistogramView::Ch_Gray, nullptr, 0);
+        return false;
+    }
+
+    d->mHisView->setSeriesData(CyHistogramView::Ch_Gray,
+        d->mHisData.data(), int(d->mHisData.size()));
+
+    //X 轴：0 ~ 最大 bit 值（Lab 为 0~100）
+    d->mXLevels = (d->mStretchType == CyMedia::stretch_Lab) ? 101 : int(maxBitValue);
+    if (d->mXLevels < 2) d->mXLevels = 2;
+
+    //计算Y轴显示范围：优先显示全部数据，极端尖峰做截断
+    const double calcHisMaxY = CyMediaCalc::determineYAxisMax(d->mHisData, int(d->mHisData.size() * 0.02));
+    d->mYHint = qMax(1, int(calcHisMaxY));
+
+    emit upHisRange(0, d->mXLevels - 1, d->mYHint);
+
+    //自动拉伸（单色直方图才有意义）
+    if (d->mAutostretch && d->mMonoTab) {
+        int32_t start, end;
+        CyMediaCalc::computeGrayStretchPara(d->mHisData, start, end);
+        emit upStretchRange(start, end);
+    }
 
     return true;
 }
 
-bool CyMediaDisGrayStretch::isZoomble() {
-    return d->mZoomable;
-}
-
-void CyMediaDisGrayStretch::setZoomble(bool zoom) {
-    if (d->mZoomable == zoom)
-        return;
-    if (d->mZoomable != zoom) {
-        d->mZoomable = zoom;
-        if (d->mZoomable) {
-            d->mCustomPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom); // 可拖动 / 缩放
-        }
-        else {
-            d->mCustomPlot->setInteractions(QCP::iNone); // 可拖动 / 缩放
-        }
-    }
-}
-
-bool CyMediaDisGrayStretch::axisToolTipVisible() {
-    return d->mShowPlotTips;
-}
-
-void CyMediaDisGrayStretch::setAxisToolTipVisible(bool visi) {
-    d->mShowPlotTips = visi;
-    if (!visi)
-        QToolTip::hideText();
-}
-
 CyMedia::StretchType CyMediaDisGrayStretch::stretchtype() {
-    /*if (false == isVisible()) {
-        return CyMedia::stretch_None;
-    }*/
     return d->mStretchType;
 }
 
@@ -244,18 +224,47 @@ bool CyMediaDisGrayStretch::isAutoStretch() {
     return d->mAutoStretchBtn->isChecked() && d->mControlTab->currentIndex() == 0;
 }
 
-bool CyMediaDisGrayStretch::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == d->mCustomPlot) {
-        bool selectMove = mouseOnSelectRect(event);
-        if (event->type() == QEvent::MouseMove && false == selectMove) {
-            plotMouseMove(static_cast<QMouseEvent*>(event)->pos());
-        }
-        else if (event->type() == QEvent::MouseButtonRelease) {
-            plotMouseMove(static_cast<QMouseEvent*>(event)->pos());
-        }
+void CyMediaDisGrayStretch::setStretchValue(CyMedia::StretchType type, int32_t start, int32_t end, int32_t max) {
+    if (max <= 0) return;
+    if (type == CyMedia::stretch_None) type = CyMedia::stretch_Gray;
+
+    const int32_t minW = int32_t(d->mSelect_min_width);
+    max = qMax(max, minW + 1);
+    start = qBound(0, start, max - minW);
+    end = qBound(minW, end, max);
+    if (end <= start) end = qMin(max, start + minW);
+
+    d->mStretchType = type;
+    d->mSelect_max = double(max);
+    d->mStretchValue = { start, end, max };
+
+    {
+        QSignalBlocker b(d->mRGBStretchTypeBox);
+        d->mRGBStretchTypeBox->setCurrentIndex(int(type) - 1);
+    }
+    updateAxisTitle();
+
+    {
+        QSignalBlocker b(d->mStartNumberBox);
+        d->mStartNumberBox->setRange(0, int(max - minW));
+        d->mStartNumberBox->setValue(start);
+    }
+    {
+        QSignalBlocker b(d->mEndNumberBox);
+        d->mEndNumberBox->setRange(int(minW), int(max));
+        d->mEndNumberBox->setValue(end);
     }
 
-    return QWidget::eventFilter(watched, event);
+    d->mHisView->setXMaxRange(max);
+    d->mHisView->setSelection(start, end);
+    syncAxisControls();
+}
+
+void CyMediaDisGrayStretch::setAutoStretch(bool on) {
+    if (d->mAutostretch == on) return;
+    d->mAutostretch = on;
+    QSignalBlocker b(d->mAutoStretchBtn);
+    d->mAutoStretchBtn->setChecked(on);
 }
 
 void CyMediaDisGrayStretch::closeEvent(QCloseEvent* event) {
@@ -270,208 +279,37 @@ void CyMediaDisGrayStretch::closeEvent(QCloseEvent* event) {
 }
 
 void CyMediaDisGrayStretch::showEvent(QShowEvent* event) {
+    d->mHisView->setAutoY(true);
+    syncAxisControls();
     emit needImage();
     QWidget::showEvent(event);
 }
 
-bool CyMediaDisGrayStretch::mouseOnSelectRect(QEvent* event) {
-    if (event->type() == QEvent::MouseMove) {
-        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-        //选区控制
-        if (false == isAutoStretch()) {
-            updateCursor(mouseEvent->pos());
-            if (d->mIsDragging || d->mIsResizingLeft || d->mIsResizingRight) {
-                double currentX = int(d->mCustomPlot->xAxis->pixelToCoord(mouseEvent->pos().x()));
-                currentX = qBound(d->mSelect_min, currentX, d->mSelect_max);
 
-                double rectLeft = d->mSelectionRect->topLeft->coords().x();
-                double rectRight = d->mSelectionRect->bottomRight->coords().x();
-                double rectWidth = rectRight - rectLeft;
+bool CyMediaDisGrayStretch::eventFilter(QObject* obj, QEvent* event) {
+    if (event->type() == QEvent::Wheel && (obj->inherits("QSpinBox") || obj->inherits("QComboBox"))) return true;
 
-
-                double newLeft = rectLeft;
-                double newRight = rectRight;
-                if (d->mIsDragging) {
-                    // 计算移动偏移量
-                    double deltaX = currentX - d->mLastMousePos.x();
-                    newLeft = rectLeft + deltaX;
-                    newRight = rectRight + deltaX;
-
-                    // 边界限制
-                    if (newLeft < d->mSelect_min) {
-                        newLeft = d->mSelect_min;
-                        newRight = d->mSelect_min + rectWidth;
-                    }
-                    if (newRight > d->mSelect_max) {
-                        newRight = d->mSelect_max;
-                        newLeft = d->mSelect_max - rectWidth;
-                    }
-                }
-                else if (d->mIsResizingLeft) {
-                    // 调整左边界
-                    newLeft = qBound(d->mSelect_min, currentX, rectRight - d->mSelect_min_width);
-                }
-                else if (d->mIsResizingRight) {
-                    // 调整右边界
-                    newRight = qBound(rectLeft + d->mSelect_min_width, currentX, d->mSelect_max);
-                }
-
-                upSelectRectChange(int32_t(newLeft), int32_t(newRight));
-
-                d->mLastMousePos = QPointF(currentX, 0);
-                return true;
-            }
-        }
-    }
-    else if (event->type() == QEvent::MouseButtonPress) {
-        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-        //选区控制
-        if (false == isAutoStretch()) {
-            if (mouseEvent->button() == Qt::LeftButton) {
-                double xCoord = d->mCustomPlot->xAxis->pixelToCoord(mouseEvent->pos().x());
-                double rectLeft = d->mSelectionRect->topLeft->coords().x();
-                double rectRight = d->mSelectionRect->bottomRight->coords().x();
-
-                // 转换为像素进行边缘检测
-                double leftEdgePixel = d->mCustomPlot->xAxis->coordToPixel(rectLeft);
-                double rightEdgePixel = d->mCustomPlot->xAxis->coordToPixel(rectRight);
-
-                if (qAbs(mouseEvent->pos().x() - leftEdgePixel) <= d->mRESIZE_THRESHOLD/* && xCoord >= rectLeft - 5 && xCoord <= rectRight*/) {
-                    d->mIsResizingLeft = true;
-                    d->mLastMousePos = QPointF(xCoord, 0);
-                    d->mCustomPlot->setCursor(Qt::SizeHorCursor);
-                    return true;
-                }
-
-                if (qAbs(mouseEvent->pos().x() - rightEdgePixel) <= d->mRESIZE_THRESHOLD/* && xCoord >= rectLeft && xCoord <= rectRight * 1.05*/) {
-                    d->mIsResizingRight = true;
-                    d->mLastMousePos = QPointF(xCoord, 0);
-                    d->mCustomPlot->setCursor(Qt::SizeHorCursor);
-                    return true;
-                }
-
-                if (xCoord > rectLeft && xCoord < rectRight) {
-                    d->mIsDragging = true;
-                    d->mLastMousePos = QPointF(xCoord, 0);
-                    d->mCustomPlot->setCursor(Qt::SizeAllCursor);
-                    return true;
-                }
-            }
-        }
-    }
-    else if (event->type() == QEvent::MouseButtonRelease) {
-        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-        //选区控制
-        if (false == isAutoStretch()) {
-            if (mouseEvent->button() == Qt::LeftButton) {
-                d->mIsDragging = false;
-                d->mIsResizingLeft = false;
-                d->mIsResizingRight = false;
-                d->mCustomPlot->setCursor(Qt::ArrowCursor);
-
-                // 确保选择区域在边界内
-                double rectLeft = d->mSelectionRect->topLeft->coords().x();
-                double rectRight = d->mSelectionRect->bottomRight->coords().x();
-
-                double newLeft = rectLeft;
-                double newRight = rectRight;
-                if (rectLeft < d->mSelect_min) {
-                    newLeft = d->mSelect_min;
-                }
-                if (rectRight > d->mSelect_max) {
-                    newRight = d->mSelect_max;
-                }
-                if (rectRight - rectLeft < d->mSelect_min_width) {
-                    if (rectLeft < d->mSelect_min + d->mSelect_min_width) {
-                        newRight = d->mSelect_max;
-                    }
-                    else if (rectRight > d->mSelect_max - d->mSelect_min_width) {
-                        newLeft = d->mSelect_max - d->mSelect_min_width;
-                    }
-                }
-
-                upSelectRectChange(int32_t(newLeft), int32_t(newRight));
-                return true;
-            }
-        }
-    }
-    else if (event->type() == QEvent::Leave) {
-        d->mCustomPlot->setCursor(Qt::ArrowCursor);
-    }
-
-    return false;
+    return QWidget::eventFilter(obj, event);
 }
 
-void CyMediaDisGrayStretch::plotMouseMove(QPoint mousePos) {
-    if (false == d->mShowPlotTips)
-        return;
-    //鼠标坐标转化CustomPlot内部坐标
-    double dValueX = d->mCustomPlot->xAxis->pixelToCoord(mousePos.x());
-    double dValueY = d->mCustomPlot->yAxis->pixelToCoord(mousePos.y());
-    ////判断是否超出坐标轴范围
-    //if (dValueX < mCustomPlot->xAxis->range().lower || dValueX > mCustomPlot->xAxis->range().upper ||
-    //    dValueY < mCustomPlot->yAxis->range().lower || dValueY > mCustomPlot->yAxis->range().upper) {
-    //    QToolTip::hideText();
-    //    return;
-    //}
-    //逐个图像判断符合条件的曲线点
-    if (plotToolTips(dValueX, dValueY)) {
-        d->mLastPlotTipPos = mousePos;
-    }
-}
-
-bool CyMediaDisGrayStretch::plotToolTips(double xValue, double yValue) {
-    if (!d->mHistogram || d->mHistogram->data()->isEmpty()) {
-        return false;
-    }
-    double calcXvalue = 0;
-    double calcYvalue = 0.0;
-    //X像素比
-    double dRatioX = d->mCustomPlot->xAxis->axisRect()->width() / (d->mCustomPlot->xAxis->range().upper - d->mCustomPlot->xAxis->range().lower);
-
-    //取得最接近的坐标
-    int index_left = d->mHistogram->findBegin(xValue, true);
-    int index_right = d->mHistogram->findEnd(xValue, true);
-    double dif_left = fabs(d->mHistogram->data()->at(index_left)->key - xValue);
-    double dif_right = fabs(d->mHistogram->data()->at(index_right)->key - xValue);
-    int iPointIdx = ((dif_left < dif_right) ? index_left : index_right);
-    calcXvalue = d->mHistogram->data()->at(iPointIdx)->key;
-    //鼠标值和最近值的差值
-    double dx = fabs(calcXvalue - xValue);
-    //判断离坐标的距离是否在范围内
-    static double adjugeWidth = 20.0;
-    if (dx * dRatioX <= adjugeWidth) {
-        /*if (mLastPlotTopX == calcXvalue) {
-            return true;
-        }*/
-        d->mLastPlotTopX = calcXvalue;
-        calcYvalue = d->mHistogram->data()->at(iPointIdx)->value;
-        QToolTip::showText(cursor().pos(), getPosToolTip(calcXvalue, calcYvalue), d->mCustomPlot);
-        return true;
-    }
-
-    QToolTip::hideText();
-    return false;
-}
-
-void CyMediaDisGrayStretch::onStartValueEdit() {
-    int start = d->mStartNumberBox->value();
+void CyMediaDisGrayStretch::onStartValueEdit(int start) {
     if (d->mStretchValue.start == start) {
         return;
     }
-
-    d->mStretchValue.start = start;
-    onUpSelectRectRange(d->mStretchValue.start, d->mStretchValue.end);
+    if (start >= d->mStretchValue.end) {
+        start = qMax(0, d->mStretchValue.end - 1);
+    }
+    upSelectRectChange(start, d->mStretchValue.end);
 }
 
-void CyMediaDisGrayStretch::onEndValueEdit() {
-    int end = d->mEndNumberBox->value();
+void CyMediaDisGrayStretch::onEndValueEdit(int end) {
     if (d->mStretchValue.end == end) {
         return;
     }
-
-    d->mStretchValue.end = end;
-    onUpSelectRectRange(d->mStretchValue.start, d->mStretchValue.end);
+    if (end <= d->mStretchValue.start) {
+        end = qMin(int(d->mSelect_max), d->mStretchValue.start + 1);
+    }
+    upSelectRectChange(d->mStretchValue.start, end);
 }
 
 void CyMediaDisGrayStretch::onAutoStretchChange(bool enable) {
@@ -483,62 +321,57 @@ void CyMediaDisGrayStretch::onAutoStretchChange(bool enable) {
 
 void CyMediaDisGrayStretch::onStretchTypeChange(int idx) {
     d->mStretchType = CyMedia::StretchType(idx + 1);
+    updateAxisTitle();
     if (d->mStretchType == CyMedia::stretch_Lab && d->mSelect_max != 100) {
         d->mSelect_max = 100;
         onUpEditRange();
     }
+    emit stretchTypeChanged();
     emit needImage();
 }
 
-void CyMediaDisGrayStretch::upSelectRectChange(int32_t start, int32_t end, bool needSignals/* = true*/) {
-    int32_t newS = int32_t(start);
-    int32_t newE = int32_t(end);
+void CyMediaDisGrayStretch::onRawBayerChange(bool enable) {
+    if (d->mRawBayer != enable) {
+        d->mRawBayer = enable;
+    }
+    emit needImage();
+}
 
-    d->mStretchValue.start = int32_t(newS);
-    d->mStretchValue.end = int32_t(newE);
-    onUpSelectRectRange(d->mStretchValue.start, d->mStretchValue.end);
-    onUpEditorNumber(d->mStretchValue.start, d->mStretchValue.end);
-    emit stretchParaChange();
+void CyMediaDisGrayStretch::upSelectRectChange(int32_t start, int32_t end, bool needSignals /* = true*/) {
+    const int32_t maxV = int32_t(d->mSelect_max);
+    if (start < 0) start = 0;
+    if (end > maxV) end = maxV;
+    if (end - start < int32_t(d->mSelect_min_width)) {
+        end = qMin(maxV, start + int32_t(d->mSelect_min_width));
+        if (end - start < int32_t(d->mSelect_min_width)) {
+            start = qMax(0, end - int32_t(d->mSelect_min_width));
+        }
+    }
+
+    d->mStretchValue.start = start;
+    d->mStretchValue.end = end;
+
+    d->mHisView->setSelection(start, end);
+    onUpEditorNumber(start, end);
+
+    if (needSignals) {
+        emit stretchParaChange();
+    }
 }
 
 void CyMediaDisGrayStretch::onUpSelectRectRange(int32_t start, int32_t end) {
-    d->mSelectionRect->topLeft->setCoords(start, d->mCustomPlot->yAxis->range().upper);
-    d->mSelectionRect->bottomRight->setCoords(end, 0);
-
-    d->mCustomPlot->replot();
+    d->mHisView->setSelection(start, end);
     emit stretchParaChange();
 }
 
-void CyMediaDisGrayStretch::onUpEditorNumber(int32_t  start, int32_t end) {
-    d->mStartNumberBox->setValue(start);
-    d->mEndNumberBox->setValue(end);
-}
-
-void CyMediaDisGrayStretch::updateCursor(const QPointF& pos) {
-    if (d->mIsDragging || d->mIsResizingLeft || d->mIsResizingRight) {
-        return;
+void CyMediaDisGrayStretch::onUpEditorNumber(int32_t start, int32_t end) {
+    {
+        QSignalBlocker blocker(d->mStartNumberBox);
+        d->mStartNumberBox->setValue(start);
     }
-
-    double rectLeft = d->mSelectionRect->topLeft->coords().x();
-    double rectRight = d->mSelectionRect->bottomRight->coords().x();
-
-    // 转换为像素坐标进行边界检测
-    double leftEdgePixel = d->mCustomPlot->xAxis->coordToPixel(rectLeft);
-    double rightEdgePixel = d->mCustomPlot->xAxis->coordToPixel(rectRight);
-
-    // 检查鼠标是否在左边界或右边界附近
-    if (qAbs(pos.x() - leftEdgePixel) <= d->mRESIZE_THRESHOLD ||
-        qAbs(pos.x() - rightEdgePixel) <= d->mRESIZE_THRESHOLD) {
-        d->mCustomPlot->setCursor(Qt::SizeHorCursor);
-    }
-    // 检查鼠标是否在矩形内部
-    else if (pos.x() > d->mCustomPlot->xAxis->coordToPixel(rectLeft) &&
-        pos.x() < d->mCustomPlot->xAxis->coordToPixel(rectRight)) {
-        d->mCustomPlot->setCursor(Qt::SizeAllCursor);
-    }
-    // 默认光标
-    else {
-        d->mCustomPlot->setCursor(Qt::ArrowCursor);
+    {
+        QSignalBlocker blocker(d->mEndNumberBox);
+        d->mEndNumberBox->setValue(end);
     }
 }
 
@@ -547,46 +380,44 @@ void CyMediaDisGrayStretch::initGUI() {
         return;
     d->mIsInit = true;
 
-    d->mStretchValue = { 0, 255, 255 };
-
-    //plot
-    d->mCustomPlot = new QCustomPlot(this);
-    d->mCustomPlot->installEventFilter(this);
-    //select
-    d->mSelectionRect = new QCPItemRect(d->mCustomPlot);
-    d->mSelectionRect->topLeft->setType(QCPItemPosition::ptPlotCoords);
-    d->mSelectionRect->bottomRight->setType(QCPItemPosition::ptPlotCoords);
-
-    // 设置初始选择区域 (50-150)
-    onUpSelectRectRange(d->mStretchValue.start, d->mStretchValue.end);
-
     //histogram
-    d->mHistogram = new CyHistogram(d->mCustomPlot->xAxis, d->mCustomPlot->yAxis);
-    d->mHistogram->setPen(QColor(Qt::lightGray));
-    d->mHistogram->setWidthType(QCPBars::wtPlotCoords);
+    d->mHisView = new CyHistogramView(this);
+    d->mHisView->setDisplayStyle(CyHistogramView::Style_Area);
+    d->mHisView->setCellPixelSize(QSize(58, 34));
+    d->mHisView->setXMaxRange(255);
+    d->mHisView->setSelectionEnabled(true);
+    d->mHisView->setSelectionMinWidth(d->mSelect_min_width);
+    d->mHisView->setSelection(d->mStretchValue.start, d->mStretchValue.end);
+    d->mHisView->setSeriesColor(CyHistogramView::Ch_Gray, d->mThemeColor);
+    d->mHisView->setSeriesVisible(CyHistogramView::Ch_Gray, true);
+    //X 轴固定为全量程（0 ~ 最大 bit 值），不提供缩放/平移
+    d->mHisView->setXAdjustable(false);
 
-    //xAxis
-    auto xAxis = d->mCustomPlot->xAxis;
-    xAxis->setRange(-1, d->mXRange * 1.1);
-    xAxis->grid()->setZeroLinePen(Qt::NoPen);
-    xAxis->ticker()->setTickCount(11);
-    xAxis->ticker()->setTickStepStrategy(QCPAxisTicker::tssReadability);
-    //yAxis
-    auto yAxis = d->mCustomPlot->yAxis;
-    yAxis->grid()->setZeroLinePen(Qt::NoPen);
-    yAxis->setTickLabels(false);
-    yAxis->setRange(0, d->mYRange);
+    //格子
+    d->mYCellStep = new CyCellStepper(CyCellStepper::Vertical, this);
+    d->mYCellStep->setRange(1, 1000000000);
+    d->mYCellStep->setValue(1);
+    d->mAutoYBox = new QCheckBox(this);
+    d->mAutoYBox->setChecked(true);
+
+    d->mRawBayerBox = new QCheckBox(this);
+    d->mRawBayerBox->setChecked(false);
 
     //Ctroll
     d->mStartNumberBox = new QSpinBox(this);
-    d->mStartNumberBox->setRange(0, d->mSelect_max);
+    d->mStartNumberBox->setMouseTracking(false);
+    d->mStartNumberBox->setKeyboardTracking(false);
+    d->mStartNumberBox->setRange(0, int(d->mSelect_max - d->mSelect_min_width));
     d->mStartNumberBox->setValue(d->mStretchValue.start);
+    d->mStartNumberBox->installEventFilter(this);
     d->mEndNumberBox = new QSpinBox(this);
-    d->mEndNumberBox->setRange(d->mSelect_min_width, d->mSelect_max);
+    d->mEndNumberBox->setMouseTracking(false);
+    d->mEndNumberBox->setKeyboardTracking(false);
+    d->mEndNumberBox->setRange(int(d->mSelect_min_width), int(d->mSelect_max));
     d->mEndNumberBox->setValue(d->mStretchValue.end);
+    d->mEndNumberBox->installEventFilter(this);
 
-    d->mControlTab = new QTabWidget(this);
-    d->mControlTab->tabBar()->setVisible(false);
+    d->mControlTab = new QStackedWidget(this);
 
     d->mAutoStretchLab = new QLabel(this);
     d->mAutoStretchBtn = new CyCustomWidget::CyCheckButton(this);
@@ -594,6 +425,7 @@ void CyMediaDisGrayStretch::initGUI() {
 
     d->mRGBStretchTypeLab = new QLabel(this);
     d->mRGBStretchTypeBox = new QComboBox(this);
+    d->mRGBStretchTypeBox->installEventFilter(this);
     d->mRGBStretchTypeBox->addItem("");
     d->mRGBStretchTypeBox->addItem("");
     d->mRGBStretchTypeBox->addItem("");
@@ -613,48 +445,78 @@ void CyMediaDisGrayStretch::initGUI() {
     rgbCtrLyout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     rgbCtrLyout->addWidget(d->mRGBStretchTypeLab);
     rgbCtrLyout->addWidget(d->mRGBStretchTypeBox);
-    d->mControlTab->clear();
-    d->mControlTab->addTab(grayCtrW, "");
-    d->mControlTab->addTab(rgbCtrW, "");
+    d->mControlTab->addWidget(grayCtrW);
+    d->mControlTab->addWidget(rgbCtrW);
     grayCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     rgbCtrW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    QWidget* tCtrlW = new QWidget(this);
-    QGridLayout* tCtrlWLayout = new QGridLayout(tCtrlW);
-    tCtrlWLayout->setContentsMargins(0, 0, 0, 0);
-    tCtrlWLayout->addWidget(d->mStartNumberBox, 0, 0, 1, 1);
-    tCtrlWLayout->addItem(new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum), 0, 1, 1, 1);
-    tCtrlWLayout->addWidget(d->mEndNumberBox, 0, 2, 1, 1);
-    tCtrlWLayout->addWidget(d->mControlTab, 1, 0, 1, 3);
-    d->mControlTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    
+    //拉伸区间编辑行
+    QWidget* rangeW = new QWidget(this);
+    QHBoxLayout* rangeLayout = new QHBoxLayout(rangeW);
+    rangeLayout->setContentsMargins(0, 0, 0, 0);
+    rangeLayout->setSpacing(4);
+    rangeLayout->addWidget(d->mStartNumberBox);
+    rangeLayout->addItem(new QSpacerItem(20, 10, QSizePolicy::Expanding, QSizePolicy::Minimum));
+    rangeLayout->addWidget(d->mEndNumberBox);
+    rangeW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    //坐标轴/风格控制行
+    QWidget* axisW = new QWidget(this);
+    QHBoxLayout* axisLayout = new QHBoxLayout(axisW);
+    axisLayout->setContentsMargins(0, 0, 0, 0);
+    //X 轴固定为全量程，只保留 Y 轴格子调节
+    axisLayout->addWidget(d->mYCellStep);
+    axisLayout->addWidget(d->mAutoYBox);
+    axisLayout->addItem(new QSpacerItem(10, 10, QSizePolicy::Expanding, QSizePolicy::Minimum));
+    axisLayout->addWidget(d->mRawBayerBox);
+    axisW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
     QVBoxLayout* mainLayou = new QVBoxLayout(this);
     mainLayou->setContentsMargins(0, 0, 0, 0);
-    mainLayou->addWidget(d->mCustomPlot);
-    mainLayou->addWidget(tCtrlW);
-    d->mCustomPlot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    tCtrlW->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    mainLayou->setSpacing(2);
+    mainLayou->addWidget(d->mHisView, 1);
+    mainLayou->addWidget(rangeW);
+    mainLayou->addWidget(axisW);
+    mainLayou->addWidget(d->mControlTab);
+    d->mHisView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    d->mControlTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     flushTrans();
-    d->mControlTab->adjustSize();
     setThemeColor(d->mThemeColor);
+    updateAxisRanges();
 
     //Connection
-    connect(d->mCustomPlot->xAxis, QOverload<const QCPRange&>::of(&QCPAxis::rangeChanged), this, [this](const QCPRange& range) {
-        // 保持选择矩形覆盖整个Y轴范围
-        onUpSelectRectRange(d->mStretchValue.start, d->mStretchValue.end);
-        d->mCustomPlot->replot();
-        });
-    connect(d->mCustomPlot->yAxis, QOverload<const QCPRange&>::of(&QCPAxis::rangeChanged), this, [this](const QCPRange& range) {
-        // 保持选择矩形覆盖整个Y轴范围
-        onUpSelectRectRange(d->mStretchValue.start, d->mStretchValue.end);
-        d->mCustomPlot->replot();
-        });
-
-    connect(d->mStartNumberBox, &QSpinBox::editingFinished, this, &CyMediaDisGrayStretch::onStartValueEdit);
-    connect(d->mEndNumberBox, &QSpinBox::editingFinished, this, &CyMediaDisGrayStretch::onEndValueEdit);
+    connect(d->mStartNumberBox, QOverload<int>::of(&QSpinBox::valueChanged),
+        this, &CyMediaDisGrayStretch::onStartValueEdit);
+    connect(d->mEndNumberBox, QOverload<int>::of(&QSpinBox::valueChanged),
+        this, &CyMediaDisGrayStretch::onEndValueEdit);
     connect(d->mAutoStretchBtn, &CyCustomWidget::CyCheckButton::stateChanged, this, &CyMediaDisGrayStretch::onAutoStretchChange);
     connect(d->mRGBStretchTypeBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &CyMediaDisGrayStretch::onStretchTypeChange);
+    connect(d->mRawBayerBox, &QCheckBox::toggled, this, &CyMediaDisGrayStretch::onRawBayerChange);
+
+    connect(d->mYCellStep, &CyCellStepper::valueChanged, this,
+        [this](int value) {
+            d->mHisView->setYPerCell(value, true);
+            syncAxisControls();
+        });
+    connect(d->mAutoYBox, &QCheckBox::toggled, this,
+        [this](bool checked) {
+            d->mHisView->setAutoY(checked);
+            syncAxisControls();
+        });
+    connect(d->mHisView, &CyHistogramView::autoYChanged, this,
+        [this](bool on) {
+            QSignalBlocker blocker(d->mAutoYBox);
+            d->mAutoYBox->setChecked(on);
+        });
+    connect(d->mHisView, &CyHistogramView::autoXChanged, this,
+        [this](bool) {
+            syncAxisControls();
+        });
+    connect(d->mHisView, &CyHistogramView::selectionChanged, this,
+        [this](double start, double end) {
+            upSelectRectChange(int32_t(std::lround(start)), int32_t(std::lround(end)));
+        });
 
     connect(this, &CyMediaDisGrayStretch::transImageType, this, &CyMediaDisGrayStretch::onTransImageType);
     connect(this, &CyMediaDisGrayStretch::upStretchRange, this, &CyMediaDisGrayStretch::onUpStretchRange);
@@ -662,69 +524,73 @@ void CyMediaDisGrayStretch::initGUI() {
     connect(this, &CyMediaDisGrayStretch::upEditRange, this, &CyMediaDisGrayStretch::onUpEditRange);
 }
 
-QString CyMediaDisGrayStretch::getPosToolTip(double xValue, double yValue) {
-    QString reStr;
-    switch (d->mStretchType) {
-        case CyMedia::stretch_Gray: {
-            reStr = QString("%1:%2\n%3:%4")
-                .arg(tr("Grayscale")).arg(xValue)
-                .arg(tr("Quantity")).arg(yValue);
-            }break;
-
-        case CyMedia::stretch_HSV: 
-        case CyMedia::stretch_Lab: {
-            reStr = QString("%1:%2\n%3:%4")
-                .arg(tr("Brightness")).arg(xValue)
-                .arg(tr("Quantity")).arg(yValue);
-            }break;
-    }
-
-    return reStr;
-}
-
 void CyMediaDisGrayStretch::onTransImageType(int index) {
     d->mControlTab->setCurrentIndex(index);
+    d->mMonoTab = (index == 0);
 }
 
 void CyMediaDisGrayStretch::onUpStretchRange(int start, int end) {
+    if (start == d->mStretchValue.start && end == d->mStretchValue.end) return;
     upSelectRectChange(start, end, false);
 }
 
 void CyMediaDisGrayStretch::onUpHisRange(int minX, int maxX, int maxY) {
-    if (d->mXRange != maxX ||
-        d->mXrangeMin != minX) {
-        d->mXRange = maxX;
-        d->mXrangeMin = minX;
-        d->mCustomPlot->xAxis->setRange(d->mXrangeMin, d->mXRange);
+    if (d->mHisView->xMaxRange() != maxX || d->mHisView->xMinRange() != minX) {
+        d->mHisView->setXMinRange(minX);
+        d->mHisView->setXMaxRange(maxX);
+        updateAxisRanges();
+        //位深变化后重新应用一次选区，避免选区被旧的坐标范围截断
+        d->mHisView->setSelection(d->mStretchValue.start, d->mStretchValue.end);
     }
 
-    if (maxY <= 0) return;
-    float yChange = abs(d->mYRange - maxY) * 1.0 / d->mYRange;
-    if (yChange > 0.1) {
-        d->mYRange = maxY;
-        d->mCustomPlot->yAxis->setRange(0, d->mYRange);
+    if (maxY > 0) {
+        d->mHisView->setYMaxRange(qMax(1.0, double(maxY) * 4.0));
+        d->mHisView->setYHintMax(maxY);
     }
+    syncAxisControls();
 }
 
-void CyMediaDisGrayStretch::onUpEditRange(bool bitChange/* = false*/) {
-    d->mStretchValue.max = d->mSelect_max;
+void CyMediaDisGrayStretch::onUpEditRange(bool bitChange /* = false*/) {
+    d->mStretchValue.max = int32_t(d->mSelect_max);
 
-    auto oldS = d->mStartNumberBox->value();
-    auto oldE = d->mEndNumberBox->value();
-
-    d->mStartNumberBox->setRange(0, d->mSelect_max - d->mSelect_min_width);
-    d->mEndNumberBox->setRange(d->mSelect_min_width, d->mSelect_max);
+    int start = d->mStretchValue.start;
+    int end = d->mStretchValue.end;
 
     if (bitChange) {
-        d->mStartNumberBox->setValue(d->mStartNumberBox->minimum());
-        d->mEndNumberBox->setValue(d->mStartNumberBox->maximum());
-    }
-    else {
-        d->mStartNumberBox->setValue(oldS);
-        d->mEndNumberBox->setValue(oldE);
+        // 位深变化只 clamp；统一由 Display::updateStretchForImageInfo 决定策略
+        start = qBound(0, start, int(d->mSelect_max - d->mSelect_min_width));
+        end = qBound(int(d->mSelect_min_width), end, int(d->mSelect_max));
     }
 
-    onStartValueEdit();
-    onEndValueEdit();
+    {
+        QSignalBlocker b(d->mStartNumberBox);
+        d->mStartNumberBox->setRange(0, int(d->mSelect_max - d->mSelect_min_width));
+    }
+    {
+        QSignalBlocker b(d->mEndNumberBox);
+        d->mEndNumberBox->setRange(int(d->mSelect_min_width), int(d->mSelect_max));
+    }
+
+    d->mStretchValue.start = int32_t(start);
+    d->mStretchValue.end = int32_t(end);
+    onUpEditorNumber(start, end);
+    d->mHisView->setSelection(start, end);
 }
 
+void CyMediaDisGrayStretch::updateAxisRanges() {
+    syncAxisControls();
+}
+
+void CyMediaDisGrayStretch::syncAxisControls() {
+    if (!d->mHisView) return;
+
+    const double yBound = std::ceil(d->mHisView->yMaxRange());
+    const int maxY = (yBound >= 2000000000.0) ? 2000000000 : qMax(1, int(yBound));
+    d->mYCellStep->setRange(1, maxY);
+    d->mYCellStep->setValue(d->mHisView->yPerCell());
+
+    {
+        QSignalBlocker blocker(d->mAutoYBox);
+        d->mAutoYBox->setChecked(d->mHisView->autoY());
+    }
+}

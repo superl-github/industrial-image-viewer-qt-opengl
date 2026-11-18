@@ -44,6 +44,7 @@ set(CYMEDIA_SOURCES
     src/Parse/VideoParseRaw.cpp
 
     src/common/CyMediaLog.cpp
+    src/common/CyMediaI18n.cpp
 
     src/View/Display.cpp
     src/View/Annotation/BaseItem.cpp
@@ -56,8 +57,9 @@ set(CYMEDIA_SOURCES
     src/View/Annotation/Item_Rect.cpp
     src/View/Annotation/ItemFactory.cpp
     src/View/Annotation/ItemManager.cpp
-    src/View/Dialogs/CyMediaDisRawInfoDialog.cpp
+    src/View/Dialogs/RawInfoDialog.cpp
     src/View/Dialogs/LicenseW.cpp
+    src/View/Dialogs/recordindicatordialog.cpp
     src/View/Pipeline/ImagePipeline.cpp
     src/View/Pipeline/ImageProcessor.cpp
     src/View/Render/CyDMediaDisScen.cpp
@@ -66,10 +68,10 @@ set(CYMEDIA_SOURCES
     src/View/Render/CyMediaDisViewThumbnail.cpp
     src/View/Ui/DisplayToolBar.cpp
     src/View/Ui/ImageShowWindow.cpp
-    src/View/Widgets/CyMediaDisGrayStretch.cpp
-    src/View/Widgets/CyMediaDisGrayTest.cpp
-    src/View/Widgets/CyMediaRecTimeW.cpp
-    src/View/Widgets/CyQCP.cpp
+    src/View/Widgets/GrayStretch.cpp
+    src/View/Widgets/GrayMeasurement.cpp
+    src/View/Widgets/CyHistogramView.cpp
+    src/View/Widgets/CyCellStepper.cpp
     src/View/Widgets/cycustomwidget.cpp
 )
 
@@ -95,7 +97,6 @@ set(CYMEDIA_HEADERS
 
     src/common/CyMediaBaseDef.h
     src/common/CyMediaI18n.h
-    src/common/CyMediaI18n.cpp
     src/common/Export.h
     src/common/Version.h
     src/common/Language.h
@@ -119,8 +120,9 @@ set(CYMEDIA_HEADERS
     src/View/Annotation/Item_Point.h
     src/View/Annotation/Item_Polygon.h
     src/View/Annotation/Item_Rect.h
-    src/View/Dialogs/CyMediaDisRawInfoDialog.h
+    src/View/Dialogs/RawInfoDialog.h
     src/View/Dialogs/LicenseW.h
+    src/View/Dialogs/recordindicatordialog.h
     src/View/Pipeline/ImagePipeline.h
     src/View/Pipeline/ImageProcessor.h
     src/View/Render/CyDMediaDisScen.h
@@ -129,10 +131,10 @@ set(CYMEDIA_HEADERS
     src/View/Render/CyMediaDisViewThumbnail.h
     src/View/Ui/DisplayToolBar.h
     src/View/Ui/ImageShowWindow.h
-    src/View/Widgets/CyMediaDisGrayStretch.h
-    src/View/Widgets/CyMediaDisGrayTest.h
-    src/View/Widgets/CyMediaRecTimeW.h
-    src/View/Widgets/CyQCP.h
+    src/View/Widgets/GrayStretch.h
+    src/View/Widgets/GrayMeasurement.h
+    src/View/Widgets/CyHistogramView.h
+    src/View/Widgets/CyCellStepper.h
     src/View/Widgets/cycustomwidget.h
 )
 
@@ -242,11 +244,12 @@ install(DIRECTORY src/View/
         PATTERN "DisplayTypes.h"
         PATTERN "BaseItem.h"
         PATTERN "DrawItem.h"
-        PATTERN "CyMediaDisRawInfoDialog.h"
+        PATTERN "RawInfoDialog.h"
+        PATTERN "recordindicatordialog.h"
         PATTERN "LicenseW.h"
-        PATTERN "CyMediaDisGrayStretch.h"
-        PATTERN "CyMediaDisGrayTest.h"
-        PATTERN "CyMediaRecTimeW.h"
+        PATTERN "GrayStretch.h"
+        PATTERN "GrayMeasurement.h"
+        PATTERN "CyHistogramView.h"
         PATTERN "README.md"
 )
 install(FILES

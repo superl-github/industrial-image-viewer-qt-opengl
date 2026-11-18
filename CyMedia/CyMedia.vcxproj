@@ -19,9 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="src\View\Widgets\CyMediaRecTimeW.h" />
+    <QtMoc Include="src\View\Widgets\ledindicator.h" />
     <QtMoc Include="src\View\Widgets\GrayMeasurement.h" />
     <QtMoc Include="src\View\Widgets\GrayStretch.h" />
+    <QtMoc Include="src\View\Widgets\CyHistogramView.h" />
+    <QtMoc Include="src\View\Widgets\CyCellStepper.h" />
     <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image.h" />
     <ClInclude Include="3rdparty\stb_image\stb_image_write.h" />
@@ -49,10 +51,10 @@
     <ClInclude Include="src\Parse\FileFunc.h" />
     <ClInclude Include="src\View\Annotation\DrawItem.h" />
     <ClInclude Include="src\View\Annotation\ItemFactory.h" />
+    <QtMoc Include="src\View\Dialogs\recordindicatordialog.h" />
     <ClInclude Include="src\View\DisplayTypes.h" />
     <ClInclude Include="src\View\Pipeline\ImagePipeline.h" />
     <ClInclude Include="src\View\Pipeline\ImageProcessor.h" />
-    <QtMoc Include="src\View\Widgets\CyQCP.h" />
     <QtMoc Include="src\View\Widgets\cycustomwidget.h" />
     <QtMoc Include="src\View\Annotation\ItemManager.h" />
     <QtMoc Include="src\View\Annotation\Item_Rect.h" />
@@ -88,6 +90,7 @@
     <ClCompile Include="src\Parse\VideoParseFfmpeg.cpp" />
     <ClCompile Include="src\Parse\VideoParseRaw.cpp" />
     <ClCompile Include="src\Parse\FileFunc.cpp" />
+    <ClCompile Include="src\View\Dialogs\recordindicatordialog.cpp" />
     <ClCompile Include="src\View\Render\CyDMediaDisScen.cpp" />
     <ClCompile Include="src\View\Render\CyMediaDisView.cpp" />
     <ClCompile Include="src\View\Render\CyMediaDisViewBckDraw.cpp" />
@@ -106,8 +109,9 @@
     <ClCompile Include="src\View\Annotation\ItemManager.cpp" />
     <ClCompile Include="src\View\Widgets\GrayStretch.cpp" />
     <ClCompile Include="src\View\Widgets\GrayMeasurement.cpp" />
-    <ClCompile Include="src\View\Widgets\CyMediaRecTimeW.cpp" />
-    <ClCompile Include="src\View\Widgets\CyQCP.cpp" />
+    <ClCompile Include="src\View\Widgets\CyHistogramView.cpp" />
+    <ClCompile Include="src\View\Widgets\CyCellStepper.cpp" />
+    <ClCompile Include="src\View\Widgets\ledindicator.cpp" />
     <QtMoc Include="src\View\Widgets\cycustomwidget.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>

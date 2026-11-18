@@ -92,6 +92,23 @@ public:
     void zoomAuto(void);
     void zoomRaw(bool Reset = true);
 
+    /**
+     * @brief 依据“即将上屏的图像尺寸”直接设定视图模式（适应窗口 / 1:1）。
+     * @param fit       true = 适应窗口；false = 1:1（并重置旋转/镜像）。
+     * @param imageSize 新图像的像素尺寸。
+     *
+     * @details
+     *  与 zoomAuto()/zoomRaw() 的唯一区别是**不检查“是否已有图像”**。
+     *  它用于尺寸变化通知（ImageInfoChange）的接收端：该通知在纹理上传
+     *  排队的那次 update() 之前投递到 UI 线程，所以在这里定好缩放后，
+     *  新分辨率的第一次绘制就已经是目标比例，不会出现“先按旧/默认比例
+     *  画一帧、再跳变”的现象。
+     */
+    void applyViewMode(bool fit, const QSize& imageSize);
+
+    /// 按当前场景矩形/图像状态刷新缩略图（可见性 + 位置框）。
+    void refreshThumbnail(void);
+
     bool isHoriMirror();
     bool isVerMirror();
     void horiMirror(void);
@@ -137,6 +154,11 @@ private:
 
 private:
     void onScrollValueChanged();
+
+    /// 按给定的图像尺寸计算并套用“适应窗口”缩放（不检查是否已有图像）。
+    void fitToSize(const QSizeF& imageSize);
+    /// 套用 1:1 视图；Reset=true 时同时清零旋转/镜像。不检查是否已有图像。
+    void rawView(bool Reset);
 
 private:
     class MyViewPrivateData;

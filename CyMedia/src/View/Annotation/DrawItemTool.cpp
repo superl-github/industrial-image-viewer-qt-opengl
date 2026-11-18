@@ -124,7 +124,7 @@ namespace CyDisDrawItem {
                             if (m_replaceMode) {
                                 if (m_lastItem) {
                                     m_manager->removeItem(m_lastItem, false);
-                                    lastItemRemoveWithNoSignal = true;
+                                    m_manager->sendRemove(m_lastItem->id());
                                     m_lastItem = nullptr;
                                 }
                             }
@@ -164,7 +164,7 @@ namespace CyDisDrawItem {
                             if (m_replaceMode) {
                                 if (m_lastItem) {
                                     m_manager->removeItem(m_lastItem, false);
-                                    lastItemRemoveWithNoSignal = true;
+                                    m_manager->sendRemove(m_lastItem->id());
                                     m_lastItem = nullptr;
                                 }
                             }
@@ -192,10 +192,6 @@ namespace CyDisDrawItem {
                     // 点击了但是没移动超过阈值，取消拖拽状态，不创建Item
                     m_isDragging = false;
                 }
-                if (lastItemRemoveWithNoSignal) {
-                    lastItemRemoveWithNoSignal = false;
-                    m_manager->sendRemove(lastItemid);
-                }
             }break;
 
             default:
@@ -220,7 +216,6 @@ namespace CyDisDrawItem {
         m_previewItem->setPreviewMode(false);
         m_previewItem->setSelected(true);
         m_lastItem = m_previewItem;
-        lastItemid = m_previewItem->id();
         m_previewItem = nullptr;
         emit drawItem(m_lastItem);
     }

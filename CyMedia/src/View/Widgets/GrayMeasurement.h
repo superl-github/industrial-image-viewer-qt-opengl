@@ -1,18 +1,20 @@
 /*
- * @file        CyMediaDisGrayTest.cpp/.h
+ * @file        GrayMeasurement.h
  * @brief       图像灰度测试与直方图统计组件
- * @details     本文件实现了 CyMediaDisGrayTest 类，作为 CyMediaDis 显示模块的辅助工具。
+ * @details     本文件实现了 CyMediaDisGrayTest 类，作为 CyMedia 显示模块的辅助工具。
  *              主要功能包括：
  *              - 支持灰度、RGB、Bayer、YUV 等多种图像格式的直方图计算与显示；
  *              - 提供单通道（灰度）或三通道（RGB）的统计信息：平均值、最大值、最小值、标准差、均匀性；
  *              - 支持通过绘制图形（点、矩形、线、椭圆、多边形）选择感兴趣区域（ROI），并实时更新统计结果；
- *              - 提供交互式图表，支持鼠标悬停提示、坐标轴缩放、通道切换及重置坐标轴；
+ *              - 直方图由自绘控件 CyHistogramView 渲染，支持柱形/折线/半透明轮廓三种风格，
+ *                横轴"每格灰度级"、纵轴"每格计数"可在界面上精确设置；
+ *              - 鼠标位置读数固定显示在绘图区左上角，不再使用跟随鼠标的 ToolTip；
  *              - 适配点选模式（Pos）下的时序数据折线图显示。
- * @note        依赖 QCustomPlot 及内部 CyMediaCalc 计算库。
- * 
+ * @note        依赖内部 CyMediaCalc 计算库与自绘直方图控件 CyHistogramView。
+ *
  * @author LLF
  * @date   July 2026
- * @version 1.0
+ * @version 2.0
  */
 #pragma once
 #include "../../common/ImageTypes.h"
@@ -31,6 +33,8 @@
 namespace CyMedia {
     class CyMediaDis;
 }
+class CyHistogramView;
+
 class CyMediaDisGrayTest : public QWidget {
     Q_OBJECT
 
@@ -95,7 +99,6 @@ private:signals:
     void uphisVisible();
     void upTestData();
     void upHisRange(int minX, int maxX, int maxY);
-    void flushHis();
 
 public:
     void flushTrans();
@@ -113,19 +116,9 @@ public:
     CyMediaDisGrayTest::oneChannelTestInfo& getGrayTestData();
     CyMediaDisGrayTest::threeChannelTestInfo& getRGBTestData();
 
-    bool isZoomble();
-    void setZoomble(bool zoom);
-
-    bool axisToolTipVisible();
-    void setAxisToolTipVisible(bool visi);
-
 protected:
-    bool eventFilter(QObject* watched, QEvent* event) override;
     void closeEvent(QCloseEvent* event)override;
     void showEvent(QShowEvent* event)override;
-
-    void plotMouseMove(QPoint mousePos);
-    bool plotToolTips(double xValue, double yValue);
 
 private:
     struct calcImageHisFlag {
@@ -134,17 +127,14 @@ private:
     };
     void initGUI();
 
-    void plotPressEvent();
-    void plotwheelEvent();
-    
+    void onResetShaft();
+
+    void onDrawActTriggered(QAction* act);
+
     void onGrayCheckClicked(bool flag);
     void onRedCheckClicked(bool flag);
     void onGreenCheckClicked(bool flag);
     void onBlueCheckClicked(bool flag);
-
-    void onResetShaft();
-
-    void onDrawActTriggered(QAction* act);
 
     CyMediaDisGrayTest::calcImageHisFlag upImage_Mono(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
     CyMediaDisGrayTest::calcImageHisFlag upImage_RGB(CyMedia::ImageShowInfo& info, uint8_t* data, CyMedia::ImageColorOpe formatOpe);
@@ -155,8 +145,17 @@ private:
     void onUpTestData();
     void onUpHisRange(int minX, int maxX, int maxY);
 
+    /// 把控件当前的"每格"数值同步到编辑框（不触发信号）。
+    void syncAxisControls();
+    /// 按当前数据范围刷新编辑框的取值范围。
+    void updateAxisRanges();
+    /// 数据变化后推送到自绘控件（线程安全）。
+    void publishSeries(int channel);
+
 private:
     static const int mPosHisMax = 256;
+    /// 直方图桶数上限：超过后 Calculate 会分配巨量内存，这里直接拒绝并提示。
+    static const int mMaxHistogramBits = 20;
 
     class PosHis {
     public:
@@ -200,9 +199,6 @@ private:
         double mBuffer[mPosHisMax];      // Single Array
         int mHead = 0;            // Points to the earliest data
     };
-
-    QString getPosToolTip_XStr(bool Mono);
-    QString getPosToolTip_YStr(CyMediaDisGrayTest::hisIndex color);
 
     bool currentItemIsPos();
 

@@ -10,7 +10,7 @@
 #include "Ui/ImageShowWindow.h"
 #include "Widgets/GrayStretch.h"
 #include "Widgets/GrayMeasurement.h"
-#include "Widgets/CyMediaRecTimeW.h"
+#include "Dialogs/recordindicatordialog.h"
 
 #include "Annotation/DrawItem.h"
 #include "Annotation/DrawItemTool.h"
@@ -26,6 +26,14 @@
 #include <QVBoxLayout>
 
 #include <atomic>
+
+namespace {
+    int bitMaxFor(int bit) {
+        if (bit <= 0) return 0;
+        if (bit >= 31) return 0x7FFFFFFF;
+        return (1 << bit) - 1;
+    }
+}
 
 namespace CyMedia {
 
@@ -45,7 +53,9 @@ public:
     ~privateData() override;
 
 signals:
-    void ImageInfoChange(CyMedia::ImageShowInfo info);
+    /// @param sizeChanged 图像宽/高是否改变（首帧、切换分辨率）。
+    ///        该参数随信号一起投递，避免接收端用共享标志产生竞态。
+    void ImageInfoChange(CyMedia::ImageShowInfo info, bool sizeChanged);
     void ImageDataDone(CyMedia::ImageShowInfo info);
 
 public:
@@ -60,6 +70,12 @@ public:
     CyDisDrawItem::ItemType drawMode();
     void setDrawMode(CyDisDrawItem::ItemType mode);
 
+public:
+    void syncStretchPanelFromState();
+    bool setStretchState(CyMedia::StretchType type,
+        int start, int end, int max, bool notify);
+    int stretchMaxForCurrentImage() const;
+
 private:
     void initScene();
     void initToolBar();
@@ -70,7 +86,7 @@ private:
     bool shouldUpdateTools();
     void updateTools(const PipelineFrame& frame);
 
-    void ImageInfoChangeReceiver(CyMedia::ImageShowInfo info);
+    void ImageInfoChangeReceiver(CyMedia::ImageShowInfo info, bool sizeChanged);
     void ImageDataDoneReceive(CyMedia::ImageShowInfo info);
 
     void onLanguageChanged(CyMedia::eLanguage lang);
@@ -78,6 +94,11 @@ private:
     void onAddItem(QUuid id);
     void onRemoveItem(QUuid id);
     void onGrayToolNeedImage();
+
+    void onStretchPanelChanged();
+    bool updateStretchFromPanel();
+    void updateStretchForImageInfo(const ImageShowInfo& info);
+    void applyStretch(bool requestRepaint);
 
 private:
     bool guiIsInit = false;
@@ -98,9 +119,17 @@ public:
     QThread* m_frameCtxThread = nullptr;   ///< 上下文所属线程
     std::atomic<int32_t> posX{ 0 };
     std::atomic<int32_t> posY{ 0 };
-    std::atomic<bool> m_bFirstUpImage{ true };
+    /// 尺寸变化后，ImageDataDone 阶段需要补一次缩略图刷新（UI 线程使用）。
+    bool m_pendingThumbRefresh = false;
     QElapsedTimer calcolorTimer;
     QElapsedTimer clearImageTime;
+
+    //===== 拉伸：唯一权威状态，仅 UI 线程访问 =====
+    CyMedia::StretchType m_stretchType = CyMedia::stretch_None;
+    CyMedia::StretchRange m_stretchRange;   // start/end/max
+    bool m_pendingStretch = false;          // 首帧前 setStretchPara 暂存
+    int m_pendingStart = 0;
+    int m_pendingEnd = 0;
 
     //===== UI / Tool =====
     const QString m_IconPathPrefixStr;
@@ -116,9 +145,8 @@ public:
     std::atomic<bool> m_uploadFailed{ false };
     std::atomic<bool> m_frameCtxErrorLogged{ false };
 
-    CyMediaRecTimeW* m_RetimeItem = nullptr;
+    RecordIndicatorDialog* m_RetimeItem = nullptr;
     CyMediaDisGrayStretch* m_StretchWidget = nullptr;
-    CyMedia::StretchType lastUpStretchType = CyMedia::stretch_None;
     CyMediaDisGrayTest* mGrayTestWidget = nullptr;
 };
 
@@ -299,8 +327,7 @@ void CyMediaDis::clearImage(void) {
         last.width, last.height, int(last.bit), int(last.format));
     d->pipeline->clear();
     d->view->clearBackGround();
-    d->m_bFirstUpImage = true;
-    d->m_lastInfo = ImageShowInfo();
+    d->m_lastInfo = ImageShowInfo();   // 复位后下一帧会被判定为“尺寸变化”，从而重新套用视图模式
     d->view->zoomRaw(true);
     if (d->view->horizontalScrollBarPolicy() != Qt::ScrollBarAlwaysOff) {
         d->view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -311,8 +338,20 @@ void CyMediaDis::clearImage(void) {
 }
 
 
+void CyMediaDis::cacheIamge(bool enable) {
+    d->pipeline->cacheIamge(enable);
+}
+
+bool CyMediaDis::isCacheIamgeEnablee() {
+    return d->pipeline->isCacheIamgeEnablee();
+}
+
 CyMedia::ImageShowInfo CyMediaDis::imageInfoCopy() const {
     return d->pipeline->imageInfo();
+}
+
+const uint8_t* CyMediaDis::latestCachedImage(CyMedia::ImageShowInfo& info) {
+    return d->pipeline->latestCachedImage(info);
 }
 
 double CyMediaDis::displayFps(void) const {
@@ -334,24 +373,57 @@ CyMedia::StretchType CyMediaDis::stretchType() {
 }
 
 void CyMediaDis::setStretchType(CyMedia::StretchType type) {
-    d->view->imageDraw()->setStretchType(type);
-    d->syncOptions();
-    QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
+    // 外部手动设置优先：关闭内置面板的自动拉伸
+    d->m_StretchWidget->setAutoStretch(false);
+    if (type == CyMedia::stretch_None) {
+        d->setStretchState(type,
+            d->m_stretchRange.start, d->m_stretchRange.end, d->m_stretchRange.max, true);
+        return;
+    }
+    const int max = d->stretchMaxForCurrentImage();
+    if (max <= 0) {
+        d->setStretchState(type, 0, 0, 0, true);   // 记下类型，首帧后补量程
+        return;
+    }
+
+    // 类型改变导致量程变化（例如 Lab=100）时，重置到全量程
+    if (d->m_stretchRange.max != max
+        || d->m_stretchRange.end <= d->m_stretchRange.start) {
+        d->setStretchState(type, 0, max, max, true);
+        return;
+    }
 }
 
 void CyMediaDis::setStretchPara(uint32_t start /*= 0*/, uint32_t end /*= 0*/) {
-    const int bit = d->pipeline->imageInfo().bit;
-    const uint32_t max = (bit <= 0) ? 0u
-        : (bit >= 31 ? 0x7FFFFFFFu : ((1u << bit) - 1u));
-    if (max == 0) {
-        CyMediaLog::instance().log_printf_Warning(
-            "[Display] setStretchPara ignored: no valid image bit depth (bit=%d)", bit);
+    d->m_StretchWidget->setAutoStretch(false);
+    const int max = d->stretchMaxForCurrentImage();
+    if (max <= 0) {
+        // 首帧前调用：暂存，等 ImageInfoChangeReceiver 补量程
+        d->m_pendingStretch = true;
+        d->m_pendingStart = int(start);
+        d->m_pendingEnd = int(end);
+        if (d->m_stretchType == CyMedia::stretch_None)
+            d->m_stretchType = CyMedia::stretch_Gray;
+        d->syncOptions();
+        CyMediaLog::instance().log_printf_Debug(
+            "[Display] setStretchPara deferred: no image info yet (start=%u end=%u)",
+            start, end);
         return;
     }
-    CyMediaLog::instance().log_printf_Debug(
-        "[Display] stretch range: start=%u end=%u max=%u", start, end, max);
-    d->view->imageDraw()->setStreaChPara(start, end, max);
-    d->syncOptions();
+
+    auto type = d->m_stretchType;
+    if (type == CyMedia::stretch_None) type = CyMedia::stretch_Gray;
+    d->setStretchState(type, int(start), int(end), max, true);
+}
+
+CyMedia::StretchRange CyMediaDis::stretchRange() {
+    return d ? d->m_stretchRange : CyMedia::StretchRange{};
+}
+
+bool CyMediaDis::isStretchEnabled() {
+    return d && d->m_stretchType != CyMedia::stretch_None
+        && d->m_stretchRange.max > 0
+        && d->m_stretchRange.end > d->m_stretchRange.start;
 }
 
 CyMedia::DemosaicingMethod CyMediaDis::Demosaic() {
@@ -449,7 +521,25 @@ void CyMediaDis::zoomAuto() {
 }
 
 void CyMediaDis::zoomRaw(bool reset) {
+    if (!d->pipeline->hasImage()) return;
+
     d->view->zoomRaw(reset);
+}
+
+bool CyMediaDis::isMirrorHorizon() {
+    return  d->view->isHoriMirror();
+}
+
+void CyMediaDis::mirrorHorizon(bool mirror) {
+    if (d->view->isHoriMirror() != mirror) d->view->horiMirror();
+}
+
+bool CyMediaDis::isMirrorVertical() {
+    return d->view->isVerMirror();
+}
+
+void CyMediaDis::mirrorVertical(bool mirror) {
+    if (d->view->isVerMirror() != mirror) d->view->verMirror();
 }
 
 CyDisDrawItem::ItemType CyMediaDis::drawMode() {
@@ -612,21 +702,25 @@ bool CyMediaDis::recTimeVisible() {
 void CyMediaDis::setRecTimeVisible(bool visi) {
     if (visi) {
         d->m_RetimeItem->raise();
-        d->m_RetimeItem->move(10, d->toolWidget->height());
+        d->m_RetimeItem->move(20, d->toolWidget->height());
     }
     d->m_RetimeItem->setVisible(visi);
 }
 
-void CyMediaDis::upRecTime(uint64_t time) {
-    d->m_RetimeItem->upRecTime(time);
+bool CyMediaDis::isRecTimeLEDVisbible() {
+    return d->m_RetimeItem->isLedVisible();
 }
 
-void CyMediaDis::upRecTime(float saved, float sum) {
-    d->m_RetimeItem->upRecTime(saved, sum);
+void CyMediaDis::setRecTimeLEDVisible(bool visi) {
+    d->m_RetimeItem->setLedVisible(visi);
 }
 
-void CyMediaDis::upRecTime_Timed(uint64_t saved, uint64_t sum) {
-    d->m_RetimeItem->upRecTime_Timed(saved, sum);
+void CyMediaDis::upRecTimeMsg(QString msg, bool blink /*= false*/) {
+    d->m_RetimeItem->updateText(msg, blink);
+}
+
+void CyMediaDis::setRecTimeFont(const QFont& font) {
+    d->m_RetimeItem->setTextFont(font);
 }
 
 QWidget* CyMediaDis::stretchWidget() {
@@ -634,6 +728,10 @@ QWidget* CyMediaDis::stretchWidget() {
 }
 
 void CyMediaDis::setGrayStretchVisible(bool visible) {
+    if (visible) {
+        // 先同步再 show：避免 showEvent 的 needImage 读到旧面板值
+        d->syncStretchPanelFromState();
+    }
     d->m_StretchWidget->setVisible(visible);
     d->syncOptions();
 }
@@ -775,30 +873,25 @@ void CyMediaDis::privateData::initItem() {
 
     drawingTool = new CyDisDrawItem::DrawItemTool(drawmanager, view, m_parent);
 
-    m_RetimeItem = new CyMediaRecTimeW(m_parent);
-    m_RetimeItem->move(10, toolWidget->height());
+    m_RetimeItem = new RecordIndicatorDialog(QString(), m_parent);
+    m_RetimeItem->setBackgroundColor(QColor(0, 0, 0, 80));//透黑
     m_RetimeItem->setVisible(false);
 
     m_StretchWidget = new CyMediaDisGrayStretch(m_parent);
     m_StretchWidget->setWindowFlag(Qt::Tool);
-    m_StretchWidget->resize(600, 300);
+    m_StretchWidget->resize(800, 400);
     m_StretchWidget->setVisible(false);
+    connect(m_StretchWidget, &CyMediaDisGrayStretch::stretchParaChange,
+        this, &CyMediaDis::privateData::onStretchPanelChanged);
+    connect(m_StretchWidget, &CyMediaDisGrayStretch::stretchTypeChanged,
+        this, &CyMediaDis::privateData::onStretchPanelChanged);
     connect(m_StretchWidget, &CyMediaDisGrayStretch::needImage,
         this, &CyMediaDis::privateData::onGrayToolNeedImage);
-    connect(m_StretchWidget, &CyMediaDisGrayStretch::stretchParaChange, this, [this]() {
-        if (!pipeline->isDataSlow()) return;
-        view->imageDraw()->setStretchType(m_StretchWidget->stretchtype());
-        auto p = m_StretchWidget->stretchValue();
-        view->imageDraw()->setStreaChPara(p.start, p.end, p.max);
-        view->viewport()->update();
-        if (view->thumnailWidget()->isVisible()) view->thumnailWidget()->update();
-        syncOptions();
-        });
 
     mGrayTestWidget = new CyMediaDisGrayTest(m_parent);
     mGrayTestWidget->setParentDis(m_parent);
     mGrayTestWidget->setWindowFlag(Qt::Tool);
-    mGrayTestWidget->resize(600, 300);
+    mGrayTestWidget->resize(800, 400);
     mGrayTestWidget->setVisible(false);
     connect(mGrayTestWidget, &CyMediaDisGrayTest::needImage,
         this, &CyMediaDis::privateData::onGrayToolNeedImage);
@@ -842,13 +935,16 @@ void CyMediaDis::privateData::syncOptions() {
     ImagePipeline::Options opt;
     opt.demosaic = view->imageDraw()->Demosaic();
     opt.yuv = view->imageDraw()->yuvMethod();
-    opt.stretch = m_StretchWidget->stretchtype();
-    const auto range = m_StretchWidget->stretchValue();
-    opt.stretchRange = { range.start, range.end, range.max };
+
+    opt.stretch = m_stretchType;
+    opt.stretchRange = m_stretchRange;
     opt.stretchPanelVisible = m_StretchWidget->isVisible();
+
     opt.thumbnailVisible = view->thumbnailVisible();
+
     opt.forceCpuBayer = false; // AHD 由 ImagePipeline 内部强制 CPU
     opt.forceCpuYuv = false;
+
     pipeline->setOptions(opt);
 }
 
@@ -899,12 +995,9 @@ bool CyMediaDis::privateData::shouldUpdateTools() {
 }
 
 void CyMediaDis::privateData::updateTools(const PipelineFrame& frame) {
-    // 历史行为：拉伸/测试面板的数据更新在工作线程完成；面板只做计算并发信号。
-    // 面板接口接收非 const info，这里用副本隔离，避免修改管线帧。
     ImageShowInfo info = frame.info;
-    if (frame.updateStretch && frame.stretchEnabled) {
+    if (frame.updateStretch && frame.stretchPanelVisible) {
         m_StretchWidget->upImageData(info, frame.data, frame.colorOpe);
-        lastUpStretchType = frame.colorOpe.stretchType;
     }
     mGrayTestWidget->upImage(info, frame.data, frame.colorOpe);
 }
@@ -913,21 +1006,22 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
     if (!view) return;
 
     // 1) 图像尺寸/格式变化通知（在工作线程发出，Qt 自动排队到 UI 线程）。
-    bool infoChanged = m_bFirstUpImage
-        || m_lastInfo.width != frame.info.width
-        || m_lastInfo.height != frame.info.height
+    //    sizeChanged 单独投递：接收端要据此在纹理上传排队的那次 update()
+    //    之前确定“适应窗口 / 1:1”，否则第一帧会先按旧比例绘制一次。
+    const bool sizeChanged = m_lastInfo.width != frame.info.width
+        || m_lastInfo.height != frame.info.height;
+    bool infoChanged = sizeChanged
         || m_lastInfo.bit != frame.info.bit
         || m_lastInfo.format != frame.info.format
         || m_lastInfo.length != frame.info.length
         || m_lastInfo.special_pixel != frame.info.special_pixel;
     if (infoChanged) {
         m_lastInfo = frame.info;
-        m_bFirstUpImage = true;
         CyMediaLog::instance().log_printf_Info(
             "[Display] image info changed: %dx%d bit=%d format=%d len=%u",
             frame.info.width, frame.info.height,
             int(frame.info.bit), int(frame.info.format), frame.info.length);
-        emit ImageInfoChange(frame.info);
+        emit ImageInfoChange(frame.info, sizeChanged);
     }
 
     // 2) 鼠标像素颜色（节流）。
@@ -952,17 +1046,21 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
 
     // 4) 上传纹理并请求刷新。
     if (frame.updateDisplay) {
+        //等待尺寸调整完毕
+        if (sizeChanged) {
+            QElapsedTimer t;
+            t.start();
+            while (pipeline->isRunning() && t.elapsed() < 500) {
+                if (view->sceneRect().width() == frame.info.width
+                    && view->sceneRect().height() == frame.info.height) {
+                    break;
+                }
+                QThread::msleep(1);
+            }
+            if (!pipeline->isRunning()) return;   // 管线正在停止，丢弃本帧
+        }
         ensureFrameContext();
         if (!m_frameCtx) return;
-
-        if (frame.stretchEnabled) {
-            view->imageDraw()->setStretchType(frame.colorOpe.stretchType);
-            view->imageDraw()->setStreaChPara(
-                frame.stretch.start, frame.stretch.end, frame.stretch.max);
-        }
-        else {
-            view->imageDraw()->setStretchType(CyMedia::stretch_None);
-        }
 
         const bool uploaded = view->imageDraw()->upBackGround(frame.info, frame.data, m_frameCtx);
         if (uploaded) {
@@ -982,9 +1080,25 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
     }
 }
 
-void CyMediaDis::privateData::ImageInfoChangeReceiver(CyMedia::ImageShowInfo info) {
+void CyMediaDis::privateData::ImageInfoChangeReceiver(CyMedia::ImageShowInfo info, bool sizeChanged) {
+    // 首帧 / 分辨率变化：**先**把视图设成目标模式，再更新场景矩形。
+    //
+    // 防止尺寸改变后的第一帧图像先按照原来的缩放显示一次再跳转到新的缩放：
+    //  - 本槽先于 ImageDataDone 执行，也先于 upBackGround() 内部排队的那次
+    //    viewport()->update()；
+    //  - 本函数里 setSceneRect() 也可能触发一次重绘；（可以考虑设置QGraphicsView::NoViewportUpdate再恢复）
+    // 所以只要在函数入口就定好缩放，之后任何一次绘制都已经是目标比例。
+    // applyViewMode() 不依赖 haveImage()，首帧纹理尚未上屏时也能用。
     scene->setSceneRect(QRect(0, 0, info.width, info.height));
     view->sceneRectUp(QRect(0, 0, info.width, info.height));
+    updateStretchForImageInfo(info);
+    if (sizeChanged) {
+        const bool fit = info.width > view->viewport()->width()
+            || info.height > view->viewport()->height();
+        view->applyViewMode(fit, QSize(info.width, info.height));
+        // 此时还没有图像，缩略图可见性判断会失败，留到 ImageDataDone 补一次。
+        m_pendingThumbRefresh = true;
+    }
     m_parent->emit imageSizeChanged(info.width, info.height, info.bit);
 }
 
@@ -998,13 +1112,16 @@ void CyMediaDis::privateData::ImageDataDoneReceive(CyMedia::ImageShowInfo info) 
         view->setThumbnailEnable(info.width >= m_AutoThumbnailSize.width()
             || info.height >= m_AutoThumbnailSize.height());
     }
-    if (view->thumbnailVisible()) view->thumnailWidget()->update();
-    view->viewport()->update();
-
-    if (m_bFirstUpImage) {
-        m_bFirstUpImage = false;
-        m_parent->zoomAuto();
+    if (m_pendingThumbRefresh) {
+        // 缩放已在 ImageInfoChange 阶段应用（那时还没有图像），
+        // 这里图像已上屏，按“已有图像”补一次缩略图刷新。
+        m_pendingThumbRefresh = false;
+        view->refreshThumbnail();
     }
+    else if (view->thumbnailVisible()) {
+        view->thumnailWidget()->update();
+    }
+    view->viewport()->update();
     syncOptions();
 }
 
@@ -1019,15 +1136,10 @@ void CyMediaDis::privateData::onLanguageChanged(CyMedia::eLanguage lang) {
 void CyMediaDis::privateData::onGrayToolNeedImage() {
     if (!pipeline->isDataSlow()) return;
 
-    bool upImage = false;
-    if (sender() == m_StretchWidget) {
-        upImage = (m_StretchWidget->stretchtype() != lastUpStretchType)
-            || m_StretchWidget->isAutoStretch();
-    }
-    CyMediaLog::instance().log_printf_Debug(
-        "[Display] gray tool requests reprocess (updateImage=%d)", int(upImage));
     syncOptions();
-    pipeline->requestReprocess(upImage, true, true);
+    if (pipeline && pipeline->isDataSlow()) {
+        pipeline->requestReprocess(true, true, true);
+    }
 }
 
 void CyMediaDis::privateData::onAddItem(QUuid id) {
@@ -1064,6 +1176,152 @@ void CyMediaDis::privateData::onRemoveItem(QUuid id) {
         mGrayTestWidget->ItemRemoved(id);
     }
     m_parent->emit itemRemoved(id);
+}
+
+void CyMediaDis::privateData::onStretchPanelChanged() {
+    if (!m_StretchWidget) return;
+
+    bool changed = false;
+    // 面板已隐藏（如 closeEvent）时只更新 options，不反向改状态
+    if (m_StretchWidget->isVisible()) {
+        changed = updateStretchFromPanel();
+    }
+
+    syncOptions();
+
+    if (changed && pipeline && pipeline->isDataSlow()) {
+        pipeline->requestReprocess(true, true, true);
+    }
+}
+
+bool CyMediaDis::privateData::updateStretchFromPanel() {
+    if (!m_StretchWidget) return false;
+    const auto pv = m_StretchWidget->stretchValue();
+    if (pv.max <= 0 || pv.end <= pv.start) return false;
+    return setStretchState(m_StretchWidget->stretchtype(),
+        pv.start, pv.end, pv.max, true);
+}
+
+void CyMediaDis::privateData::updateStretchForImageInfo(const ImageShowInfo& info) {
+    int newMax = bitMaxFor(info.bit);
+    if (m_stretchType == CyMedia::stretch_Lab) newMax = 100;
+    if (newMax <= 0) return;
+    if (m_stretchRange.max == newMax && !m_pendingStretch) return;
+
+    int start = m_stretchRange.start;
+    int end = m_stretchRange.end;
+
+    if (m_pendingStretch) {
+        start = m_pendingStart;
+        end = m_pendingEnd;
+        m_pendingStretch = false;
+    }
+    else if (m_stretchRange.max <= 0) {
+        start = 0;
+        end = newMax;
+    }
+
+    // 策略：绝对窗口只做 clamp；越界部分收回新量程。
+    // 如果想“位深变化时保持画面观感”，这里改成按比例缩放即可。
+    setStretchState(m_stretchType, start, end, newMax, true);
+}
+
+void CyMediaDis::privateData::syncStretchPanelFromState() {
+    if (!m_StretchWidget || m_stretchRange.max <= 0) return;
+
+    CyMedia::StretchType type = m_stretchType;
+    int start = m_stretchRange.start;
+    int end = m_stretchRange.end;
+    const int max = m_stretchRange.max;
+
+    // 面板没有 None 选项：None 时显示 Gray + 全量程作为中性状态
+    if (type == CyMedia::stretch_None) {
+        type = CyMedia::stretch_Gray;
+        start = 0;
+        end = max;
+    }
+
+    const auto pv = m_StretchWidget->stretchValue();
+    if (m_StretchWidget->stretchtype() == type
+        && pv.start == start && pv.end == end && pv.max == max) {
+        return;   // 一致，不恢复
+    }
+
+    // 不一致：以权威状态恢复面板（setStretchValue 内部 blockSignals）
+    m_StretchWidget->setStretchValue(type, start, end, max);
+}
+
+void CyMediaDis::privateData::applyStretch(bool requestRepaint) {
+    if (!view || !view->imageDraw()) return;
+
+    const bool enabled = (m_stretchType != CyMedia::stretch_None)
+        && m_stretchRange.max > 0
+        && m_stretchRange.end > m_stretchRange.start;
+
+    if (enabled) {
+        view->imageDraw()->setStretchType(m_stretchType);
+        view->imageDraw()->setStreaChPara(
+            m_stretchRange.start, m_stretchRange.end, m_stretchRange.max);
+    }
+    else {
+        view->imageDraw()->setStretchType(CyMedia::stretch_None);
+    }
+
+    syncOptions();
+
+    if (requestRepaint) {
+        view->viewport()->update();
+        if (view->thumnailWidget()->isVisible())
+            view->thumnailWidget()->update();
+    }
+}
+
+bool CyMediaDis::privateData::setStretchState(CyMedia::StretchType type, int start, int end, int max, bool notify) {
+    if (type == CyMedia::stretch_None) {
+        if (m_stretchType == CyMedia::stretch_None) return false;
+        m_stretchType = type;
+        applyStretch(true);
+        syncStretchPanelFromState();
+        if (notify)
+            emit m_parent->stretchChanged(int(type),
+                m_stretchRange.start, m_stretchRange.end, m_stretchRange.max);
+        return true;
+    }
+
+    if (max <= 0) {
+        if (m_stretchType == type) return false;
+        m_stretchType = type;
+        applyStretch(true);
+        if (notify)
+            emit m_parent->stretchChanged(int(type), start, end, max);
+        return true;
+    }
+
+    start = qBound(0, start, max - 1);
+    end = qBound(start + 1, end, max);
+
+    if (m_stretchType == type
+        && m_stretchRange.start == start
+        && m_stretchRange.end == end
+        && m_stretchRange.max == max) {
+        return false;
+    }
+
+    m_stretchType = type;
+    m_stretchRange = { start, end, max };
+    m_pendingStretch = false;
+
+    applyStretch(true);
+    syncStretchPanelFromState();
+
+    if (notify)
+        emit m_parent->stretchChanged(int(type), start, end, max);
+    return true;
+}
+
+int CyMediaDis::privateData::stretchMaxForCurrentImage() const {
+    if (m_stretchType == CyMedia::stretch_Lab) return 100;
+    return bitMaxFor(pipeline->imageInfo().bit);
 }
 
 }

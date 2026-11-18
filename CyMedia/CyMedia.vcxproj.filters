@@ -207,16 +207,16 @@
     <ClCompile Include="src\View\Annotation\ItemManager.cpp">
       <Filter>src\View\Annotation</Filter>
     </ClCompile>
-    <ClCompile Include="src\View\Widgets\CyQCP.cpp">
+    <ClCompile Include="src\View\Widgets\CyHistogramView.cpp">
+      <Filter>src\View\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\View\Widgets\CyCellStepper.cpp">
       <Filter>src\View\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="src\View\Widgets\GrayStretch.cpp">
       <Filter>src\View\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="src\View\Widgets\GrayMeasurement.cpp">
-      <Filter>src\View\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="src\View\Widgets\CyMediaRecTimeW.cpp">
       <Filter>src\View\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="src\View\Ui\ImageShowWindow.cpp">
@@ -236,6 +236,12 @@
     </ClCompile>
     <ClCompile Include="src\common\CyMediaI18n.cpp">
       <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\View\Widgets\ledindicator.cpp">
+      <Filter>src\View\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\View\Dialogs\recordindicatordialog.cpp">
+      <Filter>src\View\Dialogs</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -317,7 +323,10 @@
     <QtMoc Include="src\View\Widgets\cycustomwidget.h">
       <Filter>src\View\Widgets</Filter>
     </QtMoc>
-    <QtMoc Include="src\View\Widgets\CyQCP.h">
+    <QtMoc Include="src\View\Widgets\CyHistogramView.h">
+      <Filter>src\View\Widgets</Filter>
+    </QtMoc>
+    <QtMoc Include="src\View\Widgets\CyCellStepper.h">
       <Filter>src\View\Widgets</Filter>
     </QtMoc>
     <QtMoc Include="src\View\Widgets\GrayStretch.h">
@@ -326,14 +335,17 @@
     <QtMoc Include="src\View\Widgets\GrayMeasurement.h">
       <Filter>src\View\Widgets</Filter>
     </QtMoc>
-    <QtMoc Include="src\View\Widgets\CyMediaRecTimeW.h">
-      <Filter>src\View\Widgets</Filter>
-    </QtMoc>
     <QtMoc Include="3rdparty\qcustomplot\qcustomplot.h">
       <Filter>3rdparty\qcustomplot</Filter>
     </QtMoc>
     <QtMoc Include="src\common\CyMediaI18n.h">
       <Filter>src\common</Filter>
+    </QtMoc>
+    <QtMoc Include="src\View\Widgets\ledindicator.h">
+      <Filter>src\View\Widgets</Filter>
+    </QtMoc>
+    <QtMoc Include="src\View\Dialogs\recordindicatordialog.h">
+      <Filter>src\View\Dialogs</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

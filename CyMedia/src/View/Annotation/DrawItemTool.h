@@ -76,8 +76,6 @@ namespace CyDisDrawItem {
         bool m_isDragging = false;   // 是否已开始拖拽绘制(按下鼠标)
         BaseItem* m_previewItem = nullptr;
         QPointer<CyDisDrawItem::BaseItem> m_lastItem = nullptr;
-        bool lastItemRemoveWithNoSignal = false;
-        QUuid lastItemid;
         QGraphicsItem* m_selectedItem = nullptr;
         static constexpr qreal kDragThreshold = 3.0; // 拖拽判定阈值（scene 坐标）
     };

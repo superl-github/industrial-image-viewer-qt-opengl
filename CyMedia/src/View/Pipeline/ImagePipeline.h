@@ -34,7 +34,7 @@ namespace CyMedia {
         bool isSource = false;              ///< 是否来自已缓存原始帧的重处理
         bool updateDisplay = true;          ///< 是否需要上传/刷新显示
         bool updateStretch = true;          ///< 是否需要更新拉伸面板
-        bool stretchEnabled = false;        ///< 拉伸面板当前是否可见
+        bool stretchPanelVisible = false;   ///< 拉伸面板当前是否可见
         StretchRange stretch;               ///< 拉伸区间
     };
 
@@ -100,10 +100,19 @@ namespace CyMedia {
         void clear();
 
         //==================== 状态 ====================
+        bool isRunning() const;
         bool hasImage() const;
         ImageShowInfo imageInfo() const;
-        /// 最近一帧信息引用（无锁，供既有 API 返回引用；不要跨线程长期持有）。
+        /// 最近一帧信息引用（内部解析后的信息，无锁，供既有 API 返回引用；不要跨线程长期持有）。
         const ImageShowInfo& imageInfoRef() const;
+
+        /// 设置内部缓存图像使能，使能后，内部会根据帧率情况缓存数据供像素采样/参数变化后的重处理
+        void cacheIamge(bool enable);
+        /// 是否使能内部缓存输入图像
+        bool isCacheIamgeEnablee();
+        /// 内部缓存的最近一帧输入图像（无锁，外部调用可能读写冲突，由外部保证使用此接口时无数据输入)
+        const uint8_t* latestCachedImage(CyMedia::ImageShowInfo& cacheInfo);
+
         double dataFps() const;
         bool isDataSlow() const;
 

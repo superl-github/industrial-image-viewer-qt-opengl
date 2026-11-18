@@ -270,6 +270,38 @@ Qt related libraries are governed by the GNU Lesser General Public License v2.1 
         <source>Brightness</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bars</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line chart</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Outline</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X/cell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y/cell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Auto Y</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Raw data</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>CyMediaDisGrayTest</name>
@@ -351,6 +383,65 @@ Qt related libraries are governed by the GNU Lesser General Public License v2.1 
     </message>
     <message>
         <source>Quantity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bars</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line chart</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Outline</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X/cell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y/cell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Auto Y</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CyHistogramView</name>
+    <message>
+        <source>Gray</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Red</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Green</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Blue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grayscale</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Quantity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Horizontal axis</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

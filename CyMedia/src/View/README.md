@@ -53,7 +53,7 @@ src/View/
 │   ├── CyMediaDisGrayStretch       灰度拉伸
 │   ├── CyMediaDisGrayTest          灰度/直方图
 │   ├── CyMediaRecTimeW             录像计时
-│   └── CyQCP / cycustomwidget      QCustomPlot 封装与自定义控件
+│   └── CyHistogramView / cycustomwidget  自绘直方图控件与自定义控件
 │
 ├── Ui/                             界面外壳
 │   ├── DisplayToolBar              顶部缩放/翻转工具栏
@@ -119,12 +119,18 @@ Display（门面）
                               │
                               ▼
                  Display::privateData::onFrame()
-                   ├─ 尺寸/格式变化 → ImageInfoChange（排队到 UI）
+                   ├─ 尺寸/位深/格式变化 → ImageInfoChange（排队到 UI）
+                   │    └─ 首帧/尺寸变化：**先**套用“适应窗口/1:1”，再更新场景矩形
                    ├─ 像素颜色采样 → upPosPix
                    ├─ 灰度拉伸/直方图面板计算
                    ├─ OpenGL 纹理上传（共享上下文）
-                   └─ ImageDataDone（排队到 UI）→ 缩放/缩略图/刷新
+                   └─ ImageDataDone（排队到 UI）→ 缩略图/刷新
 ```
+
+> 视图缩放的时机：`ImageInfoChange` 先于纹理上传时排队的 `viewport()->update()`
+> 投递到 UI 线程，所以首帧/切换分辨率时第一笔绘制就已经是目标比例；
+> 早期版本把缩放放在 `ImageDataDone` 里，会先按旧比例画一帧再跳变。
+> 参见 `CyMediaDisView::applyViewMode()`。
 
 ---
 

@@ -14,7 +14,7 @@
  */
 #pragma once
 
-#include "common/ImageTypes.h"
+#include "../common/ImageTypes.h"
 
 #include <cstdint>
 #include <functional>

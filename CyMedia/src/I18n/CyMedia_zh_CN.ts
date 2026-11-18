@@ -310,6 +310,38 @@ Qt 相关库遵循 GNU 宽通用公共许可证 2.1 版 (LGPLv2.1)。</translati
         <source>Brightness</source>
         <translation>亮度</translation>
     </message>
+    <message>
+        <source>Style</source>
+        <translation>风格</translation>
+    </message>
+    <message>
+        <source>Bars</source>
+        <translation>柱形</translation>
+    </message>
+    <message>
+        <source>Line chart</source>
+        <translation>折线</translation>
+    </message>
+    <message>
+        <source>Outline</source>
+        <translation>轮廓</translation>
+    </message>
+    <message>
+        <source>X/cell</source>
+        <translation>X/格</translation>
+    </message>
+    <message>
+        <source>Y/cell</source>
+        <translation>Y/格</translation>
+    </message>
+    <message>
+        <source>Auto Y</source>
+        <translation>Y 自动</translation>
+    </message>
+    <message>
+        <source>Raw data</source>
+        <translation>原始数据</translation>
+    </message>
 </context>
 <context>
     <name>CyMediaDisGrayTest</name>
@@ -392,6 +424,65 @@ Qt 相关库遵循 GNU 宽通用公共许可证 2.1 版 (LGPLv2.1)。</translati
     <message>
         <source>Polygon</source>
         <translation>多边形</translation>
+    </message>
+    <message>
+        <source>Style</source>
+        <translation>风格</translation>
+    </message>
+    <message>
+        <source>Bars</source>
+        <translation>柱形</translation>
+    </message>
+    <message>
+        <source>Line chart</source>
+        <translation>折线</translation>
+    </message>
+    <message>
+        <source>Outline</source>
+        <translation>轮廓</translation>
+    </message>
+    <message>
+        <source>X/cell</source>
+        <translation>X/格</translation>
+    </message>
+    <message>
+        <source>Y/cell</source>
+        <translation>Y/格</translation>
+    </message>
+    <message>
+        <source>Auto Y</source>
+        <translation>Y 自动</translation>
+    </message>
+</context>
+<context>
+    <name>CyHistogramView</name>
+    <message>
+        <source>Gray</source>
+        <translation>灰度</translation>
+    </message>
+    <message>
+        <source>Red</source>
+        <translation>红</translation>
+    </message>
+    <message>
+        <source>Green</source>
+        <translation>绿</translation>
+    </message>
+    <message>
+        <source>Blue</source>
+        <translation>蓝</translation>
+    </message>
+    <message>
+        <source>Grayscale</source>
+        <translation>灰度</translation>
+    </message>
+    <message>
+        <source>Quantity</source>
+        <translation>数量</translation>
+    </message>
+    <message>
+        <source>Horizontal axis</source>
+        <translation>水平轴</translation>
     </message>
 </context>
 <context>

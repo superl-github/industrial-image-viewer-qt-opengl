@@ -89,13 +89,13 @@ namespace CyMedia {
                     info.width, info.height, int(info.bit), info.length, data);
                 return false;
             }
-            static const int32_t kMaxImageSize = 20000;
-            if (info.width > kMaxImageSize || info.height > kMaxImageSize) {
-                CyMediaLog::instance().log_printf_Warning(
-                    "[ImagePipeline] frame too large: (%d %d), max %d",
-                    info.width, info.height, kMaxImageSize);
-                return false;
-            }
+            //static const int32_t kMaxImagePixelSize = 16384 * 16384;//通常显卡最大纹理尺寸
+            //if (info.width * info.height > kMaxImagePixelSize) {
+            //    CyMediaLog::instance().log_printf_Warning (
+            //        "[ImagePipeline] frame too large: %d(%d %d), max %d",
+            //        info.width * info.height, info.width, info.height, kMaxImagePixelSize);
+            //    return false;
+            //}
 
             const Options opt = options();
             if (directMode.load(std::memory_order_acquire)) {
@@ -480,7 +480,7 @@ namespace CyMedia {
                 frame.isSource = item.isSource;
                 frame.updateDisplay = item.updateDisplay && !item.isSource;
                 frame.updateStretch = item.updateStretch;
-                frame.stretchEnabled = opt.stretchPanelVisible;
+                frame.stretchPanelVisible = opt.stretchPanelVisible;
                 frame.stretch = opt.stretchRange;
                 sink->onFrame(frame);
             }
@@ -500,6 +500,7 @@ namespace CyMedia {
         }
 
         void copyRawFrame(const ImageShowInfo& info, const uint8_t* data) {
+            if (false == enableCopyRawData.load()) return;
             QMutexLocker lock(&mutex);
             if (!rawData || rawInfo.length != info.length) {
                 rawData.reset(new uint8_t[info.length]);
@@ -580,6 +581,7 @@ namespace CyMedia {
         uint32_t stackSize = kDefaultStack;
 
         ImageShowInfo imageInfo;
+        std::atomic<bool> enableCopyRawData{ true };
         std::shared_ptr<uint8_t[]> rawData;
         ImageShowInfo rawInfo;
 
@@ -634,6 +636,11 @@ namespace CyMedia {
         d->clear();
     }
 
+
+    bool ImagePipeline::isRunning() const {
+        return d->running.load(std::memory_order_acquire);
+    }
+
     bool ImagePipeline::hasImage() const {
         return d->haveImage.load(std::memory_order_acquire);
     }
@@ -645,6 +652,25 @@ namespace CyMedia {
 
     const ImageShowInfo& ImagePipeline::imageInfoRef() const {
         return d->imageInfo;
+    }
+
+
+    void ImagePipeline::cacheIamge(bool enable) {
+        d->enableCopyRawData.store(enable);
+    }
+
+
+    bool ImagePipeline::isCacheIamgeEnablee() {
+        return d->enableCopyRawData.load();
+    }
+
+    const uint8_t* ImagePipeline::latestCachedImage(CyMedia::ImageShowInfo& cacheInfo) {
+        //等待队列中无数据？
+        
+        //返回
+        if (!d->rawData) return nullptr;
+        cacheInfo = d->rawInfo;
+        return d->rawData.get();
     }
 
     double ImagePipeline::dataFps() const {

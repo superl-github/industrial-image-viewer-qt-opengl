@@ -450,3 +450,4 @@ CTestTestfile.cmake
 CMakeUserPresets.json
 /Testing/
 /CyMedia.rar
+/_build

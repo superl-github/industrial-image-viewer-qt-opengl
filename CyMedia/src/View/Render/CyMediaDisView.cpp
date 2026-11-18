@@ -300,6 +300,21 @@ void CyMediaDisView::zoomOut(void) {
     d->zoom(value);
 }
 
+void CyMediaDisView::fitToSize(const QSizeF& imageSize) {
+    if (!this->scene() || imageSize.width() <= 0 || imageSize.height() <= 0) return;
+
+    const QSize fRect = viewport()->size();
+    if (fRect.isEmpty()) {
+        CyMediaLog::instance().log_printf_Warning(
+            "[View] fit skipped: viewport is empty");
+        return;
+    }
+    qreal s = qMin(
+        fRect.width() * 0.999 / imageSize.width(),
+        fRect.height() * 0.999 / imageSize.height());
+    d->zoom(s);
+}
+
 void CyMediaDisView::zoomAuto(void) {
     if (!this->scene() || !m_backDraw->haveImage()) return;
 
@@ -311,16 +326,10 @@ void CyMediaDisView::zoomAuto(void) {
             fRect.width(), fRect.height(), sceneRect.width(), sceneRect.height());
         return;
     }
-    qreal s = qMin(
-        fRect.width() * 0.999 / sceneRect.width(),
-        fRect.height() * 0.999 / sceneRect.height());
-    d->zoom(s);
+    fitToSize(sceneRect);
 }
 
-void CyMediaDisView::zoomRaw(bool Reset /*= true*/) {
-    if (!this->scene())
-        return;
-
+void CyMediaDisView::rawView(bool Reset /*= true*/) {
     QTransform transform(this->transform());
     double value = 1.0;
     d->zoom(value);
@@ -334,6 +343,33 @@ void CyMediaDisView::zoomRaw(bool Reset /*= true*/) {
     else {
         setTransform(transform);
     }
+}
+
+void CyMediaDisView::zoomRaw(bool Reset /*= true*/) {
+    if (!this->scene()) return;
+
+    rawView(Reset);
+}
+
+void CyMediaDisView::applyViewMode(bool fit, const QSize& imageSize) {
+    if (!this->scene() || imageSize.isEmpty()) return;
+
+    if (fit) {
+        fitToSize(QSizeF(imageSize));
+    }
+    else {
+        rawView(true);
+    }
+    CyMediaLog::instance().log_printf_Debug(
+        "[View] view mode applied before first paint: %s (image=%dx%d, zoom=%.3f)",
+        fit ? "fit" : "raw", imageSize.width(), imageSize.height(), d->xZoomValue);
+}
+
+void CyMediaDisView::refreshThumbnail(void) {
+    if (!m_Thumbnail || !scene()) return;
+
+    d->upThumbanilSize();
+    d->updateThumbnail();
 }
 
 bool CyMediaDisView::isHoriMirror() {

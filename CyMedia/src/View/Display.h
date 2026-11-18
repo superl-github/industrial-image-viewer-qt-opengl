@@ -140,6 +140,10 @@ namespace CyMedia {
         /// 选中标注项。
         void itemSelected(QUuid id);
 
+        /// 拉伸参数变化：type 0=None 1=Gray 2=HSV 3=Lab。
+        /// 外部 API、内置面板、位深变化都会触发，供 App 双向同步。
+        void stretchChanged(int type, int start, int end, int max);
+
     public:
         //==================== 平台与格式 ====================
         /// 查询系统 OpenGL 版本；不支持时返回 false。
@@ -192,6 +196,13 @@ namespace CyMedia {
         /// 清空图像与标注交互状态。
         void clearImage(void);
 
+        /// 设置内部缓存图像使能，使能后，内部会根据帧率情况缓存数据供像素采样/参数变化后的重处理
+        void cacheIamge(bool enable);
+        /// 是否使能内部缓存输入图像
+        bool isCacheIamgeEnablee();
+        /// 内部缓存的最近一帧输入图像（无锁，外部调用可能读写冲突，由外部保证使用此接口时无数据输入)
+        const uint8_t* latestCachedImage(CyMedia::ImageShowInfo& info);
+
         /// 当前显示图像的信息。
         ImageShowInfo imageInfoCopy() const;
         /// 当前显示帧率。
@@ -204,8 +215,13 @@ namespace CyMedia {
         //==================== 显示效果 ====================
         CyMedia::StretchType stretchType();
         void setStretchType(CyMedia::StretchType type);
-        /// 设置手动拉伸阈值（start/end 以当前位深为上限）。
+        /// end 必须大于 start；type 为 None 时自动切到 Gray；
+        /// 会关闭内置面板的“自动拉伸”，保证外部参数优先。
         void setStretchPara(uint32_t start = 0, uint32_t end = 0);
+        /// 当前权威拉伸数据（无图像时 max 可能为 0）。
+        CyMedia::StretchRange stretchRange();
+        /// 当前是否有效拉伸（type != None 且 end > start）。
+        bool isStretchEnabled();
 
         CyMedia::DemosaicingMethod Demosaic();
         void setDemosaic(CyMedia::DemosaicingMethod method);
@@ -218,12 +234,16 @@ namespace CyMedia {
         bool setColorMap(quint32 index);
         bool setColorMap(const QString& mapName);
 
-        //==================== 视图操作 ====================
+        //==================== 视图操作（UI线程操作） ====================
         void zoomIn();
         void zoomOut();
         void zoomAuto();
         /// 1:1 显示；reset=true 时同时重置旋转/镜像。
         void zoomRaw(bool reset);
+        bool isMirrorHorizon();
+        void mirrorHorizon(bool mirror);
+        bool isMirrorVertical();
+        void mirrorVertical(bool mirror);
 
         //==================== 工具栏/缩略图 ====================
         CyDisDrawItem::ItemType drawMode();
@@ -271,9 +291,10 @@ namespace CyMedia {
         //==================== 录像计时器 ====================
         bool recTimeVisible();
         void setRecTimeVisible(bool visi);
-        void upRecTime(uint64_t time);
-        void upRecTime(float saved, float sum);
-        void upRecTime_Timed(uint64_t saved, uint64_t sum);
+        bool isRecTimeLEDVisbible();
+        void setRecTimeLEDVisible(bool visi);
+        void upRecTimeMsg(QString msg, bool blink = false);
+        void setRecTimeFont(const QFont& font);//默认加粗，14
 
         //==================== 辅助面板（高级） ====================
         QWidget* stretchWidget();

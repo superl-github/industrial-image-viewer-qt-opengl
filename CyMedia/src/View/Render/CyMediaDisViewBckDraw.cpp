@@ -118,10 +118,10 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
     // 更新顶点（如果图像尺寸变化）
     if (pTex->showInfo.width != m_vertex_current_w ||
         pTex->showInfo.height != m_vertex_current_h ||
-        pTex->textureWidthMultiplier != m_vertex_mulW ||
-        pTex->textureHeightMultiplier != m_vertex_mulH) {
+        pTex->packTexWidth != m_vertex_current_w_packed ||
+        pTex->packTexHeight != m_vertex_current_h_packed) {
         upVertex(f, pTex->showInfo.width, pTex->showInfo.height,
-            pTex->textureWidthMultiplier, pTex->textureHeightMultiplier);
+            pTex->packTexWidth, pTex->packTexHeight);
     }
 
     // 绑定着色器
@@ -134,10 +134,6 @@ void CyMediaDisViewBckDraw::renderTexture(QOpenGLExtraFunctions* f, QOpenGLVerte
     if (pTex->needUpImageInfo || pTex->isReBiuld) {
         upShaderUniformImageInfo(f, idx, int(pTex->glslNcolor));
         pTex->needUpImageInfo = false;
-    }
-    if (upStretchValue || pTex->isReBiuld) {
-        updateStretchUniforms(f);
-        upStretchValue = false;
     }
 
     // 构建投影矩阵：使用传入的视口尺寸，并结合 transform
@@ -211,7 +207,7 @@ void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
     }
 
     // 获取最大纹理尺寸
-    f->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_gl_max_texture_size);
+    f->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_gl_texture_max_size);
 
     //禁用驱动优化
     f->glDisable(GL_TEXTURE_RECTANGLE);
@@ -224,7 +220,7 @@ void CyMediaDisViewBckDraw::initgl(QOpenGLContext* ctx) {
         "[Render] OpenGL initialized: %d.%d %s, max texture %d",
         fmt.majorVersion(), fmt.minorVersion(),
         fmt.profile() == QSurfaceFormat::CoreProfile ? "core" : "compatibility",
-        m_gl_max_texture_size);
+        m_gl_texture_max_size);
 }
 
 bool CyMediaDisViewBckDraw::glIsInit() {
@@ -324,9 +320,9 @@ void CyMediaDisViewBckDraw::drawBackground(QPainter* painter, const QRectF& rect
     //更新顶点
     if (pTex->showInfo.width != m_vertex_current_w || 
         pTex->showInfo.height != m_vertex_current_h ||
-        pTex->textureWidthMultiplier != m_vertex_mulW ||
-        pTex->textureHeightMultiplier != m_vertex_mulH) {
-        upVertex(f, pTex->showInfo.width, pTex->showInfo.height, pTex->textureWidthMultiplier, pTex->textureHeightMultiplier);
+        pTex->packTexWidth != m_vertex_current_w_packed ||
+        pTex->packTexHeight != m_vertex_current_h_packed) {
+        upVertex(f, pTex->showInfo.width, pTex->showInfo.height, pTex->packTexWidth, pTex->packTexHeight);
     }
 
     //绑定着色器程序
@@ -721,15 +717,11 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
     //顶点初始化
     m_vertex_current_w = info.width;
     m_vertex_current_h = info.height;
-    m_vertex_mulW = 1.0;
-    m_vertex_mulH = 1.0;
-    float usetWmul = 1.0 / m_vertex_mulW;
-    float usetHmul = 1.0 / m_vertex_mulH;
 
     m_verticesArray[0] = { QVector3D(0, 0, 0.0f),  QVector2D(0.0f, 0.0f) };  // v0
-    m_verticesArray[1] = { QVector3D(m_vertex_current_w, 0,5.0f),  QVector2D(usetWmul, 0.0f) };  // v1
-    m_verticesArray[2] = { QVector3D(0,m_vertex_current_h, 5.0f),  QVector2D(0.0f, usetHmul) };  // v2
-    m_verticesArray[3] = { QVector3D(m_vertex_current_w, m_vertex_current_h, 5.0f),QVector2D(usetWmul, usetHmul) };  // v3
+    m_verticesArray[1] = { QVector3D(m_vertex_current_w, 0,5.0f),  QVector2D(1.0, 0.0f) };  // v1
+    m_verticesArray[2] = { QVector3D(0,m_vertex_current_h, 5.0f),  QVector2D(0.0f, 1.0) };  // v2
+    m_verticesArray[3] = { QVector3D(m_vertex_current_w, m_vertex_current_h, 5.0f),QVector2D(1.0, 1.0) };  // v3
 
     // Create VAB, VBO, EBO
     pVAO = new QOpenGLVertexArrayObject;
@@ -758,12 +750,12 @@ void CyMediaDisViewBckDraw::initVertex(QOpenGLExtraFunctions* f, const CyMedia::
     vaobinder.release();
 }
 
-void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height, float mulW, float mulH) {
+void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int height, int packedW, int packedH) {
     if (!pVBO) return;
     CyMediaLog::instance().log_printf_Debug(
         "[Render] upVertex: width=%d height=%d", width, height);
-    float usetWmul = 1.0 / mulW;
-    float usetHmul = 1.0 / mulH;
+    float usetWmul = width * 1.0 / packedW;
+    float usetHmul = height * 1.0 / packedH;
     m_verticesArray[0] = { QVector3D(0, 0, 0.0f),  QVector2D(0.0f, 0.0f) };  // v0
     m_verticesArray[1] = { QVector3D(width, 0,5.0f),  QVector2D(usetWmul, 0.0f) };  // v1
     m_verticesArray[2] = { QVector3D(0,height, 5.0f),  QVector2D(0.0f, usetHmul) };  // v2
@@ -771,8 +763,8 @@ void CyMediaDisViewBckDraw::upVertex(QOpenGLExtraFunctions* f, int width, int he
 
     m_vertex_current_w = width;
     m_vertex_current_h = height;
-    m_vertex_mulW = mulW;
-    m_vertex_mulH = mulH;
+    m_vertex_current_w_packed = packedW;
+    m_vertex_current_h_packed = packedH;
 
     QOpenGLVertexArrayObject::Binder vaobinder(pVAO);
     pVBO->bind();
@@ -835,15 +827,27 @@ void CyMediaDisViewBckDraw::initTextureOne(QOpenGLExtraFunctions* f, oneTextureP
     // 分配内存
     if (allocaMem) {
         f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
+
+        int allocW, allocH;
+        if (pTex->showInfo.format == CyMedia::MONO_OVERSIZE
+            && pTex->packTexWidth > 0 && pTex->packTexHeight > 0) {
+            allocW = pTex->packTexWidth;
+            allocH = pTex->packTexHeight;
+        }
+        else {
+            allocW = pTex->packTexWidth;
+            allocH = pTex->packTexHeight;
+        }
+
         f->glTexImage2D(GL_TEXTURE_2D, 0, pTex->textureInternalFormat,
-            pTex->showInfo.width * pTex->textureWidthMultiplier, pTex->showInfo.height * pTex->textureHeightMultiplier,
-            0, pTex->textureFormat, pTex->textureType, nullptr);
+            allocW, allocH, 0,
+            pTex->textureFormat, pTex->textureType, nullptr);
+
         GLenum glerr = f->glGetError();
         if (glerr != GL_NO_ERROR) {
             CyMediaLog::instance().log_printf_Error(
                 "[Render] allocate main texture failed: glErr=0x%04X, %dx%d",
-                unsigned(glerr), int(pTex->showInfo.width * pTex->textureWidthMultiplier),
-                int(pTex->showInfo.height * pTex->textureHeightMultiplier));
+                unsigned(glerr), allocW, allocH);
         }
     }
     //U 纹理
@@ -938,24 +942,28 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
     if (imag_infoChange) {
         //copy新的信息
         memcpy(&pTex->showInfo, &info, sizeof(CyMedia::ImageShowInfo));
-        m_bIsOVerSize = newWidth > m_gl_max_texture_size || newHeight > m_gl_max_texture_size;
+        m_bIsOVerSize = newWidth > m_gl_texture_max_size || newHeight > m_gl_texture_max_size;
         bool tOverSize = m_bIsOVerSize;
         //如果超限且是灰度图可按RGBA传输
         if (m_bIsOVerSize) {
             if (info.isMono()) {
-                if (newWidth / 2 <= m_gl_max_texture_size && newHeight / 2 <= m_gl_max_texture_size) {
+                // 超限灰度图按照RGBA打包：每 texel 装4个灰度像素
+                qint64 totalPixels = qint64(newWidth) * newHeight;
+                qint64 maxTexels = qint64(m_gl_texture_max_size) * m_gl_texture_max_size;
+                qint64 needTexels = (totalPixels + 3) / 4;  // ceil
+                if (needTexels <= maxTexels) {
                     m_bIsOVerSize = false;
                     pTex->showInfo.format = CyMedia::MONO_OVERSIZE;
                     pTex->glslNcolor = CyMedia::MONO_OVERSIZE;
                     CyMediaLog::instance().log_printf_Info(
-                        "[Render] texture oversized, fallback to RGBA packing: %dx%d",
-                        newWidth, newHeight);
+                        "[Render] texture oversized, packed via RGBA: %dx%d -> %lld texels",
+                        newWidth, newHeight, static_cast<long long>(needTexels));
                 }
             }
         }
         //否则不处理
         if (m_bIsOVerSize) {
-            QString errTxt = QString("currentSize(%1*%2) maxSize(%3*%4)").arg(newWidth).arg(newHeight).arg(m_gl_max_texture_size).arg(m_gl_max_texture_size);
+            QString errTxt = QString("currentSize(%1*%2) maxSize(%3*%4)").arg(newWidth).arg(newHeight).arg(m_gl_texture_max_size).arg(m_gl_texture_max_size);
             if (false == m_message_overSize->isVisible() || errTxt != m_message_overSize->text()) {
                 CyMediaLog::instance().log_printf_Warning(
                     "[Render] texture size over limit: %s", errTxt.toUtf8().constData());
@@ -988,16 +996,73 @@ bool CyMediaDisViewBckDraw::upTexture(QOpenGLExtraFunctions* f, int backIdx, CyM
     //更新纹理
     //主纹理(Y 或 Packed)
     f->glBindTexture(GL_TEXTURE_2D, pTex->glTexture->textureId());
-    f->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-        info.width * pTex->textureWidthMultiplier,
-        info.height * pTex->textureHeightMultiplier,
-        pTex->textureFormat, pTex->textureType, data);
-    glerr = f->glGetError();
-    if (glerr != GL_NO_ERROR) {
-        CyMediaLog::instance().log_printf_Warning(
-            "[Render] glTexSubImage2D(main) failed: glErr=0x%04X, %dx%d",
-            unsigned(glerr), info.width, info.height);
-        return false;
+    if (pTex->showInfo.format != CyMedia::MONO_OVERSIZE) {
+        f->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+            pTex->packTexWidth,
+            pTex->packTexHeight,
+            pTex->textureFormat, pTex->textureType, data);
+        glerr = f->glGetError();
+        if (glerr != GL_NO_ERROR) {
+            CyMediaLog::instance().log_printf_Warning(
+                "[Render] glTexSubImage2D(main) failed: glErr=0x%04X, %dx%d",
+                unsigned(glerr), info.width, info.height);
+            return false;
+        }
+    }
+    else {
+        // -------- 超尺寸：线性打包，每 4 个灰度像素 -> 1 个 RGBA texel --------
+        const qint64 totalPixels = qint64(info.width) * info.height;
+        const int texW = pTex->packTexWidth;
+
+        int cpp = 1;
+        if (pTex->textureType == GL_UNSIGNED_SHORT) cpp = 2;
+        else if (pTex->textureType == GL_UNSIGNED_INT
+            || pTex->textureType == GL_INT)            cpp = 4;
+
+        // (1) 完整 texel 行直接从 data 上传（无越界读）
+        const qint64 fullTexels = totalPixels / 4;      // 完整 texel 数
+        const int    fullRows = int(fullTexels / texW);
+        if (fullRows > 0) {
+            f->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+                texW, fullRows,
+                pTex->textureFormat, pTex->textureType, data);
+            glerr = f->glGetError();
+            if (glerr != GL_NO_ERROR) {
+                CyMediaLog::instance().log_printf_Warning(
+                    "[Render] glTexSubImage2D(oversize/full) failed: glErr=0x%04X",
+                    unsigned(glerr));
+                return false;
+            }
+        }
+
+        // (2) 尾部（最多一整行 + 残 1 个 texel）通过临时缓冲补齐（零填充）
+        const qint64 consumedPixels = qint64(fullRows) * texW * 4;
+        const qint64 remainingPixels = totalPixels - consumedPixels;
+        if (remainingPixels > 0) {
+            int tailTexels = int((remainingPixels + 3) / 4);
+            if (tailTexels > texW) tailTexels = texW;   // 安全钳位
+            const qint64 tailBytes = qint64(tailTexels) * 4 * cpp;
+
+            if (pTex->packBuffer.size() < tailBytes) {
+                pTex->packBuffer.resize(int(tailBytes));
+            }
+            memset(pTex->packBuffer.data(), 0, int(tailBytes));
+            memcpy(pTex->packBuffer.data(),
+                data + consumedPixels * cpp,
+                int(remainingPixels * cpp));
+
+            f->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, fullRows,
+                tailTexels, 1,
+                pTex->textureFormat, pTex->textureType,
+                pTex->packBuffer.constData());
+            glerr = f->glGetError();
+            if (glerr != GL_NO_ERROR) {
+                CyMediaLog::instance().log_printf_Warning(
+                    "[Render] glTexSubImage2D(oversize/tail) failed: glErr=0x%04X",
+                    unsigned(glerr));
+                return false;
+            }
+        }
     }
     //U 纹理 (U/UV)
     if (pTex->useUTex) {
@@ -1066,6 +1131,8 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
     oneTexturePara* pTex = &m_textureInfo[idx];
 
     pTex->glslNcolor = info.format;
+    pTex->packTexWidth = info.width;
+    pTex->packTexHeight = info.height;
     pTex->bitMul = 1.0;
     if (info.bit > 8 && info.bit < 16) {
         pTex->bitMul = 65535.0f / (1 << info.bit);
@@ -1079,8 +1146,6 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
             "[Render] bit depth %d exceeds 31, bitMul fallback to 1.0", int(info.bit));
         pTex->bitMul = 1.0f;
     }
-    pTex->textureWidthMultiplier = 1.0;
-    pTex->textureHeightMultiplier = 1.0;
     pTex->useUTex = false;
     pTex->useVTex = false;
 
@@ -1106,8 +1171,20 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
             else if (info.bit <= 16) pTex->textureType = GL_UNSIGNED_SHORT;
             else if (info.bit < 32) pTex->textureType = GL_INT;
 
-            pTex->textureWidthMultiplier = 0.5;
-            pTex->textureHeightMultiplier = 0.5;
+            // ---- 计算打包纹理尺寸（尽量方形；且保证不超限） ----
+            qint64 totalPixels = qint64(info.width) * info.height;
+            qint64 totalTexels = (totalPixels + 3) / 4;              // ceil
+            const int maxSize = m_gl_texture_max_size;
+            int tw = int(std::ceil(std::sqrt(double(totalTexels)))); // 尽量方形
+            if (tw > maxSize) tw = maxSize;
+            int minTw = int((totalTexels + maxSize - 1) / maxSize);  // 保证高度不超限
+            if (tw < minTw) tw = minTw;
+            if (tw > maxSize) tw = maxSize;
+            int th = int((totalTexels + tw - 1) / tw);
+
+            pTex->packTexWidth = tw;
+            pTex->packTexHeight = th;
+
             pTex->glslNcolor = CyMedia::MONO_OVERSIZE;
         }
     }
@@ -1133,7 +1210,7 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
     else if (info.isYUV()) {
         if (info.isYUV_Packed()) {
             // Packed: YUY2 / YVYU，单纹理，宽度双倍
-            pTex->textureWidthMultiplier = 2.0f;
+            pTex->packTexWidth *= 2.0f;
             pTex->textureInternalFormat = GL_R8;
             pTex->textureFormat = GL_RED;
             pTex->textureType = GL_UNSIGNED_BYTE;
@@ -1141,8 +1218,6 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
         }
         else if (info.isYUV_Planar()) {
             // 三平面：Y, U, V 均为单通道
-            pTex->textureWidthMultiplier = 1.0f;
-            pTex->textureHeightMultiplier = 1.0f;
             pTex->textureInternalFormat = GL_R8;
             pTex->textureFormat = GL_RED;
             pTex->textureType = GL_UNSIGNED_BYTE;
@@ -1168,8 +1243,6 @@ void CyMediaDisViewBckDraw::updateTextureFormat(const CyMedia::ImageShowInfo& in
         }
         else if (info.isYUV_SemiPlanar()) {
             // NV12/NV21：Y 平面单通道，UV 平面双通道 RG
-            pTex->textureWidthMultiplier = 1.0f;
-            pTex->textureHeightMultiplier = 1.0f;
             pTex->textureInternalFormat = GL_R8;
             pTex->textureFormat = GL_RED;
             pTex->textureType = GL_UNSIGNED_BYTE;

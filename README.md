@@ -61,6 +61,7 @@ mindmap
         具体图形 Item_Rect / Item_Line / Item_Ellipse / Item_Point / Item_Polygon
         管理 ItemManager / DrawItemTool
       辅助控件 Widgets
+        自绘直方图 CyHistogramView（柱形 / 折线 / 半透明轮廓）
         灰度拉伸 CyMediaDisGrayStretch
         灰度统计 CyMediaDisGrayTest
         录制时间 CyMediaRecTimeW
@@ -140,6 +141,9 @@ mindmap
   `void setThumbnailEnable(bool enable)` 控制缩略图是否启用。
 - **工具面板**
   内置灰度拉伸控件 (`CyMediaDisGrayStretch`) 和灰度统计控件 (`CyMediaDisGrayTest`)，可独立显示/隐藏。
+  两者的直方图均由自绘控件 `CyHistogramView` 渲染：支持柱形/折线/半透明轮廓三种风格，
+  "每格灰度级 / 每格计数"可在界面上精确设置，Y 轴可自动或手动调整，
+  鼠标读数固定显示在绘图区左上角；灰度拉伸的 Bayer 图像可选择"按原始数据统计"以跳过去马赛克。
 
 #### 渲染后端（`CyMediaDisViewBckDraw`）关键点
 
@@ -355,6 +359,7 @@ display->setStreaChPara(start, end);
 - **OpenGL**: 3.3 Core Profile。
 - **编译器**: MSVC 2022（v143）；CMake 构建当前仅支持 Windows。
 - **第三方**: FFmpeg（`CyMedia/3rdparty/ffmpeg`）、QCustomPlot、stb_image（均在仓库内）。
+  QCustomPlot 仍保留在 `3rdparty`，但灰度拉伸/灰度测量面板已改为自绘 `CyHistogramView`，不再依赖它。
 - **导出宏**：库目标定义 `CYMEDIA_EXPORT`；使用方不要定义该宏。
 
 ### 6.1 Visual Studio

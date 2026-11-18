@@ -10,6 +10,7 @@
 #pragma once
 #include "../../common/ImageTypes.h"
 
+#include <QByteArray>
 #include <QObject>
 #include <QGraphicsView>
 #include <QMessageBox>
@@ -156,14 +157,17 @@ private:
         //数据处理信息
         bool useUTex = false;
         bool useVTex = false;
-        float textureWidthMultiplier = 1.0;//更新纹理时图像宽度乘数
-        float textureHeightMultiplier = 1.0;//更新纹理时图像高度乘数
         uint32_t uTexDataOffset = 0;
         uint32_t vTexDataOffset = 0;
 
         // 标志
         bool isReBiuld = false;
         bool needUpImageInfo = false;
+
+        // ===== 纹理打包信息 =====
+        int packTexWidth = 0;   ///< 打包后纹理实际宽度（texel 数）
+        int packTexHeight = 0;   ///< 打包后纹理实际高度（texel 数）
+        QByteArray packBuffer;   ///< 尾部补齐用的临时缓冲（复用避免反复分配）
     };
 
     QGraphicsView* m_view = nullptr;
@@ -187,7 +191,7 @@ private:
 
     QOpenGLContext* m_ctx_main = nullptr;
     QOffscreenSurface* m_offscreenSurface = nullptr;
-    int m_gl_max_texture_size = 16384;
+    int m_gl_texture_max_size = 16384;
     bool m_bIsOVerSize = false;
 
     // 图像信息
@@ -227,8 +231,8 @@ private:
     bool m_gl_init = false;
     int m_vertex_current_w = 1000;
     int m_vertex_current_h = 1000;
-    int m_vertex_mulW = 1.0;
-    int m_vertex_mulH = 1.0;
+    int m_vertex_current_w_packed = 1000;
+    int m_vertex_current_h_packed = 1000;
 
     // FPS 计算
     QTimer* DisFpsTimer = nullptr;
@@ -284,7 +288,7 @@ private:
 
     bool initglsl(QOpenGLExtraFunctions* f);
     void initVertex(QOpenGLExtraFunctions* f, const CyMedia::ImageShowInfo& info);
-    void upVertex(QOpenGLExtraFunctions* f, int width, int height, float mulW, float mulH);
+    void upVertex(QOpenGLExtraFunctions* f, int width, int height, int packedW, int packedH);
     void initTexture(QOpenGLExtraFunctions* f);
     void initTextureOne(QOpenGLExtraFunctions* f, oneTexturePara* pTex, bool allocaMem = false);
     bool upTexture(QOpenGLExtraFunctions* f, int backIdx, CyMedia::ImageShowInfo info, uint8_t* data);
