@@ -1,5 +1,5 @@
 #include "CyMediaDisTest.h"
-#include "View/Widgets/CyMediaRecTimeW.h"
+#include "View/Dialogs/recordindicatordialog.h"
 #include "Calculate/CalcYUV.h"
 
 #include <QFile>
@@ -114,6 +114,9 @@ void CyMediaDisTest::initGUI() {
     m_view->setLogLevel(CyMedia::LogLevel::DEBUG);
     m_view->setThumbnailAutoEnable(false);
     m_view->setThumbnailEnable(true);
+    m_view->setRecTimeVisible(true);
+    m_view->setRecTimeLEDVisible(true);
+    m_view->upRecTimeMsg("1/20");
     connect(m_view, &CyMedia::CyMediaDis::upPosPix, this, &CyMediaDisTest::onViewUpPosPix);
     connect(m_view, &CyMedia::CyMediaDis::imageSizeChanged, this, &CyMediaDisTest::onImageSizeChanged);
     connect(m_view, &CyMedia::CyMediaDis::urlsDrop, this, &CyMediaDisTest::urlsDropOpe);
@@ -484,6 +487,35 @@ void CyMediaDisTest::on_act_acq_img_type(QAction* act) {
 
 void CyMediaDisTest::on_act_acq_analog() {
     if (m_bIsAcuistion) return;
+
+    ////测试超限图像
+    //CyMedia::ImageShowInfo info;
+    //info.width = 8976*4;
+    //info.height = 4560;
+    //info.format = MONO;
+    //info.bit = 8;
+    //info.upLenth();
+    //std::vector<uint8_t> data(info.length);
+    //auto pData = data.data();
+    ////左上
+    //for (int h = 0; h < info.height / 2; h++) {
+    //    memset(&pData[h * info.width], 0x00, info.width / 2);
+    //}
+    ////右上
+    //for (int h = 0; h < info.height / 2; h++) {
+    //    memset(&pData[h * info.width + info.width / 2], 0xFF, (info.width - (info.width / 2)));
+    //}
+    ////左下
+    //for (int h = info.height / 2; h < info.height; h++) {
+    //    memset(&pData[h * info.width], 0xFF, info.width / 2);
+    //}
+    ////右下
+    //for (int h = info.height / 2; h < info.height; h++) {
+    //    memset(&pData[h * info.width + info.width / 2], 0x00, (info.width - (info.width / 2)));
+    //}
+
+    //m_view->upImageData(info, pData);
+    //return;
 
     //启动采集线程
     m_bIsAcuistion = true;
@@ -1261,7 +1293,7 @@ void CyMediaDisTest::thread_acquisition() {
     info.upLenth();
     QImage img(info.width, info.height, QImage::Format_RGB888);
 
-    std::vector<uint8_t> yuvBuf;
+    std::vector<uint8_t> formatTransBuf;
 
     int framId = 0;
     while (m_bIsAcuistion) {
@@ -1276,22 +1308,30 @@ void CyMediaDisTest::thread_acquisition() {
         }
         //生成 RGB888 测试图案
         genAnalogImage(m_analog_img_type, img, framId);
-        //格式转换
-        m_test_yuv_format = info.format;
+        //测试不同格式转换
+        m_test_yuv_format = info.format;// CyMedia::FOURCC_NV12;
         if (m_test_yuv_format == CyMedia::FOURCC_NV12) {
-            CyMediaTest::rgbToNV12(img.bits(), info.width, info.height, yuvBuf);
-            m_view->upImageData(info, yuvBuf.data());
+            CyMediaTest::rgbToNV12(img.bits(), info.width, info.height, formatTransBuf);
             info.format = m_test_yuv_format;
             info.upLenth();
+            m_view->upImageData(info, formatTransBuf.data());
         }
         else if (m_test_yuv_format == CyMedia::FOURCC_NV21) {
-            CyMediaTest::rgbToNV21(img.bits(), info.width, info.height, yuvBuf);
-            m_view->upImageData(info, yuvBuf.data());
+            CyMediaTest::rgbToNV21(img.bits(), info.width, info.height, formatTransBuf);
             info.format = m_test_yuv_format;
             info.upLenth();
+            m_view->upImageData(info, formatTransBuf.data());
+        }
+        else if (m_test_yuv_format == CyMedia::MONO) {
+            CyMediaTest::rgbToMono(img.bits(), info.width, info.height, formatTransBuf);
+            info.format = m_test_yuv_format;
+            info.upLenth();
+            m_view->upImageData(info, formatTransBuf.data());
         }
         else {
             // RGB 直传
+            info.format = CyMedia::RGB;
+            info.upLenth();
             m_view->upImageData(info, img.bits());
         }
         framId++;if (framId == INT_MAX) framId = 0;

@@ -493,6 +493,17 @@ namespace CyMediaTest {
         }
     }
 
+    void rgbToMono(const uint8_t* rgb, int width, int height, std::vector<uint8_t>& out) {
+        out.resize(width * height);
+        for (int h = 0; h < height; h++) {
+            for (int w = 0; w < width; w++) {
+                out[h*width+w] = uint8_t(rgb[(h*width+w) * 3 + 0] * 0.299 + 
+                    rgb[(h * width + w) * 3 + 1] * 0.587 +
+                    rgb[(h * width + w) * 3 + 2] * 0.114);
+            }
+        }
+    }
+
     void genAnalogImage(eAnalogImageType type, QImage& img, int frameIdx) {
         uint8_t* pData = img.bits();
         int width = img.width();

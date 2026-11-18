@@ -105,6 +105,8 @@ namespace CyMediaTest {
     void rgbToNV12(const uint8_t* rgb, int width, int height, std::vector<uint8_t>& out);
     /** RGB888 -> NV21（Y 平面 + VU 交错平面，V 在前 U 在后） */
     void rgbToNV21(const uint8_t* rgb, int width, int height, std::vector<uint8_t>& out);
+    /**  RGB888 -> Mono */
+    void rgbToMono(const uint8_t* rgb, int width, int height, std::vector<uint8_t>& out);
 
     void genAnalogImage(CyMediaTest::eAnalogImageType type, QImage& img, int frameIdx);
 };
