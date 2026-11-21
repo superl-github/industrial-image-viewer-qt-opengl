@@ -383,6 +383,7 @@ namespace CyMedia {
                 int idx = -1;
                 WorkItem item;
                 Options opt;
+                bool idleTick = false;
                 {
                     QMutexLocker lock(&mutex);
                     while (running.load(std::memory_order_acquire) && idx < 0) {
@@ -393,32 +394,43 @@ namespace CyMedia {
                                 break;
                             }
                         }
-                        if (idx < 0) {
-                            cond.wait(&mutex);
+                        if (idx >= 0) break;
+                        // 没有待处理帧：限时等待而不是无限等待。超时说明一段时间没有新数据
+                        //（停止采集、数据源断开等），这时也要结算一次帧率，否则
+                        // dataFps / dataSlow 会永远停在上一次的值——统计不应依赖外部给帧。
+                        if (false == cond.wait(&mutex, kIdleFpsTickMs)) {
+                            idleTick = true;
+                            break;
                         }
                     }
-                    if (idx < 0) break;
 
-                    Slot& slot = frameSlots[idx];
-                    item.info = slot.info;
-                    item.data = slot.data;
-                    item.isSource = slot.isSource;
-                    item.copySource = slot.copySource;
-                    item.updateDisplay = slot.updateDisplay;
-                    item.updateStretch = slot.updateStretch;
-                    item.countFps = slot.countFps;
-                    opt = optionsValue;
-                    if (item.isSource) {
-                        if (!rawData || rawInfo.length == 0) {
-                            CyMediaLog::instance().log_printf_Warning(
-                                "[ImagePipeline] reprocess skipped: raw frame unavailable");
-                            slot.ready.store(false, std::memory_order_release);
-                            currentSlot.store(-1, std::memory_order_release);
-                            continue;
+                    if (idx >= 0) {
+                        Slot& slot = frameSlots[idx];
+                        item.info = slot.info;
+                        item.data = slot.data;
+                        item.isSource = slot.isSource;
+                        item.copySource = slot.copySource;
+                        item.updateDisplay = slot.updateDisplay;
+                        item.updateStretch = slot.updateStretch;
+                        item.countFps = slot.countFps;
+                        opt = optionsValue;
+                        if (item.isSource) {
+                            if (!rawData || rawInfo.length == 0) {
+                                CyMediaLog::instance().log_printf_Warning(
+                                    "[ImagePipeline] reprocess skipped: raw frame unavailable");
+                                slot.ready.store(false, std::memory_order_release);
+                                currentSlot.store(-1, std::memory_order_release);
+                                continue;
+                            }
+                            item.info = rawInfo;
+                            item.data = rawData.get();
                         }
-                        item.info = rawInfo;
-                        item.data = rawData.get();
                     }
+                }
+
+                if (idx < 0) {
+                    if (idleTick) updateFps(false, true);
+                    continue;
                 }
 
                 process(item, workerProcessor, opt);
@@ -509,7 +521,8 @@ namespace CyMedia {
             rawInfo = info;
         }
 
-        void updateFps(bool count) {
+        // idle = true：没有新帧时的定时结算（由 run() 的空闲等待超时触发）
+        void updateFps(bool count, bool idle = false) {
             if (count) ++fpsCount;
 
             if (!fpsTimer.isValid()) fpsTimer.start();
@@ -517,7 +530,11 @@ namespace CyMedia {
             if (elapsed <= 0) return;
 
             const bool direct = directMode.load(std::memory_order_acquire);
-            const bool enough = direct ? (elapsed >= 1000) : (fpsCount >= 30 || elapsed >= 3000);
+            // 有帧时沿用原阈值（够 30 帧或 3s）；空闲时每 1s 结算一次，
+            // 这样停采后 dataFps 会衰减到 0、dataSlow 回到 true
+            const bool enough = idle
+                ? (elapsed >= kIdleFpsWindowMs)
+                : (direct ? (elapsed >= 1000) : (fpsCount >= 30 || elapsed >= 3000));
             if (!enough) return;
 
             const double fps = 1000.0 * double(fpsCount) / double(elapsed);
@@ -563,6 +580,10 @@ namespace CyMedia {
 
     public:
         static const uint32_t kDefaultStack = 3;
+        /// 空闲帧率结算周期：没有新帧时也按它推进 dataFps / dataSlow（统计不依赖外部给帧）
+        static const int kIdleFpsTickMs = 250;
+        /// 空闲结算的统计窗口：停采后约 1s 内 dataFps 归零、dataSlow 回到 true
+        static const qint64 kIdleFpsWindowMs = 1000;
 
         Sink* sink = nullptr;
         mutable QMutex mutex;
@@ -657,6 +678,9 @@ namespace CyMedia {
 
     void ImagePipeline::cacheIamge(bool enable) {
         d->enableCopyRawData.store(enable);
+        if (false == enable) {
+            ;//马上释放缓存内存？
+        }
     }
 
 

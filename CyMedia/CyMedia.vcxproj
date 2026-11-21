@@ -309,8 +309,11 @@
     </ClCompile>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
-copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
-copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
+copy "$(OutDir)CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+copy "$(OutDir)CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+xcopy /y /d /i /e "$(ProjectDir)resources\colorMap\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\colorMap\" &gt;nul
+
+xcopy /y /d /i /e "$(ProjectDir)3rdparty\ffmpeg\Bin\$(Platform)\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" &gt;nul</Command>
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -338,7 +341,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
 copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
-copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
+copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+xcopy /y /d /i /e "$(ProjectDir)resources\colorMap\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\colorMap\" &gt;nul
+
+xcopy /y /d /i /e "$(ProjectDir)3rdparty\ffmpeg\Bin\$(Platform)\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" &gt;nul</Command>
     </PostBuildEvent>
     <Link>
       <AdditionalLibraryDirectories>$(ProjectDir)3rdparty\ffmpeg\Lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -361,7 +367,10 @@ copy "$(OutDir)\CyMedia.pdb" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </QtRcc>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
-copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
+copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+xcopy /y /d /i /e "$(ProjectDir)resources\colorMap\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\colorMap\" &gt;nul
+
+xcopy /y /d /i /e "$(ProjectDir)3rdparty\ffmpeg\Bin\$(Platform)\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" &gt;nul</Command>
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -384,7 +393,10 @@ copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$
     </QtRcc>
     <PostBuildEvent>
       <Command>mkdir "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" 2&gt;nul
-copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"</Command>
+copy "$(OutDir)\CyMedia.dll" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\"
+xcopy /y /d /i /e "$(ProjectDir)resources\colorMap\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\colorMap\" &gt;nul
+
+xcopy /y /d /i /e "$(ProjectDir)3rdparty\ffmpeg\Bin\$(Platform)\*" "$(SolutionDir)OutFile\CyMediaDisTest\$(Platform)\$(Configuration)\" &gt;nul</Command>
     </PostBuildEvent>
     <Link>
       <AdditionalDependencies>avcodec-63.lib;avdevice-63.lib;avfilter-12.lib;avformat-63.lib;avutil-61.lib;swresample-7.lib;swscale-10.lib;%(AdditionalDependencies)</AdditionalDependencies>

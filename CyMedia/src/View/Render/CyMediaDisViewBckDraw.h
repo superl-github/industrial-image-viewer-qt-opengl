@@ -106,6 +106,9 @@ public:
     void setTrueDataFps(bool flag);
 
     // 颜色映射
+    const QString colorMapPath() const;
+    const QString colorMapIconPath(int index)const;
+    const QString colorMapIconPath(const QString& name)const;
     QStringList ColorMapList() const;
     qint32 colorMapIndex() const;
     QString colorMapName() const;

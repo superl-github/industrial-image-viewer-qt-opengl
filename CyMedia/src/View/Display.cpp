@@ -338,7 +338,7 @@ void CyMediaDis::clearImage(void) {
 }
 
 
-void CyMediaDis::cacheIamge(bool enable) {
+void CyMediaDis::setCacheIamge(bool enable) {
     d->pipeline->cacheIamge(enable);
 }
 
@@ -460,6 +460,18 @@ void CyMediaDis::setYUVMethod(CyMedia::YUVTransMethod method) {
         QMetaObject::invokeMethod(d->view->viewport(), "update", Qt::QueuedConnection);
         QMetaObject::invokeMethod(d->view->thumnailWidget(), "update", Qt::QueuedConnection);
     }
+}
+
+const QString CyMediaDis::colorMapPath() const {
+    return d->view->imageDraw()->colorMapPath();
+}
+
+const QString CyMediaDis::colorMapIconPath(int index) const {
+    return d->view->imageDraw()->colorMapIconPath(index);
+}
+
+const QString CyMediaDis::colorMapIconPath(const QString& name) const {
+    return d->view->imageDraw()->colorMapIconPath(name);
 }
 
 QStringList CyMediaDis::ColorMapList() const {
@@ -822,8 +834,8 @@ void CyMediaDis::privateData::initScene() {
 
         double r = 0, g = 0, b = 0;
         bool gray = false;
-        if (!pipeline->samplePixel(x, y, &r, &g, &b, &gray)) return;
-        m_parent->emit upPosPix(x, y, r, g, b, gray);
+        if (pipeline->samplePixel(x, y, &r, &g, &b, &gray)) m_parent->emit upPosPix(x, y, r, g, b, gray);
+        else m_parent->emit upPos(x, y);
         });
 
     connect(scene, &CyDMediaDisScen::urlsDrop, 
@@ -1029,9 +1041,10 @@ void CyMediaDis::privateData::onFrame(const PipelineFrame& frame) {
         if (calcolorTimer.elapsed() > 200 || view->imageDraw()->flushFps() <= 5.0) {
             double r = 0, g = 0, b = 0;
             bool gray = false;
-            if (pipeline->samplePixel(posX, posY, &r, &g, &b, &gray)) {
+            if (pipeline->samplePixel(posX, posY, &r, &g, &b, &gray)) 
                 m_parent->emit upPosPix(posX, posY, r, g, b, gray);
-            }
+            else
+                m_parent->emit upPos(posX, posY);
             calcolorTimer.restart();
         }
     }

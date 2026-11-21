@@ -125,6 +125,11 @@ namespace CyMedia {
          * @param signlR 为 true 时 r 表示灰度值，g/b 无效。
          */
         void upPosPix(qint32 x, qint32 y, double r, double g, double b, bool isGray);
+        /**
+         * @brief 鼠标所在像素的坐标，无图像数据用以计算时发出(setCacheIamge(false))，不会与 upPosPix 同时发出
+         * @param signlR 为 true 时 r 表示灰度值，g/b 无效。
+         */
+        void upPos(qint32 x, qint32 y);
         /// 图像尺寸或位深变化。
         void imageSizeChanged(int32_t w, int32_t h, int nbit);
         /// 缩放倍数变化。
@@ -197,7 +202,7 @@ namespace CyMedia {
         void clearImage(void);
 
         /// 设置内部缓存图像使能，使能后，内部会根据帧率情况缓存数据供像素采样/参数变化后的重处理
-        void cacheIamge(bool enable);
+        void setCacheIamge(bool enable);
         /// 是否使能内部缓存输入图像
         bool isCacheIamgeEnablee();
         /// 内部缓存的最近一帧输入图像（无锁，外部调用可能读写冲突，由外部保证使用此接口时无数据输入)
@@ -229,6 +234,9 @@ namespace CyMedia {
         CyMedia::YUVTransMethod YUVMethod();
         void setYUVMethod(CyMedia::YUVTransMethod method);
 
+        const QString colorMapPath() const;
+        const QString colorMapIconPath(int index)const;
+        const QString colorMapIconPath(const QString& name)const;
         QStringList ColorMapList() const;
         quint32 colorMapIndex() const;
         bool setColorMap(quint32 index);

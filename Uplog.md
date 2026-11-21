@@ -17,6 +17,8 @@
 - 增加外部接口：void cacheIamge(bool enable); bool isCacheIamgeEnablee();
 - 外部设置拉伸参数，同步更新到内部灰度窗口
 - CyMediaRecTimeW.h/Cpp 重新设计，显示内容/LED状态交给调用方，更加灵活
+- 修复 zoomRaw(reset)，reset=false时缩放异常
+- 添加信号void upPos(qint32 x, qint32 y);和接口void setCacheIamge(bool enable);
 
 **未暂存**
 

@@ -48,7 +48,7 @@ CyMediaDisViewBckDraw::CyMediaDisViewBckDraw(QGraphicsView* view)
     m_vertex_current_h = pTex->showInfo.height;
 
     // 初始化颜色映射
-    initColorMap(qApp->applicationDirPath() + QString("/colorMap/"));
+    initColorMap(colorMapPath());
 
     // 设置 FPS 计时器
     DisFpsTimer = new QTimer(this);
@@ -1491,6 +1491,19 @@ bool CyMediaDisViewBckDraw::isTrueDataFps() const {
 
 void CyMediaDisViewBckDraw::setTrueDataFps(bool flag) {
     useTrueDataFps = flag;
+}
+
+const QString CyMediaDisViewBckDraw::colorMapPath() const {
+    return qApp->applicationDirPath() + QString("/colorMap/");
+}
+
+const QString CyMediaDisViewBckDraw::colorMapIconPath(int index) const {
+    if (index >= m_ColorMapList.size()) return QString();
+    return QString("%1png/%2.png").arg(colorMapPath()).arg(m_ColorMapList[index]);
+}
+
+const QString CyMediaDisViewBckDraw::colorMapIconPath(const QString& name) const {
+    return QString("%1png/%2.png").arg(colorMapPath()).arg(name);
 }
 
 QStringList CyMediaDisViewBckDraw::ColorMapList() const {

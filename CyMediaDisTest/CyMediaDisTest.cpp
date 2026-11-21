@@ -253,11 +253,13 @@ void CyMediaDisTest::initMenu() {
     ui_menu_colormaping = new QMenu(ui_menu_image);
     ui_act_group_view_colomap = new QActionGroup(this);
     auto colormaplist = m_view->ColorMapList();
+    QString iConPath;
     for (int i = 0; i < colormaplist.size(); i++) {
         t_act = new QAction(ui_menu_colormaping);
         t_act->setCheckable(true);
         t_act->setData(i);
         t_act->setText(colormaplist[i]);
+        t_act->setIcon(QIcon(m_view->colorMapIconPath(i)));
         ui_act_view_colomap_list.append(t_act);
         ui_act_group_view_colomap->addAction(t_act);
         ui_menu_colormaping->addAction(t_act);

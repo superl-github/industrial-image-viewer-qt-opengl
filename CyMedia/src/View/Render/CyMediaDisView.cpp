@@ -57,8 +57,7 @@ void CyMediaDisView::MyViewPrivateData::zoom(double zoomValue) {
     zoomValue = (int(zoomValue * 1000) / 2 * 2) / 1000.0;
     if (zoomValue > 25.0)
         zoomValue = int(zoomValue);
-    if (xZoomValue == zoomValue)
-        return;
+    if (xZoomValue == zoomValue) return;
     QTransform transform(pView->transform());
     transform.scale(zoomValue / xZoomValue, zoomValue / xZoomValue);
     pView->setTransform(transform);
@@ -330,18 +329,14 @@ void CyMediaDisView::zoomAuto(void) {
 }
 
 void CyMediaDisView::rawView(bool Reset /*= true*/) {
-    QTransform transform(this->transform());
     double value = 1.0;
     d->zoom(value);
     if (Reset) {
-        resetTransform();
         d->hIsMirror = false;
         d->vIsMirror = false;
         d->rotateAngle = 0.0;
-        rotateView(0.0);
-    }
-    else {
-        setTransform(transform);
+        //rotateView(0.0);
+        resetTransform();
     }
 }
 
